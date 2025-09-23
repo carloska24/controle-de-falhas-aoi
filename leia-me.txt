@@ -1,0 +1,5 @@
+endereço do backend
+https://controle-de-falhas-aoi.onrender.com
+
+endereço netfly
+https://stately-fairy-2fee40.netlify.app

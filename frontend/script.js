@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mostrarTexto = $('#mostrarTexto');
 
   // --- Configurações da API ---
-  const API_URL = 'http://localhost:3000/api/registros';
+  const API_URL = 'https://controle-de-falhas-aoi.onrender.com/api/registros';
   let registros = []; // Cache local dos registros
   let sort = { key: 'createdAt', dir: 'desc' };
   let filterText = '';
