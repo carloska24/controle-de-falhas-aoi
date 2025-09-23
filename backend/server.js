@@ -18,7 +18,6 @@ const pool = new Pool({
 });
 
 const createTable = async () => {
-  // Nomes das colunas todos em minúsculo
   const queryText = `
     CREATE TABLE IF NOT EXISTS registros (
       id TEXT PRIMARY KEY,
@@ -44,7 +43,6 @@ const createTable = async () => {
 
 app.get('/api/registros', async (req, res) => {
   try {
-    // Usando "createdat" em minúsculo e com aspas duplas
     const result = await pool.query('SELECT * FROM registros ORDER BY createdat DESC');
     res.json(result.rows);
   } catch (err) {
@@ -55,10 +53,9 @@ app.get('/api/registros', async (req, res) => {
 
 app.post('/api/registros', async (req, res) => {
     const r = req.body;
-    // Nomes das colunas todos em minúsculo
     const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador)
                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
-    const values = [r.id, r.om, r.qtdLote, r.serial, r.designador, r.tipoDefeito, r.pn, r.descricao, r.obs, r.createdAt, r.status, r.operador];
+    const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
     
     try {
         await pool.query(queryText, values);
@@ -72,12 +69,11 @@ app.post('/api/registros', async (req, res) => {
 app.put('/api/registros/:id', async (req, res) => {
     const { id } = req.params;
     const r = req.body;
-    // Nomes das colunas todos em minúsculo
     const queryText = `UPDATE registros SET
                         om = $1, qtdlote = $2, serial = $3, designador = $4, tipodefeito = $5,
                         pn = $6, descricao = $7, obs = $8
                      WHERE id = $9`;
-    const values = [r.om, r.qtdLote, r.serial, r.designador, r.tipoDefeito, r.pn, r.descricao, r.obs, id];
+    const values = [r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, id];
 
     try {
         const result = await pool.query(queryText, values);

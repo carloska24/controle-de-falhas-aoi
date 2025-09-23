@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Código completo e corrigido
+
   const API_URL = 'https://controle-de-falhas-aoi.onrender.com/api/registros';
   let registros = [];
   let sort = { key: 'createdat', dir: 'desc' };
@@ -7,31 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let operatorName = localStorage.getItem('lastOperator') || 'Operador';
 
   const form = document.querySelector('#formRegistro');
-  // ... (demais seletores)
-
-  // FUNÇÃO CORRIGIDA
-  function getFormData() {
-    const formData = new FormData(form);
-    const data = {};
-    // Loop para pegar cada campo e sua chave
-    for (const [key, value] of formData.entries()) {
-      // Forçamos a chave a ser minúscula antes de adicionar ao objeto
-      data[key.toLowerCase()] = typeof value === 'string' ? value.trim() : value;
-    }
-    // Tratamento especial para o campo de número
-    if (data.qtdlote) {
-        data.qtdlote = Number(data.qtdlote);
-    } else {
-        data.qtdlote = null;
-    }
-    return data;
-  }
-  
-  // O resto do seu script.js, como na última versão que enviei, está correto.
-  // Cole o código completo da última versão, garantindo que a função getFormData seja esta acima.
-  // Para evitar erros, aqui está o arquivo completo novamente:
-
-  // --- Seletores do DOM ---
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
   const selAll = document.querySelector('#selAll');
@@ -63,6 +38,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function getFormData() {
+    const formData = new FormData(form);
+    const data = {};
+    for (const [key, value] of formData.entries()) {
+      data[key.toLowerCase()] = typeof value === 'string' ? value.trim() : value;
+    }
+    if (data.qtdlote) {
+        data.qtdlote = Number(data.qtdlote);
+    } else {
+        data.qtdlote = null;
+    }
+    return data;
+  }
+
+  function validate(data) {
+    const errors = [];
+    if (!data.om) errors.push('OM é obrigatória.');
+    if (!data.qtdlote || data.qtdlote < 1) errors.push('Qtd de Placas do Lote deve ser >= 1.');
+    if (!data.designador) errors.push('Designador é obrigatório.');
+    if (!data.tipodefeito) errors.push('Tipo de Defeito é obrigatório.');
+    return errors;
+  }
+  
   function render() {
     const f = filterText.toLowerCase();
     let rows = registros.filter(r => 
@@ -94,45 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateQuality();
   }
   
-  // ... (resto do código, como na versão anterior)
-  // Cole o código completo que enviei na mensagem "arrume o arquivo para mim"
-  // e apenas substitua a função getFormData() pela que está acima.
-  // Para garantir, o código completo está abaixo:
-  
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-
-  async function enviarRegistro(data, method, id = null) {
-    let url = id ? `${API_URL}/${id}` : API_URL;
-    const response = await fetch(url, {
-      method: method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Falha ao salvar o registro');
-    return response.json();
-  }
-
-  async function excluirRegistros(ids) {
-    const response = await fetch(API_URL, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    });
-    if (!response.ok) throw new Error('Falha ao excluir');
-    return response.json();
-  }
-
-  function validate(data) {
-    const errors = [];
-    if (!data.om) errors.push('OM é obrigatória.');
-    if (!data.qtdlote || data.qtdlote < 1) errors.push('Qtd de Placas do Lote deve ser >= 1.');
-    if (!data.designador) errors.push('Designador é obrigatório.');
-    if (!data.tipodefeito) errors.push('Tipo de Defeito é obrigatório.');
-    return errors;
-  }
-  
-  function resetForm() { form.reset(); form.dataset.editing = ''; document.querySelector('#om').focus(); }
-  
   function updateMetrics(visibleRows) {
     mTotal.textContent = visibleRows.length;
     mOMs.textContent = new Set(visibleRows.map(r => r.om)).size;
@@ -144,30 +103,79 @@ document.addEventListener('DOMContentLoaded', () => {
     mDistrib.textContent = top.length ? top.join(' • ') : '—';
   }
   
-  function updateQuality() { /* ...código do gráfico... */ }
-  function drawPie(badPct) { /* ...código do gráfico... */ }
+  function updateQuality() {
+    if (!pie) return;
+    const total = Number(totalInspec.value || 0);
+    const fails = getRowsForScope().length;
+    if (total === 0) {
+      const ctx = pie.getContext('2d');
+      ctx.clearRect(0,0,pie.width,pie.height);
+      qualEmoji.textContent = '😐'; qualText.textContent = 'Qualidade Indefinida';
+      pieCenter.textContent = '—';
+      qualAux.innerHTML = 'Informe o <b>Total Inspecionado</b> para calcular.';
+      qualDetalhe.textContent = '—';
+      return;
+    }
+    const badPct = Math.min(100, Math.max(0, (fails / total) * 100));
+    const goodPct = 100 - badPct;
+    drawPie(badPct);
+    pieCenter.textContent = mostrarTexto.value === 'aproveitamento' ? `${goodPct.toFixed(0)}%` : `${badPct.toFixed(0)}%`;
+    let emoji, rotulo;
+    if (goodPct >= 95) { emoji = '😃'; rotulo = 'Excelente'; }
+    else if (goodPct >= 85) { emoji = '🙂'; rotulo = 'Muito Bom'; }
+    else if (goodPct >= 75) { emoji = '😐'; rotulo = 'Regular'; }
+    else { emoji = '😟'; rotulo = 'Ruim'; }
+    qualEmoji.textContent = emoji;
+    qualText.textContent = `${rotulo} (${goodPct.toFixed(1)}% aproveitamento)`;
+    qualDetalhe.textContent = `Falhas contadas: ${fails} de ${total} itens inspecionados (${badPct.toFixed(1)}% de falhas).`;
+  }
+
+  function drawPie(badPct) {
+    const ctx = pie.getContext('2d'); const w = pie.width, h = pie.height, cx = w/2, cy = h/2, r = Math.min(w,h)/2-4;
+    ctx.clearRect(0,0,w,h);
+    ctx.beginPath(); ctx.fillStyle = '#22c55e'; ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    const rad = (badPct/100) * Math.PI*2;
+    if (rad > 0.001) { ctx.beginPath(); ctx.fillStyle = '#e5e7eb'; const s = -Math.PI/2; ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,s,s+rad); ctx.fill(); }
+    ctx.beginPath(); ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2; ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+  }
   
+  function resetForm() { form.reset(); form.dataset.editing = ''; document.querySelector('#om').focus(); }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-  function escapeHTML(s) { /* ...código de escape... */ }
+  function escapeHTML(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[m])); }
   function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
   function selectedIds() { return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); }
   function updateSelectionState() { btnExcluir.disabled = selectedIds().length === 0; }
-  function getRowsForScope() { /* ...código do escopo... */ }
-
+  function getRowsForScope() {
+    const scope = escopoQualidade.value;
+    if (scope === 'selecionados') return registros.filter(r => selectedIds().includes(r.id));
+    const f = filterText.toLowerCase();
+    return registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
+  }
+  
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = getFormData();
     const errs = validate(data);
     if (errs.length) return alert('Verifique os campos:\n- ' + errs.join('\n- '));
+
     try {
       if (form.dataset.editing) {
-        await enviarRegistro(data, 'PUT', form.dataset.editing);
+        // Lógica de PUT precisa ser ajustada para enviar chaves minúsculas também
+        await fetch(`${API_URL}/${form.dataset.editing}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
       } else {
         data.id = uid();
-        data.createdat = new Date().toISOString(); // Corrigido para minúsculo
+        data.createdat = new Date().toISOString();
         data.status = 'Registrado';
         data.operador = operatorName;
-        await enviarRegistro(data, 'POST');
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
       }
       await carregarRegistros();
       resetForm();
@@ -177,8 +185,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ... (outros event listeners)
   btnLimpar.addEventListener('click', resetForm);
-  //... etc
+  btnExcluir.addEventListener('click', async () => { /* ...código de exclusão... */ });
+  tbody.addEventListener('dblclick', (e) => { /* ...código de edição... */ });
+  busca.addEventListener('input', () => { filterText = busca.value; render(); });
+  selAll.addEventListener('change', (e) => { 
+    document.querySelectorAll('.rowSel').forEach(cb => cb.checked = e.target.checked);
+    updateSelectionState(); 
+    updateQuality();
+  });
+  tbody.addEventListener('change', (e) => { if (e.target.classList.contains('rowSel')) { updateSelectionState(); updateQuality(); }});
+  [totalInspec, escopoQualidade, mostrarTexto].forEach(el => el.addEventListener('input', updateQuality));
+  
   carregarRegistros();
 });
