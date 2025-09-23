@@ -1,38 +1,36 @@
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg'); // Usamos o 'pg' em vez de 'sqlite3'
+const { Pool } = require('pg');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Render usa a variável PORT
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// --- CONEXÃO COM O POSTGRESQL ---
-// O Render vai nos dar essa URL através das Environment Variables
 const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool({
   connectionString: connectionString,
   ssl: {
-    rejectUnauthorized: false // Necessário para conexões com o Render
+    rejectUnauthorized: false
   }
 });
 
-// Função para criar a tabela se ela não existir
 const createTable = async () => {
+  // Nomes das colunas todos em minúsculo
   const queryText = `
     CREATE TABLE IF NOT EXISTS registros (
       id TEXT PRIMARY KEY,
       om TEXT NOT NULL,
-      qtdLote INTEGER NOT NULL,
+      qtdlote INTEGER NOT NULL,
       serial TEXT,
       designador TEXT NOT NULL,
-      tipoDefeito TEXT NOT NULL,
+      tipodefeito TEXT NOT NULL,
       pn TEXT,
       descricao TEXT,
       obs TEXT,
-      createdAt TEXT NOT NULL,
+      createdat TEXT NOT NULL,
       status TEXT,
       operador TEXT
     );`;
@@ -44,11 +42,10 @@ const createTable = async () => {
   }
 };
 
-// --- ENDPOINTS DA API ---
-
 app.get('/api/registros', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM registros ORDER BY "createdAt" DESC');
+    // Usando "createdat" em minúsculo e com aspas duplas
+    const result = await pool.query('SELECT * FROM registros ORDER BY createdat DESC');
     res.json(result.rows);
   } catch (err) {
     console.error('Erro ao buscar registros:', err.stack);
@@ -58,7 +55,8 @@ app.get('/api/registros', async (req, res) => {
 
 app.post('/api/registros', async (req, res) => {
     const r = req.body;
-    const queryText = `INSERT INTO registros (id, om, qtdLote, serial, designador, tipoDefeito, pn, descricao, obs, "createdAt", status, operador)
+    // Nomes das colunas todos em minúsculo
+    const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador)
                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
     const values = [r.id, r.om, r.qtdLote, r.serial, r.designador, r.tipoDefeito, r.pn, r.descricao, r.obs, r.createdAt, r.status, r.operador];
     
@@ -74,8 +72,9 @@ app.post('/api/registros', async (req, res) => {
 app.put('/api/registros/:id', async (req, res) => {
     const { id } = req.params;
     const r = req.body;
+    // Nomes das colunas todos em minúsculo
     const queryText = `UPDATE registros SET
-                        om = $1, qtdLote = $2, serial = $3, designador = $4, tipoDefeito = $5,
+                        om = $1, qtdlote = $2, serial = $3, designador = $4, tipodefeito = $5,
                         pn = $6, descricao = $7, obs = $8
                      WHERE id = $9`;
     const values = [r.om, r.qtdLote, r.serial, r.designador, r.tipoDefeito, r.pn, r.descricao, r.obs, id];
@@ -110,8 +109,6 @@ app.delete('/api/registros', async (req, res) => {
     }
 });
 
-
-// Inicia o servidor e cria a tabela
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
   createTable();
