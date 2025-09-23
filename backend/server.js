@@ -1,94 +1,118 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const cors = require('cors'); // <-- 1. ADICIONE ESTA LINHA AQUI
+const cors = require('cors');
+const { Pool } = require('pg'); // Usamos o 'pg' em vez de 'sqlite3'
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Render usa a variável PORT
 
-// Middlewares
-app.use(cors()); // <-- 2. ADICIONE ESTA LINHA AQUI
+app.use(cors());
 app.use(express.json());
 
-// Conecta ao banco de dados SQLite
-const db = new sqlite3.Database('./aoi.db', (err) => {
-  if (err) {
-    console.error('Erro ao conectar ao banco de dados:', err.message);
-  } else {
-    console.log('Conectado ao banco de dados SQLite.');
+// --- CONEXÃO COM O POSTGRESQL ---
+// O Render vai nos dar essa URL através das Environment Variables
+const connectionString = process.env.DATABASE_URL;
+
+const pool = new Pool({
+  connectionString: connectionString,
+  ssl: {
+    rejectUnauthorized: false // Necessário para conexões com o Render
   }
 });
 
-// --- NOSSOS ENDPOINTS DA API ---
+// Função para criar a tabela se ela não existir
+const createTable = async () => {
+  const queryText = `
+    CREATE TABLE IF NOT EXISTS registros (
+      id TEXT PRIMARY KEY,
+      om TEXT NOT NULL,
+      qtdLote INTEGER NOT NULL,
+      serial TEXT,
+      designador TEXT NOT NULL,
+      tipoDefeito TEXT NOT NULL,
+      pn TEXT,
+      descricao TEXT,
+      obs TEXT,
+      createdAt TEXT NOT NULL,
+      status TEXT,
+      operador TEXT
+    );`;
+  try {
+    await pool.query(queryText);
+    console.log('Tabela "registros" verificada com sucesso.');
+  } catch (err) {
+    console.error('Erro ao criar a tabela:', err);
+  }
+};
 
-// Endpoint para PEGAR (GET) todos os registros
-app.get('/api/registros', (req, res) => {
-  const sql = "SELECT * FROM registros ORDER BY createdAt DESC";
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ "error": err.message });
-      return;
-    }
-    res.json(rows);
-  });
+// --- ENDPOINTS DA API ---
+
+app.get('/api/registros', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM registros ORDER BY "createdAt" DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Erro ao buscar registros:', err.stack);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Endpoint para CRIAR (POST) um novo registro
-app.post('/api/registros', (req, res) => {
-  const data = req.body;
-  const sql = `INSERT INTO registros (id, om, qtdLote, serial, designador, tipoDefeito, pn, descricao, obs, createdAt, status, operador)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const params = [data.id, data.om, data.qtdLote, data.serial, data.designador, data.tipoDefeito, data.pn, data.descricao, data.obs, data.createdAt, data.status, data.operador];
-
-  db.run(sql, params, function(err) {
-    if (err) {
-      res.status(400).json({ "error": err.message });
-      return;
+app.post('/api/registros', async (req, res) => {
+    const r = req.body;
+    const queryText = `INSERT INTO registros (id, om, qtdLote, serial, designador, tipoDefeito, pn, descricao, obs, "createdAt", status, operador)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
+    const values = [r.id, r.om, r.qtdLote, r.serial, r.designador, r.tipoDefeito, r.pn, r.descricao, r.obs, r.createdAt, r.status, r.operador];
+    
+    try {
+        await pool.query(queryText, values);
+        res.status(201).json({ id: r.id });
+    } catch (err) {
+        console.error('Erro ao criar registro:', err.stack);
+        res.status(500).json({ error: err.message });
     }
-    res.status(201).json({ "id": data.id });
-  });
 });
 
-// Endpoint para ATUALIZAR (PUT) um registro existente
-app.put('/api/registros/:id', (req, res) => {
+app.put('/api/registros/:id', async (req, res) => {
     const { id } = req.params;
-    const data = req.body;
-    const sql = `UPDATE registros SET
-                    om = ?, qtdLote = ?, serial = ?, designador = ?, tipoDefeito = ?,
-                    pn = ?, descricao = ?, obs = ?
-                 WHERE id = ?`;
-    const params = [data.om, data.qtdLote, data.serial, data.designador, data.tipoDefeito, data.pn, data.descricao, data.obs, id];
+    const r = req.body;
+    const queryText = `UPDATE registros SET
+                        om = $1, qtdLote = $2, serial = $3, designador = $4, tipoDefeito = $5,
+                        pn = $6, descricao = $7, obs = $8
+                     WHERE id = $9`;
+    const values = [r.om, r.qtdLote, r.serial, r.designador, r.tipoDefeito, r.pn, r.descricao, r.obs, id];
 
-    db.run(sql, params, function(err) {
-        if (err) {
-            res.status(400).json({ "error": err.message });
-            return;
+    try {
+        const result = await pool.query(queryText, values);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "Registro não encontrado" });
         }
-        res.json({ "message": "Registro atualizado com sucesso", "changes": this.changes });
-    });
-});
-
-
-// Endpoint para EXCLUIR (DELETE) um ou mais registros
-app.delete('/api/registros', (req, res) => {
-  const { ids } = req.body;
-  if (!ids || ids.length === 0) {
-    return res.status(400).json({ "error": "Nenhum ID fornecido para exclusão" });
-  }
-  
-  const placeholders = ids.map(() => '?').join(',');
-  const sql = `DELETE FROM registros WHERE id IN (${placeholders})`;
-
-  db.run(sql, ids, function(err) {
-    if (err) {
-      res.status(400).json({ "error": err.message });
-      return;
+        res.json({ message: "Registro atualizado com sucesso" });
+    } catch (err) {
+        console.error('Erro ao atualizar registro:', err.stack);
+        res.status(500).json({ error: err.message });
     }
-    res.json({ "message": `Registros excluídos: ${this.changes}` });
-  });
+});
+
+app.delete('/api/registros', async (req, res) => {
+    const { ids } = req.body;
+    if (!ids || ids.length === 0) {
+        return res.status(400).json({ "error": "Nenhum ID fornecido para exclusão" });
+    }
+    
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+    const queryText = `DELETE FROM registros WHERE id IN (${placeholders})`;
+
+    try {
+        const result = await pool.query(queryText, ids);
+        res.json({ message: `Registros excluídos: ${result.rowCount}` });
+    } catch (err) {
+        console.error('Erro ao excluir registros:', err.stack);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 
-// Inicia o servidor
+// Inicia o servidor e cria a tabela
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta http://localhost:${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
+  createTable();
 });
