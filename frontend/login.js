@@ -2,58 +2,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://controle-de-falhas-aoi.onrender.com';
 
     const loginForm = document.querySelector('#loginForm');
-    // ... (lógica de login permanece a mesma)
 
     // --- ANIMAÇÃO PROFISSIONAL ---
     const animationContainer = document.querySelector('#animation-container');
-    const numberOfComponents = 35;
+    const numberOfComponents = 40;
     
-    // Lista de tipos de componentes para sorteio
+    // Lista de tipos de componentes para sorteio (agora sem cores)
     const componentTypes = [
-        'smd-resistor', 'smd-resistor', 'smd-resistor', // Mais chance de ser resistor
-        'smd-capacitor', 'smd-capacitor',              // Chance média de ser capacitor
-        'smd-led-red', 'smd-led-green',                 // Chance menor de ser LED
-        'smd-ic'                                       // Chance rara de ser CI
+        'smd-resistor', 'smd-resistor', 'smd-resistor', 'smd-resistor',
+        'smd-capacitor', 'smd-capacitor', 'smd-capacitor',
+        'smd-led', 'smd-led',
+        'smd-ic'
     ];
 
     for (let i = 0; i < numberOfComponents; i++) {
         const component = document.createElement('div');
         
-        // Sorteia um tipo de componente
         const randomType = componentTypes[Math.floor(Math.random() * componentTypes.length)];
         component.classList.add('smd-component', randomType);
 
-        // Gera tamanhos, posições e velocidades aleatórias
         let sizeW, sizeH;
         if (randomType === 'smd-ic') {
-            sizeW = Math.random() * 15 + 15; // CIs são maiores e mais quadrados
+            sizeW = Math.random() * 20 + 20; // CIs são maiores
             sizeH = sizeW;
-        } else if (randomType === 'smd-resistor') {
-            sizeW = Math.random() * 8 + 8; // Resistores são mais retangulares
-            sizeH = sizeW / 2;
-            // Adiciona o código do resistor (ex: 103, 471)
-            const resistorValues = ['103', '472', '221', '104', '0R0'];
-            const randomValue = resistorValues[Math.floor(Math.random() * resistorValues.length)];
-            component.dataset.value = randomValue;
         } else {
-            sizeW = Math.random() * 10 + 5; // Outros componentes
-            sizeH = sizeW * (Math.random() * 0.5 + 0.6);
+            sizeW = Math.random() * 10 + 6; // Componentes menores
+            sizeH = sizeW * 0.5; // Todos retangulares (formato 2:1)
         }
         
         component.style.width = `${sizeW}px`;
         component.style.height = `${sizeH}px`;
         component.style.left = `${Math.random() * 100}%`;
         
-        const duration = Math.random() * 10 + 10; // Duração entre 10s e 20s
-        const delay = Math.random() * 15;
+        const duration = Math.random() * 12 + 10; // Duração entre 10s e 22s
+        const delay = Math.random() * 20;
 
         component.style.animationDuration = `${duration}s`;
         component.style.animationDelay = `${delay}s`;
 
         animationContainer.appendChild(component);
     }
-    
-    // Cole a lógica de login aqui
+
+    // --- LÓGICA DO LOGIN (sem alterações) ---
     const usernameInput = document.querySelector('#username');
     const passwordInput = document.querySelector('#password');
     loginForm.addEventListener('submit', async (event) => {

@@ -7,6 +7,7 @@
     --text-dim: #94a3b8;
     --accent-blue: #3b82f6;
     --border-color: #334155;
+    --metal-contact: #c0c0c0; /* Cor para os contatos metálicos */
 }
 
 * {
@@ -26,7 +27,7 @@ body {
     overflow: hidden;
 }
 
-/* ===== ANIMAÇÃO PROFISSIONAL COM COMPONENTES DETALHADOS ===== */
+/* ===== ANIMAÇÃO COM COMPONENTES REALISTAS ===== */
 
 #animation-container {
     position: fixed;
@@ -39,52 +40,44 @@ body {
 
 .smd-component {
     position: absolute;
-    top: -40px; /* Começa mais de cima para componentes maiores */
-    opacity: 0.7;
+    top: -50px;
+    opacity: 0.6;
     animation-name: fall;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
 }
 
-/* Resistor: Corpo preto, com um pseudo-elemento para mostrar o código (ex: 103) */
+/* Resistor: Corpo preto com contatos metálicos nas pontas */
 .smd-resistor {
-    background-color: #1a1a1a;
-    border: 1px solid #000;
-    color: white;
-    font-size: 8px;
-    font-family: monospace;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.smd-resistor::before {
-    content: attr(data-value); /* Pega o valor do atributo 'data-value' do HTML */
-    transform: scale(0.8); /* Reduz um pouco o tamanho do texto */
+    background: linear-gradient(to right, 
+        var(--metal-contact) 15%, 
+        #1a1a1a 15%, 
+        #1a1a1a 85%, 
+        var(--metal-contact) 85%
+    );
 }
 
-/* Capacitor: Corpo bege/marrom com uma faixa de polaridade */
+/* Capacitor: Corpo marrom com contatos metálicos */
 .smd-capacitor {
-    background-color: #6d4c41; /* Tom de cerâmica */
-    position: relative;
-}
-.smd-capacitor::before {
-    content: '';
-    position: absolute;
-    top: 10%;
-    left: 10%;
-    width: 80%;
-    height: 2px;
-    background-color: #4e342e; /* Faixa mais escura */
+    background: linear-gradient(to right, 
+        var(--metal-contact) 15%, 
+        #6d4c41 15%, 
+        #6d4c41 85%, 
+        var(--metal-contact) 85%
+    );
 }
 
-/* LED: Mais brilhante */
+/* LED: Corpo amarelado/esbranquiçado com contatos metálicos */
 .smd-led {
-    opacity: 1;
+    background: linear-gradient(to right, 
+        var(--metal-contact) 20%, 
+        #f5f5dc 20%, 
+        #f5f5dc 80%, 
+        var(--metal-contact) 80%
+    );
 }
-.smd-led-red { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
-.smd-led-green { background-color: #4caf50; box-shadow: 0 0 8px #4caf50; }
 
-/* CI (Circuito Integrado): Corpo cinza escuro, quadrado, com um pino de indicação */
+/* CI (Circuito Integrado): Corpo cinza escuro com um pino de indicação */
 .smd-ic {
     background-color: #37474f;
     border: 1px solid #263238;
@@ -95,8 +88,10 @@ body {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 3px;
-    height: 3px;
+    width: 20%;
+    height: 20%;
+    max-width: 4px;
+    max-height: 4px;
     background-color: #546e7a;
     border-radius: 50%;
 }
@@ -106,7 +101,7 @@ body {
         transform: translateY(0) rotate(0deg);
     }
     to {
-        transform: translateY(105vh) rotate(360deg);
+        transform: translateY(105vh) rotate(720deg);
     }
 }
 
@@ -115,11 +110,8 @@ body {
 
 /* ===== ESTILOS DO FORMULÁRIO DE LOGIN (sem alterações) ===== */
 
-.login-container { z-index: 1; /* ... etc ... */ }
-.login-card { background-color: rgba(30, 41, 59, 0.8); backdrop-filter: blur(5px); /* ... etc ... */ }
-/* Cole o resto do CSS do formulário aqui */
-.login-container{display:flex;flex-direction:column;width:100%;max-width:400px;padding:20px}
-.login-card{border-radius:12px;border:1px solid var(--border-color);padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.login-container { z-index: 1; display:flex; flex-direction:column; width:100%; max-width:400px; padding:20px; }
+.login-card { background-color: rgba(30, 41, 59, 0.8); backdrop-filter: blur(5px); border-radius:12px; border:1px solid var(--border-color); padding:32px; box-shadow:0 10px 30px rgba(0,0,0,.3); }
 .card-header{text-align:center;margin-bottom:24px}
 .card-header h2{font-size:24px;font-weight:700;color:var(--text-light)}
 .card-header p{color:var(--accent-blue);font-size:14px;margin-top:4px}
