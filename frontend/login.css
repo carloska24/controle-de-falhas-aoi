@@ -26,7 +26,7 @@ body {
     overflow: hidden;
 }
 
-/* ===== ANIMAÇÃO APRIMORADA ===== */
+/* ===== ANIMAÇÃO PROFISSIONAL COM COMPONENTES DETALHADOS ===== */
 
 #animation-container {
     position: fixed;
@@ -37,40 +37,68 @@ body {
     z-index: -1;
 }
 
-/* Base para todos os componentes */
 .smd-component {
     position: absolute;
-    top: -30px; /* Começa um pouco mais de cima */
-    border-radius: 2px;
-    opacity: 0.6; /* Mais visível */
+    top: -40px; /* Começa mais de cima para componentes maiores */
+    opacity: 0.7;
     animation-name: fall;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
 }
 
-/* Estilo para Resistor (preto) */
+/* Resistor: Corpo preto, com um pseudo-elemento para mostrar o código (ex: 103) */
 .smd-resistor {
-    background-color: #111;
+    background-color: #1a1a1a;
     border: 1px solid #000;
+    color: white;
+    font-size: 8px;
+    font-family: monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.smd-resistor::before {
+    content: attr(data-value); /* Pega o valor do atributo 'data-value' do HTML */
+    transform: scale(0.8); /* Reduz um pouco o tamanho do texto */
 }
 
-/* Estilo para Capacitor (marrom/bege) */
+/* Capacitor: Corpo bege/marrom com uma faixa de polaridade */
 .smd-capacitor {
-    background-color: #a16207; /* Um tom de marrom/caramelo */
+    background-color: #6d4c41; /* Tom de cerâmica */
+    position: relative;
+}
+.smd-capacitor::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 2px;
+    background-color: #4e342e; /* Faixa mais escura */
 }
 
-/* Estilos para LEDs coloridos */
-.smd-led-red {
-    background-color: #ef4444;
-    box-shadow: 0 0 5px #ef4444;
+/* LED: Mais brilhante */
+.smd-led {
+    opacity: 1;
 }
-.smd-led-green {
-    background-color: #22c55e;
-    box-shadow: 0 0 5px #22c55e;
+.smd-led-red { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
+.smd-led-green { background-color: #4caf50; box-shadow: 0 0 8px #4caf50; }
+
+/* CI (Circuito Integrado): Corpo cinza escuro, quadrado, com um pino de indicação */
+.smd-ic {
+    background-color: #37474f;
+    border: 1px solid #263238;
+    position: relative;
 }
-.smd-led-blue {
-    background-color: #3b82f6;
-    box-shadow: 0 0 5px #3b82f6;
+.smd-ic::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 3px;
+    height: 3px;
+    background-color: #546e7a;
+    border-radius: 50%;
 }
 
 @keyframes fall {
@@ -78,45 +106,32 @@ body {
         transform: translateY(0) rotate(0deg);
     }
     to {
-        transform: translateY(105vh) rotate(720deg); /* Gira mais */
+        transform: translateY(105vh) rotate(360deg);
     }
 }
 
-/* ===== FIM DA ANIMAÇÃO APRIMORADA ===== */
+/* ===== FIM DA ANIMAÇÃO PROFISSIONAL ===== */
 
 
 /* ===== ESTILOS DO FORMULÁRIO DE LOGIN (sem alterações) ===== */
 
-.login-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 400px;
-    padding: 20px;
-    z-index: 1;
-}
-
-.login-card {
-    background-color: rgba(30, 41, 59, 0.8);
-    backdrop-filter: blur(5px);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.card-header { text-align: center; margin-bottom: 24px; }
-.card-header h2 { font-size: 24px; font-weight: 700; color: var(--text-light); }
-.card-header p { color: var(--accent-blue); font-size: 14px; margin-top: 4px; }
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px; }
-.form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-dark); color: var(--text-light); font-size: 16px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
-.form-group input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
-.btn-login { width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: var(--accent-blue); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; transition: background-color 0.2s; }
-.btn-login:hover { background-color: #2563eb; }
-.admin-login { text-align: center; margin-top: 24px; }
-.admin-login a { color: var(--text-dim); font-size: 13px; text-decoration: none; }
-.admin-login a:hover { text-decoration: underline; color: var(--text-light); }
-.login-footer { text-align: center; margin-top: 32px; color: var(--text-dim); }
-.login-footer p { font-size: 12px; }
-.logo-footer { font-size: 16px; font-weight: 900; color: #4b5563; letter-spacing: -0.5px; margin-top: 4px; }
+.login-container { z-index: 1; /* ... etc ... */ }
+.login-card { background-color: rgba(30, 41, 59, 0.8); backdrop-filter: blur(5px); /* ... etc ... */ }
+/* Cole o resto do CSS do formulário aqui */
+.login-container{display:flex;flex-direction:column;width:100%;max-width:400px;padding:20px}
+.login-card{border-radius:12px;border:1px solid var(--border-color);padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.card-header{text-align:center;margin-bottom:24px}
+.card-header h2{font-size:24px;font-weight:700;color:var(--text-light)}
+.card-header p{color:var(--accent-blue);font-size:14px;margin-top:4px}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;margin-bottom:8px;color:var(--text-dim);font-size:14px}
+.form-group input{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border-color);background-color:var(--bg-dark);color:var(--text-light);font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
+.form-group input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,.3)}
+.btn-login{width:100%;padding:12px;border:none;border-radius:8px;background-color:var(--accent-blue);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:background-color .2s}
+.btn-login:hover{background-color:#2563eb}
+.admin-login{text-align:center;margin-top:24px}
+.admin-login a{color:var(--text-dim);font-size:13px;text-decoration:none}
+.admin-login a:hover{text-decoration:underline;color:var(--text-light)}
+.login-footer{text-align:center;margin-top:32px;color:var(--text-dim)}
+.login-footer p{font-size:12px}
+.logo-footer{font-size:16px;font-weight:900;color:#4b5563;letter-spacing:-.5px;margin-top:4px}
