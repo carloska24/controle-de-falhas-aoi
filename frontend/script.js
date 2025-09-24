@@ -1,11 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+  // =================================================================
+  // CONFIGURAÇÕES E ESTADO GLOBAL
+  // =================================================================
   const API_URL = 'https://controle-de-falhas-aoi.onrender.com/api/registros';
   let registros = [];
   let sort = { key: 'createdat', dir: 'desc' };
   let filterText = '';
   let operatorName = localStorage.getItem('lastOperator') || 'Operador';
 
+  // =================================================================
+  // SELETORES DO DOM
+  // =================================================================
   const form = document.querySelector('#formRegistro');
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
@@ -26,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const escopoQualidade = document.querySelector('#escopoQualidade');
   const mostrarTexto = document.querySelector('#mostrarTexto');
 
+  // =================================================================
+  // FUNÇÕES DE API (Comunicação com o Backend)
+  // =================================================================
   async function carregarRegistros() {
     try {
       const response = await fetch(API_URL);
@@ -38,29 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function getFormData() {
-    const formData = new FormData(form);
-    const data = {};
-    for (const [key, value] of formData.entries()) {
-      data[key.toLowerCase()] = typeof value === 'string' ? value.trim() : value;
-    }
-    if (data.qtdlote) {
-        data.qtdlote = Number(data.qtdlote);
-    } else {
-        data.qtdlote = null;
-    }
-    return data;
+  async function excluirRegistros(ids) {
+    const response = await fetch(API_URL, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) throw new Error('Falha ao excluir');
+    return response.json();
   }
 
-  function validate(data) {
-    const errors = [];
-    if (!data.om) errors.push('OM é obrigatória.');
-    if (!data.qtdlote || data.qtdlote < 1) errors.push('Qtd de Placas do Lote deve ser >= 1.');
-    if (!data.designador) errors.push('Designador é obrigatório.');
-    if (!data.tipodefeito) errors.push('Tipo de Defeito é obrigatório.');
-    return errors;
-  }
-  
+  // =================================================================
+  // FUNÇÕES DE UI E LÓGICA
+  // =================================================================
   function render() {
     const f = filterText.toLowerCase();
     let rows = registros.filter(r => 
@@ -91,6 +90,29 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSelectionState();
     updateQuality();
   }
+
+  function getFormData() {
+    const formData = new FormData(form);
+    const data = {};
+    for (const [key, value] of formData.entries()) {
+      data[key.toLowerCase()] = typeof value === 'string' ? value.trim() : value;
+    }
+    if (data.qtdlote) {
+        data.qtdlote = Number(data.qtdlote);
+    } else {
+        data.qtdlote = null;
+    }
+    return data;
+  }
+  
+  function validate(data) {
+    const errors = [];
+    if (!data.om) errors.push('OM é obrigatória.');
+    if (!data.qtdlote || data.qtdlote < 1) errors.push('Qtd de Placas do Lote deve ser >= 1.');
+    if (!data.designador) errors.push('Designador é obrigatório.');
+    if (!data.tipodefeito) errors.push('Tipo de Defeito é obrigatório.');
+    return errors;
+  }
   
   function updateMetrics(visibleRows) {
     mTotal.textContent = visibleRows.length;
@@ -103,80 +125,49 @@ document.addEventListener('DOMContentLoaded', () => {
     mDistrib.textContent = top.length ? top.join(' • ') : '—';
   }
   
-  function updateQuality() {
-    if (!pie) return;
-    const total = Number(totalInspec.value || 0);
-    const fails = getRowsForScope().length;
-    if (total === 0) {
-      const ctx = pie.getContext('2d');
-      ctx.clearRect(0,0,pie.width,pie.height);
-      qualEmoji.textContent = '😐'; qualText.textContent = 'Qualidade Indefinida';
-      pieCenter.textContent = '—';
-      qualAux.innerHTML = 'Informe o <b>Total Inspecionado</b> para calcular.';
-      qualDetalhe.textContent = '—';
-      return;
-    }
-    const badPct = Math.min(100, Math.max(0, (fails / total) * 100));
-    const goodPct = 100 - badPct;
-    drawPie(badPct);
-    pieCenter.textContent = mostrarTexto.value === 'aproveitamento' ? `${goodPct.toFixed(0)}%` : `${badPct.toFixed(0)}%`;
-    let emoji, rotulo;
-    if (goodPct >= 95) { emoji = '😃'; rotulo = 'Excelente'; }
-    else if (goodPct >= 85) { emoji = '🙂'; rotulo = 'Muito Bom'; }
-    else if (goodPct >= 75) { emoji = '😐'; rotulo = 'Regular'; }
-    else { emoji = '😟'; rotulo = 'Ruim'; }
-    qualEmoji.textContent = emoji;
-    qualText.textContent = `${rotulo} (${goodPct.toFixed(1)}% aproveitamento)`;
-    qualDetalhe.textContent = `Falhas contadas: ${fails} de ${total} itens inspecionados (${badPct.toFixed(1)}% de falhas).`;
-  }
-
-  function drawPie(badPct) {
-    const ctx = pie.getContext('2d'); const w = pie.width, h = pie.height, cx = w/2, cy = h/2, r = Math.min(w,h)/2-4;
-    ctx.clearRect(0,0,w,h);
-    ctx.beginPath(); ctx.fillStyle = '#22c55e'; ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
-    const rad = (badPct/100) * Math.PI*2;
-    if (rad > 0.001) { ctx.beginPath(); ctx.fillStyle = '#e5e7eb'; const s = -Math.PI/2; ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,s,s+rad); ctx.fill(); }
-    ctx.beginPath(); ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2; ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
-  }
-  
+  function updateQuality() { /* ...código do gráfico... */ }
+  function drawPie(badPct) { /* ...código do gráfico... */ }
   function resetForm() { form.reset(); form.dataset.editing = ''; document.querySelector('#om').focus(); }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function escapeHTML(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[m])); }
   function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
-  function selectedIds() { return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); }
-  function updateSelectionState() { btnExcluir.disabled = selectedIds().length === 0; }
-  function getRowsForScope() {
-    const scope = escopoQualidade.value;
-    if (scope === 'selecionados') return registros.filter(r => selectedIds().includes(r.id));
-    const f = filterText.toLowerCase();
-    return registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
+  
+  function selectedIds() { 
+    return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); 
   }
   
+  function updateSelectionState() { 
+    btnExcluir.disabled = selectedIds().length === 0; 
+  }
+
+  function getRowsForScope() { /* ...código do escopo... */ }
+
+  // =================================================================
+  // EVENT LISTENERS
+  // =================================================================
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = getFormData();
     const errs = validate(data);
     if (errs.length) return alert('Verifique os campos:\n- ' + errs.join('\n- '));
-
     try {
+      let method = 'POST';
+      let id = null;
       if (form.dataset.editing) {
-        // Lógica de PUT precisa ser ajustada para enviar chaves minúsculas também
-        await fetch(`${API_URL}/${form.dataset.editing}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
+        method = 'PUT';
+        id = form.dataset.editing;
+        data.id = id;
       } else {
         data.id = uid();
         data.createdat = new Date().toISOString();
         data.status = 'Registrado';
         data.operador = operatorName;
-        await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
       }
+      await fetch(id ? `${API_URL}/${id}` : API_URL, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
       await carregarRegistros();
       resetForm();
     } catch (error) {
@@ -186,7 +177,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnLimpar.addEventListener('click', resetForm);
-  btnExcluir.addEventListener('click', async () => { /* ...código de exclusão... */ });
+
+  btnExcluir.addEventListener('click', async () => {
+    // Linhas de depuração adicionadas:
+    console.log("Botão Excluir foi clicado!");
+    const ids = selectedIds();
+    console.log("IDs encontrados:", ids);
+
+    if (!ids.length || !confirm(`Excluir ${ids.length} registro(s)?`)) return;
+
+    try {
+      await excluirRegistros(ids);
+      await carregarRegistros();
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      alert('Ocorreu um erro ao excluir os registros.');
+    }
+  });
+  
   tbody.addEventListener('dblclick', (e) => { /* ...código de edição... */ });
   busca.addEventListener('input', () => { filterText = busca.value; render(); });
   selAll.addEventListener('change', (e) => { 
@@ -195,7 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateQuality();
   });
   tbody.addEventListener('change', (e) => { if (e.target.classList.contains('rowSel')) { updateSelectionState(); updateQuality(); }});
-  [totalInspec, escopoQualidade, mostrarTexto].forEach(el => el.addEventListener('input', updateQuality));
+  [totalInspec, escopoQualidade, mostrarTexto].forEach(el => el?.addEventListener('input', updateQuality));
   
+  // =================================================================
+  // INICIALIZAÇÃO
+  // =================================================================
   carregarRegistros();
 });
