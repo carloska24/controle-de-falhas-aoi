@@ -77,12 +77,38 @@ body {
     );
 }
 
-/* CI (Circuito Integrado): Corpo cinza escuro com um pino de indicação */
+/* CI (Circuito Integrado): Corpo cinza escuro com um pino de indicação e terminais */
 .smd-ic {
-    background-color: #37474f;
-    border: 1px solid #263238;
     position: relative;
+    border: 1px solid #263238;
+    
+    /* Múltiplos fundos para criar o efeito de pinos */
+    background-image:
+        /* Pinos da esquerda e direita */
+        repeating-linear-gradient(to bottom, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
+        /* Pinos de cima e de baixo */
+        repeating-linear-gradient(to right, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
+        /* Corpo do CI */
+        linear-gradient(#37474f, #37474f);
+
+    background-size:
+        3px 100%, /* Largura dos pinos laterais */
+        100% 3px, /* Altura dos pinos de cima/baixo */
+        100% 100%;
+
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    
+    background-position:
+        left top,      /* Pinos da esquerda */
+        left top,      /* Pinos de cima */
+        center;
+    
+    /* Usamos um truque com box-shadow para criar os pinos do outro lado */
+    box-shadow: 
+        inset -3px 0 0 0 #37474f, /* Sombra interna para "apagar" os pinos da direita */
+        inset 0 -3px 0 0 #37474f;  /* Sombra interna para "apagar" os pinos de baixo */
 }
+
 .smd-ic::before {
     content: '';
     position: absolute;
@@ -95,6 +121,7 @@ body {
     background-color: #546e7a;
     border-radius: 50%;
 }
+
 
 @keyframes fall {
     from {
