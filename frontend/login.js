@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameInput = document.querySelector('#username');
     const passwordInput = document.querySelector('#password');
 
-    // --- LÓGICA DO LOGIN (já existente) ---
+    // --- LÓGICA DO LOGIN (sem alterações) ---
     loginForm.addEventListener('submit', async (event) => {
         event.preventDefault(); 
         const email = usernameInput.value;
@@ -34,22 +34,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- CÓDIGO NOVO PARA A ANIMAÇÃO ---
+    // --- ANIMAÇÃO APRIMORADA ---
     const animationContainer = document.querySelector('#animation-container');
-    const numberOfComponents = 30; // Quantos componentes queremos na tela
+    const numberOfComponents = 40; // Aumentamos a quantidade para preencher mais a tela
+    
+    // Nossa lista de "trajes" para os componentes
+    const componentTypes = [
+        'smd-resistor', 
+        'smd-capacitor', 
+        'smd-led-red', 
+        'smd-led-green',
+        'smd-led-blue'
+    ];
 
     for (let i = 0; i < numberOfComponents; i++) {
         const component = document.createElement('div');
-        component.classList.add('smd-component');
+        
+        // Sorteia um tipo de componente da nossa lista
+        const randomType = componentTypes[Math.floor(Math.random() * componentTypes.length)];
+        component.classList.add('smd-component', randomType);
 
         // Gera tamanhos, posições e velocidades aleatórias
-        const size = Math.random() * 8 + 4; // Tamanho entre 4px e 12px
+        const size = Math.random() * 12 + 6; // Tamanho maior, entre 6px e 18px
         component.style.width = `${size}px`;
-        component.style.height = `${size / 2}px`;
+        component.style.height = `${size * (Math.random() * 0.5 + 0.5)}px`; // Proporções mais variadas
         component.style.left = `${Math.random() * 100}%`;
         
-        const duration = Math.random() * 10 + 8; // Duração da queda entre 8s e 18s
-        const delay = Math.random() * 10; // Atraso para começar a cair
+        const duration = Math.random() * 12 + 8; // Duração da queda entre 8s e 20s
+        const delay = Math.random() * 15; // Atraso maior para um efeito mais espaçado
 
         component.style.animationDuration = `${duration}s`;
         component.style.animationDelay = `${delay}s`;
