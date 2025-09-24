@@ -7,7 +7,7 @@
     --text-dim: #94a3b8;
     --accent-blue: #3b82f6;
     --border-color: #334155;
-    --metal-contact: #c0c0c0; /* Cor para os contatos metálicos */
+    --metal-contact: #aeb2b5; /* Cor metálica um pouco mais clara */
 }
 
 * {
@@ -27,7 +27,7 @@ body {
     overflow: hidden;
 }
 
-/* ===== ANIMAÇÃO COM COMPONENTES REALISTAS ===== */
+/* ===== ANIMAÇÃO DE ALTA FIDELIDADE ===== */
 
 #animation-container {
     position: fixed;
@@ -50,63 +50,56 @@ body {
 /* Resistor: Corpo preto com contatos metálicos nas pontas */
 .smd-resistor {
     background: linear-gradient(to right, 
-        var(--metal-contact) 15%, 
-        #1a1a1a 15%, 
-        #1a1a1a 85%, 
-        var(--metal-contact) 85%
+        var(--metal-contact) 15%, #1a1a1a 15%, #1a1a1a 85%, var(--metal-contact) 85%
     );
 }
 
 /* Capacitor: Corpo marrom com contatos metálicos */
 .smd-capacitor {
     background: linear-gradient(to right, 
-        var(--metal-contact) 15%, 
-        #6d4c41 15%, 
-        #6d4c41 85%, 
-        var(--metal-contact) 85%
+        var(--metal-contact) 15%, #6d4c41 15%, #6d4c41 85%, var(--metal-contact) 85%
     );
 }
 
 /* LED: Corpo amarelado/esbranquiçado com contatos metálicos */
 .smd-led {
     background: linear-gradient(to right, 
-        var(--metal-contact) 20%, 
-        #f5f5dc 20%, 
-        #f5f5dc 80%, 
-        var(--metal-contact) 80%
+        var(--metal-contact) 20%, #f5f5dc 20%, #f5f5dc 80%, var(--metal-contact) 80%
     );
 }
 
-/* CI (Circuito Integrado): Corpo cinza escuro com um pino de indicação e terminais */
+/* CI (Circuito Integrado): Corpo cinza escuro com pinos nos 4 lados */
 .smd-ic {
     position: relative;
-    border: 1px solid #263238;
     
-    /* Múltiplos fundos para criar o efeito de pinos */
+    /* Múltiplos fundos para criar o efeito de pinos nos 4 lados */
     background-image:
-        /* Pinos da esquerda e direita */
+        /* Pinos da direita (gradiente da esquerda para a direita) */
         repeating-linear-gradient(to bottom, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
-        /* Pinos de cima e de baixo */
+        /* Pinos da esquerda */
+        repeating-linear-gradient(to bottom, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
+        /* Pinos de baixo (gradiente de cima para baixo) */
         repeating-linear-gradient(to right, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
-        /* Corpo do CI */
+        /* Pinos de cima */
+        repeating-linear-gradient(to right, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
+        /* Corpo do CI (última camada, fica no fundo) */
         linear-gradient(#37474f, #37474f);
 
     background-size:
-        3px 100%, /* Largura dos pinos laterais */
-        100% 3px, /* Altura dos pinos de cima/baixo */
-        100% 100%;
+        3px 100%, /* Largura dos pinos da direita */
+        3px 100%, /* Largura dos pinos da esquerda */
+        100% 3px, /* Altura dos pinos de baixo */
+        100% 3px, /* Altura dos pinos de cima */
+        100% 100%; /* Tamanho do corpo do CI */
 
-    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-repeat: no-repeat;
     
     background-position:
-        left top,      /* Pinos da esquerda */
-        left top,      /* Pinos de cima */
+        right top,     /* Posição dos pinos da direita */
+        left top,      /* Posição dos pinos da esquerda */
+        left bottom,   /* Posição dos pinos de baixo */
+        left top,      /* Posição dos pinos de cima */
         center;
-    
-    /* Usamos um truque com box-shadow para criar os pinos do outro lado */
-    box-shadow: 
-        inset -3px 0 0 0 #37474f, /* Sombra interna para "apagar" os pinos da direita */
-        inset 0 -3px 0 0 #37474f;  /* Sombra interna para "apagar" os pinos de baixo */
 }
 
 .smd-ic::before {
@@ -120,16 +113,12 @@ body {
     max-height: 4px;
     background-color: #546e7a;
     border-radius: 50%;
+    z-index: 2; /* Garante que o pino 1 fique na frente dos outros */
 }
 
-
 @keyframes fall {
-    from {
-        transform: translateY(0) rotate(0deg);
-    }
-    to {
-        transform: translateY(105vh) rotate(720deg);
-    }
+    from { transform: translateY(0) rotate(0deg); }
+    to { transform: translateY(105vh) rotate(360deg); }
 }
 
 /* ===== FIM DA ANIMAÇÃO PROFISSIONAL ===== */

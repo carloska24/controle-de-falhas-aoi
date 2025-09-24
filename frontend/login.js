@@ -1,13 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://controle-de-falhas-aoi.onrender.com';
-
     const loginForm = document.querySelector('#loginForm');
 
-    // --- ANIMAÇÃO PROFISSIONAL ---
+    // --- ANIMAÇÃO REALISTA ---
     const animationContainer = document.querySelector('#animation-container');
     const numberOfComponents = 40;
     
-    // Lista de tipos de componentes para sorteio (agora sem cores)
     const componentTypes = [
         'smd-resistor', 'smd-resistor', 'smd-resistor', 'smd-resistor',
         'smd-capacitor', 'smd-capacitor', 'smd-capacitor',
@@ -23,26 +21,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let sizeW, sizeH;
         if (randomType === 'smd-ic') {
-            sizeW = Math.random() * 20 + 20; // CIs são maiores
+            sizeW = Math.random() * 20 + 20;
             sizeH = sizeW;
         } else {
-            sizeW = Math.random() * 10 + 6; // Componentes menores
-            sizeH = sizeW * 0.5; // Todos retangulares (formato 2:1)
+            sizeW = Math.random() * 10 + 6;
+            sizeH = sizeW * 0.5;
         }
         
         component.style.width = `${sizeW}px`;
         component.style.height = `${sizeH}px`;
         component.style.left = `${Math.random() * 100}%`;
         
-        const duration = Math.random() * 12 + 10; // Duração entre 10s e 22s
-        const delay = Math.random() * 20;
+        const duration = Math.random() * 12 + 10;
+        
+        // **A MÁGICA ACONTECE AQUI**
+        // Usamos um delay negativo para a animação começar em pontos aleatórios do seu ciclo
+        const delay = -(Math.random() * duration); 
 
         component.style.animationDuration = `${duration}s`;
         component.style.animationDelay = `${delay}s`;
 
         animationContainer.appendChild(component);
     }
-
+    
     // --- LÓGICA DO LOGIN (sem alterações) ---
     const usernameInput = document.querySelector('#username');
     const passwordInput = document.querySelector('#password');
