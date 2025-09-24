@@ -176,4 +176,80 @@ document.addEventListener('DOMContentLoaded', () => {
   // Para garantir, aqui está o código completo dos listeners e inicialização.
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = get
+    const data = getFormData();
+    const errs = validate(data);
+    if (errs.length) return alert('Verifique os campos:\n- ' + errs.join('\n- '));
+    try {
+      let method = 'POST';
+      let id = form.dataset.editing || null;
+      if (id) {
+        method = 'PUT';
+        data.id = id;
+      } else {
+        data.id = uid();
+        data.createdat = new Date().toISOString();
+        data.status = 'Registrado';
+        data.operador = operatorName;
+      }
+      await fetch(id ? `${API_URL}/${id}` : API_URL, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      await carregarRegistros();
+      resetForm();
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert('Ocorreu um erro ao salvar o registro.');
+    }
+  });
+
+  btnLimpar.addEventListener('click', resetForm);
+
+  btnExcluir.addEventListener('click', async () => {
+    const ids = selectedIds();
+    if (!ids.length || !confirm(`Excluir ${ids.length} registro(s)?`)) return;
+    try {
+      await fetch(API_URL, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      await carregarRegistros();
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      alert('Ocorreu um erro ao excluir os registros.');
+    }
+  });
+  
+  tbody.addEventListener('dblclick', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const r = registros.find(reg => reg.id === tr.dataset.id);
+    if (!r) return;
+    for(const key in r) {
+      if(form.elements[key]) form.elements[key].value = r[key] ?? '';
+    }
+    form.dataset.editing = r.id;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  busca.addEventListener('input', () => { filterText = busca.value; render(); });
+  
+  selAll.addEventListener('change', (e) => { 
+    document.querySelectorAll('.rowSel').forEach(cb => cb.checked = e.target.checked);
+    updateSelectionState(); 
+    updateQuality();
+  });
+
+  tbody.addEventListener('change', (e) => { 
+    if (e.target.classList.contains('rowSel')) { 
+      updateSelectionState(); 
+      updateQuality(); 
+    }
+  });
+
+  [totalInspec, escopoQualidade, mostrarTexto].forEach(el => el?.addEventListener('input', updateQuality));
+  
+  carregarRegistros();
+});
