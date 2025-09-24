@@ -18,126 +18,45 @@
 body {
     font-family: 'Roboto', sans-serif;
     background-color: var(--bg-dark);
-    /* Fundo sutil com gradiente e um padrão de grid */
-    background-image: 
-        linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.95)),
-        linear-gradient(0deg, var(--border-color) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
-    background-size: 100%, 30px 30px, 30px 30px;
     color: var(--text-light);
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    overflow: hidden; /* Garante que a animação não crie barras de rolagem */
 }
 
-.login-container {
-    display: flex;
-    flex-direction: column;
+/* ===== CÓDIGO PARA A ANIMAÇÃO ===== */
+
+#animation-container {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    max-width: 400px;
-    padding: 20px;
+    height: 100%;
+    z-index: -1; /* Coloca o container atrás de todo o conteúdo */
 }
 
-.login-card {
-    background-color: var(--panel-dark);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+.smd-component {
+    position: absolute;
+    top: -20px; /* Começa fora da tela, no topo */
+    background-color: var(--border-color);
+    border-radius: 2px;
+    opacity: 0.4;
+    /* Animação */
+    animation-name: fall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
 }
 
-.card-header {
-    text-align: center;
-    margin-bottom: 24px;
+/* Define a animação de queda */
+@keyframes fall {
+    from {
+        transform: translateY(0) rotate(0deg);
+    }
+    to {
+        transform: translateY(105vh) rotate(360deg); /* Cai até passar da tela e gira */
+    }
 }
 
-.card-header h2 {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-light);
-}
-
-.card-header p {
-    color: var(--accent-blue);
-    font-size: 14px;
-    margin-top: 4px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: var(--text-dim);
-    font-size: 14px;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-dark);
-    color: var(--text-light);
-    font-size: 16px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.form-group input:focus {
-    border-color: var(--accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-}
-
-.btn-login {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    background-color: var(--accent-blue);
-    color: #fff;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-login:hover {
-    background-color: #2563eb;
-}
-
-.admin-login {
-    text-align: center;
-    margin-top: 24px;
-}
-
-.admin-login a {
-    color: var(--text-dim);
-    font-size: 13px;
-    text-decoration: none;
-}
- .admin-login a:hover {
-    text-decoration: underline;
-    color: var(--text-light);
-}
-
-.login-footer {
-    text-align: center;
-    margin-top: 32px;
-    color: var(--text-dim);
-}
-
-.login-footer p {
-  font-size: 12px;
-}
-
-.logo-footer {
-  font-size: 16px;
-  font-weight: 900;
-  color: #4b5563; /* Cor mais sutil para o rodapé */
-  letter-spacing: -0.5px;
-  margin-top: 4px;
-}
+/* ===== FIM DO CÓ
