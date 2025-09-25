@@ -64,13 +64,49 @@
 
     <section class="card" id="qualidadeCard">
         <div class="chip">Qualidade do Lote</div>
-        </section>
+        <div class="quality-wrap">
+            <div class="quality-fig">
+                <canvas aria-label="Gráfico de pizza da qualidade" height="220" id="pieChart" width="220"></canvas>
+                <div class="quality-center" id="pieCenter">—</div>
+            </div>
+            <div class="quality-text">
+                <div class="quality-title" id="qualTitle"><span class="quality-emoji">😐</span> <span id="qualText">Qualidade Indefinida</span></div>
+                <div class="quality-aux" id="qualAux">Informe o <b>Total Inspecionado</b>. As falhas são contadas a partir dos <i>registros do escopo</i>.</div>
+                <div class="quality-legend">
+                    <span class="legend-box legend-good"></span><span class="muted">Aproveitamento</span>
+                    <span class="legend-box legend-bad"></span><span class="muted">Falhas</span>
+                </div>
+                <div class="grid cols-3 quality-controls" style="margin-top:10px">
+                    <div class="field"><label for="totalInspec">Total Inspecionado *</label><input id="totalInspec" min="0" placeholder="Ex.: 500" type="number"/></div>
+                    <div class="field"><label for="escopoQualidade">Escopo das Falhas</label><select id="escopoQualidade"><option value="visiveis">Filtrados/Visíveis</option><option value="selecionados">Selecionados</option><option value="todos">Todos</option></select></div>
+                    <div class="field"><label for="mostrarTexto">Exibição</label><select id="mostrarTexto"><option value="aproveitamento">Aproveitamento (bom)</option><option value="falha">Taxa de falhas</option></select></div>
+                </div>
+                <div class="quality-aux" id="qualDetalhe" style="margin-top:8px">—</div>
+            </div>
+        </div>
+    </section>
 
     <section class="card">
         <div class="chip">Registros</div>
         <table id="tabela">
-            </table>
+            <thead>
+                <tr>
+                    <th style="width:32px"><input class="checkbox" id="selAll" title="Selecionar todos" type="checkbox"/></th>
+                    <th class="sortable" data-key="om">OM <span class="sort-ind">↕</span></th>
+                    <th class="sortable" data-key="createdat">Data/Hora <span class="sort-ind">↕</span></th>
+                    <th class="sortable" data-key="serial">Serial <span class="sort-ind">↕</span></th>
+                    <th class="sortable" data-key="designador">Designador <span class="sort-ind">↕</span></th>
+                    <th class="sortable" data-key="tipodefeito">Defeito <span class="sort-ind">↕</span></th>
+                    <th class="sortable" data-key="pn">PN <span class="sort-ind">↕</span></th>
+                    <th class="sortable" data-key="obs">Obs. <span class="sort-ind">↕</span></th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+        <div class="note" style="margin-top:8px">Dica: clique no cabeçalho para ordenar. Duplo clique em uma linha para editar.</div>
     </section>
-</div><script src="script.js"></script>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
