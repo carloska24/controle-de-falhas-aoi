@@ -23,22 +23,22 @@
     </header>
     
     <section aria-labelledby="form-title" class="card">
-      <div class="chip" id="form-title">Formulário de Registro</div>
-      <form autocomplete="on" id="formRegistro">
-        <div class="grid cols-4">
-          <div class="field"><label for="om">OM (Ordem de Montagem) *</label><input id="om" name="om" placeholder="Ex.: OM-2025-0091" required=""/></div>
-          <div class="field"><label for="qtdlote">Qtd de Placas do Lote *</label><input id="qtdlote" min="1" name="qtdlote" placeholder="Ex.: 50" required="" type="number"/></div>
-          <div class="field"><label for="serial">Serial Number da Placa</label><input id="serial" name="serial" placeholder="Ex.: SN123456"/></div>
-          <div class="field"><label for="designador">Designador *</label><input id="designador" name="designador" placeholder="Ex.: R15, C3, U1…" required=""/></div>
-        </div>
-        <div class="grid cols-4">
-          <div class="field"><label for="tipodefeito">Tipo de Defeito *</label><select id="tipodefeito" name="tipodefeito" required=""><option value="">— Selecione —</option><option>Curto</option><option>Sem Solda</option><option>Tombstone</option><option>Componente Errado</option><option>Solda Fria</option><option>Componente Ausente</option></select></div>
-          <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn" placeholder="Ex.: RC0603FR-0710KL"/></div>
-          <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao" placeholder="Ex.: Resistor 10k 1% 0603"/></div>
-          <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs" placeholder="Detalhes adicionais (opcional)"></textarea></div>
-        </div>
-        <div class="toolbar"><div class="left"><button class="btn primary" title="Ctrl+S" type="submit">➕ Gravar</button><button class="btn outline" id="btnLimpar" type="button">Limpar</button></div><div class="right"><span class="note">Campos com * são obrigatórios</span></div></div>
-      </form>
+        <div class="chip" id="form-title">Formulário de Registro</div>
+        <form autocomplete="on" id="formRegistro">
+            <div class="grid cols-4">
+                <div class="field"><label for="om">OM (Ordem de Montagem) *</label><input id="om" name="om" placeholder="Ex.: OM-2025-0091" required=""/></div>
+                <div class="field"><label for="qtdlote">Qtd de Placas do Lote *</label><input id="qtdlote" min="1" name="qtdlote" placeholder="Ex.: 50" required="" type="number"/></div>
+                <div class="field"><label for="serial">Serial Number da Placa</label><input id="serial" name="serial" placeholder="Ex.: SN123456"/></div>
+                <div class="field"><label for="designador">Designador *</label><input id="designador" name="designador" placeholder="Ex.: R15, C3, U1…" required=""/></div>
+            </div>
+            <div class="grid cols-4">
+                <div class="field"><label for="tipodefeito">Tipo de Defeito *</label><select id="tipodefeito" name="tipodefeito" required=""><option value="">— Selecione —</option><option>Curto</option><option>Sem Solda</option><option>Tombstone</option><option>Componente Errado</option><option>Solda Fria</option><option>Componente Ausente</option></select></div>
+                <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn" placeholder="Ex.: RC0603FR-0710KL"/></div>
+                <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao" placeholder="Ex.: Resistor 10k 1% 0603"/></div>
+                <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs" placeholder="Detalhes adicionais (opcional)"></textarea></div>
+            </div>
+            <div class="toolbar"><div class="left"><button class="btn primary" title="Ctrl+S" type="submit">➕ Gravar</button><button class="btn outline" id="btnLimpar" type="button">Limpar</button></div><div class="right"><span class="note">Campos com * são obrigatórios</span></div></div>
+        </form>
     </section>
 
     <section class="card noprint">
@@ -63,11 +63,14 @@
     </section>
 
     <section class="card" id="qualidadeCard">
+        <div class="chip">Qualidade do Lote</div>
         </section>
-    <section class="card">
-        </section>
-</div>
 
-<script src="script.js"></script>
+    <section class="card">
+        <div class="chip">Registros</div>
+        <table id="tabela">
+            </table>
+    </section>
+</div><script src="script.js"></script>
 </body>
 </html>
