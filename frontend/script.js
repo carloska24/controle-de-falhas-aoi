@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const escopoQualidade = document.querySelector('#escopoQualidade');
   const mostrarTexto = document.querySelector('#mostrarTexto');
 
+  // Adiciona dinamicamente a informação do usuário e o botão de Sair
   const rightToolbar = document.querySelector('.card.noprint .toolbar .right');
   if (rightToolbar && user) {
     const userDisplay = document.createElement('span');
@@ -159,8 +160,42 @@ document.addEventListener('DOMContentLoaded', () => {
     mDistrib.textContent = top.length ? top.join(' • ') : '—';
   }
 
-  function updateQuality() { /* ...código do gráfico... */ }
-  function drawPie(badPct) { /* ...código do gráfico... */ }
+  function updateQuality() {
+    if (!pie) return;
+    const total = Number(totalInspec.value || 0);
+    const fails = getRowsForScope().length;
+    if (total === 0) {
+      const ctx = pie.getContext('2d');
+      ctx.clearRect(0,0,pie.width,pie.height);
+      qualEmoji.textContent = '😐'; qualText.textContent = 'Qualidade Indefinida';
+      pieCenter.textContent = '—';
+      qualAux.innerHTML = 'Informe o <b>Total Inspecionado</b> para calcular.';
+      qualDetalhe.textContent = '—';
+      return;
+    }
+    const badPct = Math.min(100, Math.max(0, (fails / total) * 100));
+    const goodPct = 100 - badPct;
+    drawPie(badPct);
+    pieCenter.textContent = mostrarTexto.value === 'aproveitamento' ? `${goodPct.toFixed(0)}%` : `${goodPct.toFixed(0)}%`;
+    let emoji, rotulo;
+    if (goodPct >= 95) { emoji = '😃'; rotulo = 'Excelente'; }
+    else if (goodPct >= 85) { emoji = '🙂'; rotulo = 'Muito Bom'; }
+    else if (goodPct >= 75) { emoji = '😐'; rotulo = 'Regular'; }
+    else { emoji = '😟'; rotulo = 'Ruim'; }
+    qualEmoji.textContent = emoji;
+    qualText.textContent = `${rotulo} (${goodPct.toFixed(1)}% aproveitamento)`;
+    qualDetalhe.textContent = `Falhas contadas: ${fails} de ${total} itens inspecionados (${badPct.toFixed(1)}% de falhas).`;
+  }
+
+  function drawPie(badPct) {
+    const ctx = pie.getContext('2d'); const w = pie.width, h = pie.height, cx = w/2, cy = h/2, r = Math.min(w,h)/2-4;
+    ctx.clearRect(0,0,w,h);
+    ctx.beginPath(); ctx.fillStyle = '#22c55e'; ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    const rad = (badPct/100) * Math.PI*2;
+    if (rad > 0.001) { ctx.beginPath(); ctx.fillStyle = '#e5e7eb'; const s = -Math.PI/2; ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,s,s+rad); ctx.fill(); }
+    ctx.beginPath(); ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2; ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+  }
+  
   function resetForm() { form.reset(); form.dataset.editing = ''; document.querySelector('#om').focus(); }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function escapeHTML(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[m])); }
@@ -182,12 +217,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
   }
   
-  function toCSV(arr, headers) { /* ... */ }
-  function downloadFile(content, filename, mime) { /* ... */ }
-  function dateStamp() { /* ... */ }
-  function abrirRelatorioReparo(rows) { /* ... */ }
-  function agruparParaRequisicao(rows) { /* ... */ }
-  function abrirRequisicaoPDF(rows) { /* ... */ }
+  function toCSV(arr, headers) { const sep = ','; const esc = v => { const s = (v ?? '').toString(); return /[,"\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; }; const head = headers.join(sep); const lines = arr.map(o => headers.map(h => esc(o[h])).join(sep)); return [head, ...lines].join('\n'); }
+  function downloadFile(content, filename, mime) { const blob = new Blob([content], {type:mime}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 500); }
+  function dateStamp() { const d = new Date(); const pad = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+  function abrirRelatorioReparo(rows) { /* ...código da função... */ }
+  function agruparParaRequisicao(rows) { /* ...código da função... */ }
+  function abrirRequisicaoPDF(rows) { /* ...código da função... */ }
   
   // =================================================================
   // EVENT LISTENERS
@@ -195,9 +231,103 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = getFormData();
-    // (Lógica do submit...)
+    const errs = validate(data);
+    if (errs.length) return alert('Verifique os campos:\n- ' + errs.join('\n- '));
+    try {
+      let method = 'POST';
+      let url = API_URL;
+      if (form.dataset.editing) {
+        method = 'PUT';
+        url = `${API_URL}/${form.dataset.editing}`;
+      } else {
+        data.id = uid();
+        data.createdat = new Date().toISOString();
+        data.status = 'Registrado';
+        data.operador = user.email;
+      }
+      await fetchAutenticado(url, { method, body: JSON.stringify(data) });
+      await carregarRegistros();
+      resetForm();
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert(`Ocorreu um erro ao salvar o registro: ${error.message}`);
+    }
   });
-  // ... (Todos os outros listeners: Limpar, Excluir, Demo, Backup, etc.)
 
+  btnLimpar.addEventListener('click', resetForm);
+
+  btnExcluir.addEventListener('click', async () => {
+    const ids = selectedIds();
+    if (!ids.length || !confirm(`Excluir ${ids.length} registro(s)?`)) return;
+    try {
+      await fetchAutenticado(API_URL, { method: 'DELETE', body: JSON.stringify({ ids }) });
+      await carregarRegistros();
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      alert(`Ocorreu um erro ao excluir os registros: ${error.message}`);
+    }
+  });
+
+  btnDemo.addEventListener('click', async () => {
+    if (!confirm('Adicionar registros de exemplo?')) return;
+    // ... (lógica do modo demo)
+  });
+
+  btnBackup.addEventListener('click', () => {
+    const rows = getRowsForScope();
+    if (!rows.length) return alert('Não há dados para fazer backup.');
+    const json = JSON.stringify(rows, null, 2);
+    downloadFile(json, `backup_aoi_${dateStamp()}.json`, 'application/json;charset=utf-8;');
+  });
+
+  btnPDF.addEventListener('click', () => {
+    abrirRelatorioReparo(getRowsForScope());
+  });
+  
+  btnReqPDF.addEventListener('click', () => {
+    abrirRequisicaoPDF(getRowsForScope());
+  });
+
+  btnReqCSV.addEventListener('click', () => {
+    const rows = getRowsForScope();
+    if (!rows.length) return alert('Não há registros para exportar.');
+    const headers = ['OM', 'Designador', 'Defeito', 'Status', 'Operador', 'PN'];
+    const csvData = rows.map(r => ({'OM': r.om, 'Designador': r.designador, 'Defeito': r.tipodefeito, 'Status': r.status, 'Operador': r.operador, 'PN': r.pn}));
+    const csvContent = toCSV(csvData, headers);
+    downloadFile(csvContent, `reparo_export_${dateStamp()}.csv`, 'text/csv;charset=utf-8;');
+  });
+
+  tbody.addEventListener('dblclick', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const r = registros.find(reg => reg.id === tr.dataset.id);
+    if (!r) return;
+    for(const key in r) {
+        const el = form.elements[key.toLowerCase()];
+        if (el) el.value = r[key] ?? '';
+    }
+    form.dataset.editing = r.id;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  busca.addEventListener('input', () => { filterText = busca.value; render(); });
+  
+  selAll.addEventListener('change', (e) => { 
+    document.querySelectorAll('.rowSel').forEach(cb => cb.checked = e.target.checked);
+    updateSelectionState(); 
+  });
+
+  tbody.addEventListener('change', (e) => { 
+    if (e.target.classList.contains('rowSel')) { 
+      updateSelectionState(); 
+      updateQuality();
+    }
+  });
+
+  [totalInspec, escopoQualidade, mostrarTexto].forEach(el => el?.addEventListener('input', updateQuality));
+  
+  // =================================================================
+  // INICIALIZAÇÃO
+  // =================================================================
   carregarRegistros();
 });
