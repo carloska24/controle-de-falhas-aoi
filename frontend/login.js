@@ -5,11 +5,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const animationContainer = document.querySelector('#animation-container');
     const numberOfComponents = 40;
     
+    // Aumentamos a chance de CIs aparecerem
     const componentTypes = [
-        'smd-resistor', 'smd-resistor', 'smd-resistor', 'smd-resistor',
+        'smd-resistor', 'smd-resistor', 'smd-resistor', 
         'smd-capacitor', 'smd-capacitor', 'smd-capacitor',
         'smd-led', 'smd-led',
-        'smd-ic'
+        'smd-ic', 'smd-ic' // Adicionado mais um IC
     ];
 
     for (let i = 0; i < numberOfComponents; i++) {
