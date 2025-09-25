@@ -25,7 +25,8 @@ app.post('/api/auth/login', async (req, res) => {
 
 // --- ROTAS DE USUÁRIOS ATUALIZADAS ---
 app.get('/api/users', authenticateToken, isAdmin, async (req, res) => { /* ... */ });
-app.post('/api/users', authenticateToken, isAdmin, async (req, res) => { /* ... Lógica agora usa 'name' e 'username' ... */ });
+// app.post('/api/users', authenticateToken, isAdmin, async (req, res) => { // Linha original comentada
+app.post('/api/users', async (req, res) => { // Nova linha sem os seguranças /* ... Lógica agora usa 'name' e 'username' ... */ });
 
 // --- NOVA ROTA PARA EXCLUIR USUÁRIO ---
 app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
