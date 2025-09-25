@@ -58,21 +58,25 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// Middleware que verifica se o usuário tem a função 'admin'
+function isAdmin(req, res, next) {
+    if (req.user && req.user.role === 'admin') {
+        next();
+    } else {
+        res.status(403).json({ error: "Acesso negado. Rota exclusiva para administradores." });
+    }
+}
+
+// ROTAS DE AUTENTICAÇÃO
 app.post('/api/auth/register', async (req, res) => {
     const { email, password, role = 'operator' } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ error: "Email e senha são obrigatórios." });
-    }
+    if (!email || !password) return res.status(400).json({ error: "Email e senha são obrigatórios." });
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
-        const newUser = await pool.query(
-            "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role",
-            [email, password_hash, role]
-        );
+        const newUser = await pool.query("INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role", [email, password_hash, role]);
         res.status(201).json(newUser.rows[0]);
     } catch (err) {
-        console.error('Erro ao registrar usuário:', err.stack);
         res.status(500).json({ error: "Email já cadastrado ou erro no servidor." });
     }
 });
@@ -82,81 +86,80 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
         const user = result.rows[0];
-        if (!user) {
-            return res.status(401).json({ error: "Usuário ou senha inválidos." });
-        }
+        if (!user) return res.status(401).json({ error: "Usuário ou senha inválidos." });
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({ error: "Usuário ou senha inválidos." });
-        }
+        if (!isMatch) return res.status(401).json({ error: "Usuário ou senha inválidos." });
         const tokenPayload = { email: user.email, role: user.role, id: user.id };
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
         res.json({ token, user: tokenPayload });
     } catch (err) {
-        console.error('Erro no login:', err.stack);
         res.status(500).json({ error: err.message });
     }
 });
 
+// ROTAS DE GERENCIAMENTO DE USUÁRIOS (SÓ PARA ADMINS)
+app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, email, role FROM users ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
+    // Reutiliza a lógica do /register, mas agora protegida
+    const { email, password, role = 'operator' } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Email e senha são obrigatórios." });
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(password, salt);
+        const newUser = await pool.query("INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role", [email, password_hash, role]);
+        res.status(201).json(newUser.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: "Email já cadastrado ou erro no servidor." });
+    }
+});
+
+// ROTAS DE REGISTROS (PROTEGIDAS)
 app.get('/api/registros', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM registros ORDER BY createdat DESC');
     res.json(result.rows);
-  } catch (err) {
-    console.error('Erro ao buscar registros:', err.stack);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/registros', authenticateToken, async (req, res) => {
     const r = req.body;
-    const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador)
-                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
+    const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
     const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
-    
     try {
         await pool.query(queryText, values);
         res.status(201).json({ id: r.id });
-    } catch (err) {
-        console.error('Erro ao criar registro:', err.stack);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/registros/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const r = req.body;
-    const queryText = `UPDATE registros SET
-                        om = $1, qtdlote = $2, serial = $3, designador = $4, tipodefeito = $5,
-                        pn = $6, descricao = $7, obs = $8
-                     WHERE id = $9`;
+    const queryText = `UPDATE registros SET om = $1, qtdlote = $2, serial = $3, designador = $4, tipodefeito = $5, pn = $6, descricao = $7, obs = $8 WHERE id = $9`;
     const values = [r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, id];
     try {
         const result = await pool.query(queryText, values);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: "Registro não encontrado" });
-        }
+        if (result.rowCount === 0) return res.status(404).json({ message: "Registro não encontrado" });
         res.json({ message: "Registro atualizado com sucesso" });
-    } catch (err) {
-        console.error('Erro ao atualizar registro:', err.stack);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/registros', authenticateToken, async (req, res) => {
     const { ids } = req.body;
-    if (!ids || ids.length === 0) {
-        return res.status(400).json({ "error": "Nenhum ID fornecido para exclusão" });
-    }
+    if (!ids || ids.length === 0) return res.status(400).json({ "error": "Nenhum ID fornecido" });
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
     const queryText = `DELETE FROM registros WHERE id IN (${placeholders})`;
     try {
         const result = await pool.query(queryText, ids);
         res.json({ message: `Registros excluídos: ${result.rowCount}` });
-    } catch (err) {
-        console.error('Erro ao excluir registros:', err.stack);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.listen(PORT, () => {
