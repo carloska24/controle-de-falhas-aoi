@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap');
 
 :root {
     --bg-dark: #0f172a;
@@ -7,129 +8,48 @@
     --text-dim: #94a3b8;
     --accent-blue: #3b82f6;
     --border-color: #334155;
-    --metal-contact: #aeb2b5; /* Cor metálica um pouco mais clara */
+    --metal-contact: #aeb2b5; 
 }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Roboto',sans-serif;background-color:var(--bg-dark);color:var(--text-light);display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden}
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+/* ===== ANIMAÇÃO COM COMPONENTES REALISTAS ===== */
+#animation-container{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1}
+.smd-component{position:absolute;top:-50px;opacity:.6;animation-name:fall;animation-timing-function:linear;animation-iteration-count:infinite}
+.smd-resistor{background:linear-gradient(to right,var(--metal-contact) 15%,#1a1a1a 15%,#1a1a1a 85%,var(--metal-contact) 85%)}
+.smd-capacitor{background:linear-gradient(to right,var(--metal-contact) 15%,#6d4c41 15%,#6d4c41 85%,var(--metal-contact) 85%)}
+.smd-led{background:linear-gradient(to right,var(--metal-contact) 20%,#f5f5dc 20%,#f5f5dc 80%,var(--metal-contact) 80%)}
 
-body {
-    font-family: 'Roboto', sans-serif;
-    background-color: var(--bg-dark);
-    color: var(--text-light);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    overflow: hidden;
-}
-
-/* ===== ANIMAÇÃO DE ALTA FIDELIDADE ===== */
-
-#animation-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-}
-
-.smd-component {
-    position: absolute;
-    top: -50px;
-    opacity: 0.6;
-    animation-name: fall;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-}
-
-/* Resistor: Corpo preto com contatos metálicos nas pontas */
-.smd-resistor {
-    background: linear-gradient(to right, 
-        var(--metal-contact) 15%, #1a1a1a 15%, #1a1a1a 85%, var(--metal-contact) 85%
-    );
-}
-
-/* Capacitor: Corpo marrom com contatos metálicos */
-.smd-capacitor {
-    background: linear-gradient(to right, 
-        var(--metal-contact) 15%, #6d4c41 15%, #6d4c41 85%, var(--metal-contact) 85%
-    );
-}
-
-/* LED: Corpo amarelado/esbranquiçado com contatos metálicos */
-.smd-led {
-    background: linear-gradient(to right, 
-        var(--metal-contact) 20%, #f5f5dc 20%, #f5f5dc 80%, var(--metal-contact) 80%
-    );
-}
-
-/* CI (Circuito Integrado): Corpo cinza escuro com pinos nos 4 lados */
+/* CI (Circuito Integrado): Versão correta com pinos nos 4 lados */
 .smd-ic {
     position: relative;
-    
-    /* Múltiplos fundos para criar o efeito de pinos nos 4 lados */
     background-image:
-        /* Pinos da direita (gradiente da esquerda para a direita) */
         repeating-linear-gradient(to bottom, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
-        /* Pinos da esquerda */
         repeating-linear-gradient(to bottom, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
-        /* Pinos de baixo (gradiente de cima para baixo) */
         repeating-linear-gradient(to right, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
-        /* Pinos de cima */
         repeating-linear-gradient(to right, transparent 0, transparent 2px, var(--metal-contact) 2px, var(--metal-contact) 4px),
-        /* Corpo do CI (última camada, fica no fundo) */
         linear-gradient(#37474f, #37474f);
-
     background-size:
-        3px 100%, /* Largura dos pinos da direita */
-        3px 100%, /* Largura dos pinos da esquerda */
-        100% 3px, /* Altura dos pinos de baixo */
-        100% 3px, /* Altura dos pinos de cima */
-        100% 100%; /* Tamanho do corpo do CI */
-
+        3px 100%, 3px 100%, 100% 3px, 100% 3px, 100% 100%;
     background-repeat: no-repeat;
-    
     background-position:
-        right top,     /* Posição dos pinos da direita */
-        left top,      /* Posição dos pinos da esquerda */
-        left bottom,   /* Posição dos pinos de baixo */
-        left top,      /* Posição dos pinos de cima */
-        center;
+        right top, left top, left bottom, left top, center;
 }
+.smd-ic::before{content:'';position:absolute;top:2px;left:2px;width:20%;height:20%;max-width:4px;max-height:4px;background-color:#546e7a;border-radius:50%;z-index:2}
 
-.smd-ic::before {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20%;
-    height: 20%;
-    max-width: 4px;
-    max-height: 4px;
-    background-color: #546e7a;
-    border-radius: 50%;
-    z-index: 2; /* Garante que o pino 1 fique na frente dos outros */
-}
-
-@keyframes fall {
-    from { transform: translateY(0) rotate(0deg); }
-    to { transform: translateY(105vh) rotate(360deg); }
-}
-
+@keyframes fall{from{transform:translateY(0) rotate(0deg)}to{transform:translateY(105vh) rotate(360deg)}}
 /* ===== FIM DA ANIMAÇÃO PROFISSIONAL ===== */
 
-
-/* ===== ESTILOS DO FORMULÁRIO DE LOGIN (sem alterações) ===== */
-
-.login-container { z-index: 1; display:flex; flex-direction:column; width:100%; max-width:400px; padding:20px; }
-.login-card { background-color: rgba(30, 41, 59, 0.8); backdrop-filter: blur(5px); border-radius:12px; border:1px solid var(--border-color); padding:32px; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+/* ===== ESTILOS DO LOGO E FORMULÁRIO ===== */
+.logo-svg-container{margin:0 auto 10px auto;width:150px}
+.logo-svg-container .icon-shape{fill:#1F2937;stroke:#38BDF8;stroke-width:8}
+.logo-svg-container .icon-code{stroke:#38BDF8;filter:drop-shadow(0 0 8px rgba(56,189,248,.6))}
+.logo-svg-container .logo-text .dev-part{font-family:'Roboto Mono',monospace;font-weight:500;font-size:28px;fill:#E5E7EB}
+.logo-svg-container .logo-text .pratica-part{font-family:'Poppins',sans-serif;font-weight:400;font-size:28px;fill:#38BDF8}
+.login-container{z-index:1;display:flex;flex-direction:column;width:100%;max-width:400px;padding:20px}
+.login-card{background-color:rgba(30,41,59,.8);backdrop-filter:blur(5px);border-radius:12px;border:1px solid var(--border-color);padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .card-header{text-align:center;margin-bottom:24px}
-.card-header h2{font-size:24px;font-weight:700;color:var(--text-light)}
+.card-header h2{font-size:24px;font-weight:700;color:var(--text-light);margin-top:0}
 .card-header p{color:var(--accent-blue);font-size:14px;margin-top:4px}
 .form-group{margin-bottom:20px}
 .form-group label{display:block;margin-bottom:8px;color:var(--text-dim);font-size:14px}

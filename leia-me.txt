@@ -2,4 +2,14 @@ endereço do backend
 https://controle-de-falhas-aoi.onrender.com
 
 endereço netfly
+https://app.netlify.com/teams/carloska24/projects
 https://stately-fairy-2fee40.netlify.app
+
+Ferramenta para enviar o deploy
+
+pasta principal do projeto
+no prompt
+cd C:\Users\cad02\Desktop\projeto-aoi
+git add .
+git commit -m "FIX: Adiciona autenticação à função do Modo Demo"
+git push
