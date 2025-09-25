@@ -15,37 +15,45 @@
         </div>
     </div>
     <div class="container">
-        <div class="card">
-            <h2>Cadastrar Novo Operador</h2>
-            <form id="registerForm">
-                <div class="grid cols-2">
-                    <div class="field">
-                        <label for="email">Email do Operador</label>
-                        <input type="email" id="email" required>
+        <div class="admin-card">
+            <div class="admin-section">
+                <h2 class="section-title">Cadastrar Novo Operador</h2>
+                <form id="registerForm">
+                    <div class="grid cols-2">
+                        <div class="field">
+                            <label for="name">Nome Completo</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="field">
+                            <label for="username">Nome de Usuário (para login)</label>
+                            <input type="text" id="username" required>
+                        </div>
                     </div>
                     <div class="field">
                         <label for="password">Senha Provisória</label>
                         <input type="password" id="password" required>
                     </div>
+                    <div class="toolbar">
+                        <button type="submit" class="btn primary">Cadastrar Operador</button>
+                    </div>
+                </form>
+            </div>
+            <div class="admin-section">
+                <h2 class="section-title">Usuários Cadastrados</h2>
+                <div class="table-wrapper">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Nome Completo</th>
+                                <th>Usuário (Login)</th>
+                                <th>Função</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTbody"></tbody>
+                    </table>
                 </div>
-                <div class="toolbar">
-                    <button type="submit" class="btn primary">Cadastrar Operador</button>
-                </div>
-            </form>
-        </div>
-        <div class="card">
-            <h2>Usuários Cadastrados</h2>
-            <table id="usersTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Email</th>
-                        <th>Função (Role)</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTbody">
-                    </tbody>
-            </table>
+            </div>
         </div>
     </div>
     <script src="admin.js"></script>
