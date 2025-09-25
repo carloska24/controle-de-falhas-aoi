@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://controle-de-falhas-aoi.onrender.com';
     const loginForm = document.querySelector('#loginForm');
 
-    // --- ANIMAÇÃO REALISTA ---
     const animationContainer = document.querySelector('#animation-container');
     const numberOfComponents = 40;
     
@@ -15,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (let i = 0; i < numberOfComponents; i++) {
         const component = document.createElement('div');
-        
         const randomType = componentTypes[Math.floor(Math.random() * componentTypes.length)];
         component.classList.add('smd-component', randomType);
 
@@ -33,9 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
         component.style.left = `${Math.random() * 100}%`;
         
         const duration = Math.random() * 12 + 10;
-        
-        // **A MÁGICA ACONTECE AQUI**
-        // Usamos um delay negativo para a animação começar em pontos aleatórios do seu ciclo
         const delay = -(Math.random() * duration); 
 
         component.style.animationDuration = `${duration}s`;
@@ -44,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         animationContainer.appendChild(component);
     }
     
-    // --- LÓGICA DO LOGIN (sem alterações) ---
     const usernameInput = document.querySelector('#username');
     const passwordInput = document.querySelector('#password');
     loginForm.addEventListener('submit', async (event) => {

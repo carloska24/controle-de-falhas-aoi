@@ -13,3 +13,6 @@ cd C:\Users\cad02\Desktop\projeto-aoi
 git add .
 git commit -m "FIX: Adiciona autenticação à função do Modo Demo"
 git push
+
+FAZER O DEPLOY QUANDO OS CREDITOS RENOVAREM
+CARLOS 25/09/2025

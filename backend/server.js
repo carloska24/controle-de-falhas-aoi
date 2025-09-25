@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-// IMPORTANTE: No futuro, mova este segredo para uma variável de ambiente no Render!
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao'; 
 
 app.use(cors());
@@ -21,7 +20,6 @@ const pool = new Pool({
   }
 });
 
-// Função para criar/verificar as tabelas ao iniciar
 const setupDatabase = async () => {
   const createRegistrosTable = `
     CREATE TABLE IF NOT EXISTS registros (
@@ -48,7 +46,6 @@ const setupDatabase = async () => {
   }
 };
 
-// --- MIDDLEWARE DE AUTENTICAÇÃO (O "Segurança") ---
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; 
@@ -61,9 +58,6 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// =================================================================
-// ROTAS DE AUTENTICAÇÃO
-// =================================================================
 app.post('/api/auth/register', async (req, res) => {
     const { email, password, role = 'operator' } = req.body;
     if (!email || !password) {
@@ -104,9 +98,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// =================================================================
-// ROTAS DE REGISTROS (AGORA PROTEGIDAS)
-// =================================================================
 app.get('/api/registros', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM registros ORDER BY createdat DESC');
@@ -168,7 +159,6 @@ app.delete('/api/registros', authenticateToken, async (req, res) => {
     }
 });
 
-// Inicia o servidor e prepara o banco de dados
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
   setupDatabase();
