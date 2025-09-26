@@ -1,7 +1,7 @@
 :root { --bg:#0f172a; --panel:#111827; --muted:#0d1424; --text:#e5e7eb; --text-dim:#a1a7b3; --primary:#22c55e; --danger:#ef4444; --border:#334155; --warn:#f59e0b;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif; padding-top: 60px;}
-.container{padding:8px 16px 32px; max-width: 1200px; margin: 0 auto;}
+.container{padding:8px 16px 32px; max-width: 1400px; margin: 0 auto;}
 header{padding:16px 0}
 .title{font-size:24px;font-weight:700}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:16px}
@@ -14,14 +14,14 @@ header{padding:16px 0}
 .field textarea{min-height:38px;resize:vertical}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:8px 0}
 .left,.right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.btn{border:1px solid var(--border);background:var(--muted);color:var(--text);padding:9px 15px;border-radius:8px;cursor:pointer;font-weight:600}
+.btn{width:100%; border:1px solid var(--border);background:var(--muted);color:var(--text);padding:9px 15px;border-radius:8px;cursor:pointer;font-weight:600}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:#000}
 .btn.danger{border-color:var(--danger);color:var(--danger)}
 .btn.danger:hover{background:rgba(239,68,68,0.1)}
 .btn.warn{border:none; background:var(--warn); color:#000;}
 .btn.outline{background:transparent}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.search-input{min-width:300px}
+.search-input{width:100%}
 table{width:100%;border-collapse:collapse;margin-top:16px}
 th,td{border-bottom:1px solid var(--border);padding:12px 15px;text-align:left;vertical-align:middle}
 thead th{color:var(--text-dim);background:#1e293b}
@@ -30,25 +30,49 @@ tbody tr:hover{background:rgba(59,130,246,0.1)}
 .checkbox{width:16px;height:16px}
 .chip{font-size:12px;font-weight:600;margin-bottom:16px}
 .metrics{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px}
-.metric{flex:1 1 200px;background:#0f172a;border:1px solid var(--border);border-radius:10px;padding:16px}
+.metric{flex:1 1 40%;background:#0f172a;border:1px solid var(--border);border-radius:10px;padding:16px}
+.metric.full-width {flex-basis: 100%;}
 .metric .val{font-size:24px;font-weight:700}
 .note{font-size:12px;color:var(--text-dim)}
-.quality-wrap{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:center}
-.quality-fig{position:relative;width:220px;height:220px}
-.quality-fig canvas{width:100%;height:100%;display:block}
-.quality-center{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;color:#000}
-.quality-text{min-width:260px}
-.quality-title{font-weight:700;margin-bottom:6px;font-size:18px;display:flex;align-items:center;gap:8px}
-.quality-emoji{font-size:28px}
-.quality-aux{color:var(--text-dim);font-size:13px;margin-top:8px}
-.quality-legend{display:flex;gap:12px;align-items:center;margin-top:12px;font-size:12px}
-.legend-box{width:12px;height:12px;border-radius:2px}
-.legend-good{background:#22c55e}
-.legend-bad{background:#e5e7eb}
 .app-header{background-color:var(--panel);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:fixed;top:0;left:0;width:100%;z-index:100}
 .app-title{font-size:20px;font-weight:700;color:var(--text-dim)}
 .user-info{display:flex;align-items:center;gap:16px}
 #userDisplay{color:var(--text-light);font-weight:500}
-#btnLogout{border-color:var(--danger);color:var(--danger)}
+#btnLogout{width: auto; border-color:var(--danger);color:var(--danger)}
 #btnLogout:hover{background-color:rgba(239,68,68,.1)}
-.form-divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* ===== NOVO LAYOUT PAISAGEM ===== */
+.main-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Coluna da esquerda 2x maior que a da direita */
+    gap: 16px;
+    align-items: flex-start;
+}
+.main-column, .sidebar-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.sidebar-column .card {
+    margin-top: 0; /* Remove a margem extra na coluna lateral */
+}
+/* Empilha as colunas em telas menores */
+@media (max-width: 1024px) {
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+}
+.quality-wrap-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+.quality-fig{position:relative;width:200px;height:200px}
+.quality-fig canvas{width:100%;height:100%;display:block}
+.quality-center{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;color:#000}
+.quality-text{width:100%;text-align:center}
+.quality-title{font-weight:700;margin-bottom:6px;font-size:18px;display:flex;align-items:center;justify-content:center;gap:8px}
+.quality-emoji{font-size:28px}
+.quality-aux{color:var(--text-dim);font-size:13px;margin-top:8px}
+.quality-controls {margin-top:16px;}
