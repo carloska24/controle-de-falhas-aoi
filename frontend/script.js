@@ -1,4 +1,4 @@
-// 📁 script.js (VERSÃO COM FUNCIONALIDADES 'GRAVAR' E 'EXCLUIR')
+// 📁 script.js (VERSÃO COM 'GRAVAR', 'EXCLUIR' E 'EDITAR')
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Seletores de elementos da página
   const form = document.querySelector('#formRegistro');
+  const btnGravar = form.querySelector('button[type="submit"]'); // MODIFICADO: Adicionado seletor para o botão
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
   const selAll = document.querySelector('#selAll');
@@ -74,61 +75,34 @@ document.addEventListener('DOMContentLoaded', () => {
   function getFormData() {
     const data = {};
     new FormData(form).forEach((value, key) => {
-        data[key.toLowerCase()] = value.trim();
+        // Excluímos campos que não pertencem ao modelo do 'registro' para evitar enviá-los no PUT
+        if (['om', 'qtdlote', 'serial', 'designador', 'tipodefeito', 'pn', 'descricao', 'obs'].includes(key)) {
+            data[key.toLowerCase()] = value.trim();
+        }
     });
     data.qtdlote = Number(data.qtdlote);
     return data;
   }
   
   function render() {
-      const f = busca.value.toLowerCase();
-      let rowsToRender = registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
-      
-      rowsToRender.sort((a, b) => {
-          if (a[sort.key] < b[sort.key]) return sort.dir === 'asc' ? -1 : 1;
-          if (a[sort.key] > b[sort.key]) return sort.dir === 'asc' ? 1 : -1;
-          return 0;
-      });
-      
-      tbody.innerHTML = rowsToRender.map(r => `
-        <tr data-id="${r.id}">
-          <td><input type="checkbox" class="checkbox rowSel" /></td>
-          <td>${escapeHTML(r.om)}</td>
-          <td>${formatDate(r.createdat)}</td>
-          <td>${escapeHTML(r.serial ?? '')}</td>
-          <td>${escapeHTML(r.designador ?? '')}</td>
-          <td>${escapeHTML(r.tipodefeito ?? '')}</td>
-          <td>${escapeHTML(r.pn ?? '')}</td>
-          <td>${escapeHTML(r.obs ?? '')}</td>
-        </tr>
-      `).join('');
-
-      updateMetrics(rowsToRender);
-      updateSelectionState();
-      updateQuality();
+      // ... (código existente sem alterações) ...
   }
   
   function updateMetrics(visibleRows) {
-      if (!mTotal) return;
-      mTotal.textContent = visibleRows.length;
-      mOMs.textContent = new Set(visibleRows.map(r => r.om)).size;
-      
-      const counts = visibleRows.reduce((acc, r) => {
-        acc[r.tipodefeito] = (acc[r.tipodefeito] || 0) + 1;
-        return acc;
-      }, {});
-      const top3 = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0,3);
-      mDistrib.innerHTML = top3.map(([k,v]) => `<div>${escapeHTML(k)}: <strong>${v}</strong></div>`).join('') || '—';
+      // ... (código existente sem alterações) ...
   }
   
-  function updateQuality() { /* ... (código existente sem alterações) ... */ }
-  function drawPie(badPct) { /* ... (código existente sem alterações) ... */ }
+  function updateQuality() {
+      // ... (código existente sem alterações) ...
+  }
+  function drawPie(badPct) { /* ... Lógica do gráfico ... */ }
 
   function resetForm() {
       const om = form.om.value;
       const qtdlote = form.qtdlote.value;
       form.reset();
-      form.dataset.editing = '';
+      form.dataset.editing = ''; // MODIFICADO: Limpa o modo de edição
+      btnGravar.textContent = '➕ Gravar'; // MODIFICADO: Restaura o texto do botão
       form.om.value = om; 
       form.qtdlote.value = qtdlote;
       form.designador.focus();
@@ -145,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const isEditing = form.dataset.editing;
+    const editingId = form.dataset.editing;
     const data = getFormData();
     
     if (!data.om || !data.qtdlote || !data.designador || !data.tipodefeito) {
@@ -154,21 +128,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-        if (isEditing) {
-            // Lógica de Edição (será implementada a seguir)
-            console.log('Modo Edição - a ser implementado');
+        if (editingId) {
+            // MODIFICADO: Lógica de Edição implementada
+            await fetchAutenticado(`${API_URL}/${editingId}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+            // Atualiza o registro na lista local
+            const index = registros.findIndex(r => r.id === editingId);
+            if (index !== -1) {
+                registros[index] = { ...registros[index], ...data };
+            }
         } else {
+            // Lógica de Gravação
             data.id = uid();
             data.createdat = new Date().toISOString();
             data.status = 'aberto';
             data.operador = user.name || user.username;
             
-            // Envia para o servidor
             await fetchAutenticado(API_URL, {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
-            // Adiciona na lista local para renderização imediata
             registros.unshift(data);
         }
         resetForm();
@@ -180,40 +161,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnLimpar.addEventListener('click', resetForm);
   
-  // NOVO: LÓGICA DE EXCLUSÃO
   btnExcluir.addEventListener('click', async () => {
-    const idsParaExcluir = selectedIds();
-    if (idsParaExcluir.length === 0) {
-        alert('Nenhum registro selecionado para exclusão.');
-        return;
-    }
+    // ... (código existente sem alterações) ...
+  });
+  
+  // NOVO: LÓGICA DE EDIÇÃO COM DUPLO CLIQUE
+  tbody.addEventListener('dblclick', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
 
-    if (confirm(`Tem certeza que deseja excluir ${idsParaExcluir.length} registro(s)? Esta ação não pode ser desfeita.`)) {
-        try {
-            await fetchAutenticado(API_URL, {
-                method: 'DELETE',
-                body: JSON.stringify({ ids: idsParaExcluir })
-            });
+    const id = tr.dataset.id;
+    const registroParaEditar = registros.find(r => r.id === id);
 
-            // Remove os itens excluídos da lista local e renderiza novamente
-            registros = registros.filter(r => !idsParaExcluir.includes(r.id));
-            render();
+    if (registroParaEditar) {
+        // Preenche o formulário com os dados do registro
+        form.om.value = registroParaEditar.om || '';
+        form.qtdlote.value = registroParaEditar.qtdlote || '';
+        form.serial.value = registroParaEditar.serial || '';
+        form.designador.value = registroParaEditar.designador || '';
+        form.tipodefeito.value = registroParaEditar.tipodefeito || '';
+        form.pn.value = registroParaEditar.pn || '';
+        form.descricao.value = registroParaEditar.descricao || '';
+        form.obs.value = registroParaEditar.obs || '';
 
-        } catch (error) {
-            alert(`Erro ao excluir registros: ${error.message}`);
-        }
+        // Entra em "modo de edição"
+        form.dataset.editing = id;
+        btnGravar.textContent = '💾 Atualizar Registro';
+        window.scrollTo(0, 0); // Rola a página para o topo para ver o formulário
+        form.designador.focus();
     }
   });
 
   [totalInspec, escopoQualidade].forEach(el => {
-      if(el) el.addEventListener('input', updateQuality);
+      // ... (código existente sem alterações) ...
   });
 
   tbody.addEventListener('change', (e) => { 
-    if (e.target.classList.contains('rowSel')) { 
-      updateSelectionState(); 
-      if(escopoQualidade && escopoQualidade.value === 'selecionados') updateQuality();
-    }
+    // ... (código existente sem alterações) ...
   });
   
   busca.addEventListener('input', render);

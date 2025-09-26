@@ -11,7 +11,7 @@ pasta principal do projeto
 no prompt
 cd C:\Users\cad02\Desktop\projeto-aoi
 git add .
-git commit -m "FIX: Adiciona autenticação à função do Modo Demo"
+git commit -m "FIX: Refazendo tudo"
 git push
 
 FAZER O DEPLOY QUANDO OS CREDITOS RENOVAREM
