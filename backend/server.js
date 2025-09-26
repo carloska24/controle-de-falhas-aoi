@@ -21,22 +21,8 @@ const pool = new Pool({
 });
 
 const setupDatabase = async () => {
-  const createRegistrosTable = `
-    CREATE TABLE IF NOT EXISTS registros (
-      id TEXT PRIMARY KEY, om TEXT NOT NULL, qtdlote INTEGER NOT NULL, serial TEXT,
-      designador TEXT NOT NULL, tipodefeito TEXT NOT NULL, pn TEXT, descricao TEXT,
-      obs TEXT, createdat TEXT NOT NULL, status TEXT, operador TEXT
-    );`;
-  
-  const createUsersTable = `
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role VARCHAR(20) NOT NULL DEFAULT 'operator'
-    );`;
-  
+  const createRegistrosTable = `CREATE TABLE IF NOT EXISTS registros (id TEXT PRIMARY KEY, om TEXT NOT NULL, qtdlote INTEGER NOT NULL, serial TEXT, designador TEXT NOT NULL, tipodefeito TEXT NOT NULL, pn TEXT, descricao TEXT, obs TEXT, createdat TEXT NOT NULL, status TEXT, operador TEXT);`;
+  const createUsersTable = `CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role VARCHAR(20) NOT NULL DEFAULT 'operator');`;
   try {
     await pool.query(createRegistrosTable);
     console.log('Tabela "registros" verificada com sucesso.');
@@ -51,7 +37,6 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; 
   if (token == null) return res.sendStatus(401); 
-
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403); 
     req.user = user;
@@ -67,7 +52,6 @@ function isAdmin(req, res, next) {
     }
 }
 
-// ROTAS DE AUTENTICAÇÃO
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -76,7 +60,7 @@ app.post('/api/auth/login', async (req, res) => {
         if (!user) return res.status(401).json({ error: "Usuário ou senha inválidos." });
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) return res.status(401).json({ error: "Usuário ou senha inválidos." });
-        const tokenPayload = { email: user.username, role: user.role, id: user.id, name: user.name }; // Note: email is username
+        const tokenPayload = { username: user.username, role: user.role, id: user.id, name: user.name };
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
         res.json({ token, user: tokenPayload });
     } catch (err) {
@@ -84,20 +68,18 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// ROTAS DE GERENCIAMENTO DE USUÁRIOS
 app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, name, username, role FROM users ORDER BY id');
+        const result = await pool.query('SELECT id, name, username, role FROM users ORDER BY name');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// ROTA DE CRIAÇÃO DE USUÁRIO COM SEGURANÇA TEMPORARIAMENTE DESATIVADA
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     const { name, username, password, role = 'operator' } = req.body;
-    if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
+    if (!name || !username || !password) return res.status(400).json({ error: "Todos os campos são obrigatórios." });
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
@@ -122,7 +104,6 @@ app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ROTAS DE REGISTROS (PROTEGIDAS)
 app.get('/api/registros', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM registros ORDER BY createdat DESC');
