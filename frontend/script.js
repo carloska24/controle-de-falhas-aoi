@@ -1,4 +1,4 @@
-// 📁 script.js (VERSÃO COM FUNCIONALIDADE 'DEMO' ADICIONADA)
+// 📁 script.js (VERSÃO FINALMENTE COMPLETA E CORRIGIDA)
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnGravar = form.querySelector('button[type="submit"]');
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
-  const btnDemo = document.querySelector('#btnDemo'); // Seletor do botão Demo
+  const btnDemo = document.querySelector('#btnDemo');
   const selAll = document.querySelector('#selAll');
   const busca = document.querySelector('#busca');
   const tbody = document.querySelector('#tbody');
@@ -27,26 +27,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLogout = document.querySelector('#btnLogout');
   const mTotal = document.querySelector('#mTotal');
   const mOMs = document.querySelector('#mOMs');
-  // ... resto dos seletores
+  const mDistrib = document.querySelector('#mDistrib');
 
-  // ... (funções fetchAutenticado, carregarRegistros, getFormData, render, etc., sem alterações)
+  if (userDisplay && user) { userDisplay.textContent = user.name || user.username; }
+  if (btnLogout) {
+      btnLogout.addEventListener('click', () => {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          window.location.href = 'login.html';
+      });
+  }
+
+  async function fetchAutenticado(url, options = {}) { /* ...código existente... */ }
+  async function carregarRegistros() { /* ...código existente... */ }
+  function getFormData() { /* ...código existente... */ }
+  function render() { /* ...código existente... */ }
+  function updateMetrics(visibleRows) { /* ...código existente... */ }
+  function resetForm() { /* ...código existente... */ }
 
   // ==================================================================
-  // LÓGICA DE SELEÇÃO E ESTADO DO BOTÃO (Sem alterações)
+  // FUNÇÕES AUXILIARES (re-adicionadas para corrigir o erro)
   // ==================================================================
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+  function escapeHTML(s) { return s ? s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : ''; }
+  function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
+  function selectedIds() { return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); }
+  // ==================================================================
+  
   function updateSelectionState() { /* ...código existente... */ }
-  tbody.addEventListener('change', (e) => { /* ...código existente... */ });
-  selAll.addEventListener('change', () => { /* ...código existente... */ });
-  // ==================================================================
 
-  // --- EVENT LISTENERS PRINCIPAIS ---
-
+  // --- EVENT LISTENERS ---
+  
   form.addEventListener('submit', async (e) => { /* ...código existente... */ });
-  btnLimpar.addEventListener('click', () => { /* ...código existente... */ });
+  btnLimpar.addEventListener('click', resetForm);
   btnExcluir.addEventListener('click', async () => { /* ...código existente... */ });
   tbody.addEventListener('dblclick', (e) => { /* ...código existente... */ });
+  tbody.addEventListener('change', (e) => { if (e.target.classList.contains('rowSel')) { updateSelectionState(); } });
+  selAll.addEventListener('change', () => { /* ...código existente... */ });
+  busca.addEventListener('input', render);
   
-  // NOVO: LÓGICA DO BOTÃO DEMO
   btnDemo.addEventListener('click', () => {
     const demoData = [
       { id: uid(), om: 'OM-11223', qtdlote: 150, serial: 'SN-A01', designador: 'C101', tipodefeito: 'Componente Ausente', pn: '12345-01', descricao: 'CAP 10uF', obs: 'Verificar alimentador', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
@@ -55,19 +74,92 @@ document.addEventListener('DOMContentLoaded', () => {
       { id: uid(), om: 'OM-44556', qtdlote: 75, serial: 'SN-B09', designador: 'Q15', tipodefeito: 'Tombstone', pn: '55555-04', descricao: 'TRANSISTOR BC547', obs: '', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
       { id: uid(), om: 'OM-77889', qtdlote: 300, serial: 'SN-C11', designador: 'D5', tipodefeito: 'Componente Errado', pn: '33333-05', descricao: 'DIODO ZENER', obs: 'Invertido com D6', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' }
     ];
-
-    // Adiciona os dados de demonstração no início da lista de registros existentes
     registros.unshift(...demoData);
     render();
     alert(`${demoData.length} registros de demonstração foram adicionados.\nEles não serão salvos no banco de dados.`);
   });
   
-  busca.addEventListener('input', render);
   carregarRegistros();
 
+  // ----- Funções completas que eu havia omitido antes -----
+  // (Cole o bloco inteiro para garantir)
 
-  // ----- Funções completas que não foram alteradas (copie e cole para garantir que seu arquivo esteja completo) -----
-  
+  async function fetchAutenticado(url, options = {}) {
+      const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      options.headers = { ...defaultHeaders, ...options.headers };
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken'); localStorage.removeItem('user');
+        window.location.href = 'login.html';
+        throw new Error('Token inválido ou expirado.');
+      }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' }));
+        throw new Error(errorData.error || `Erro ${response.status}`);
+      }
+      if (response.status === 204 || response.headers.get("content-length") === "0") return null;
+      return response.json();
+  }
+
+  async function carregarRegistros() {
+    try {
+      registros = await fetchAutenticado(API_URL) || [];
+      render();
+    } catch (error) {
+      console.error('Falha ao carregar registros:', error);
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: #ef4444;">Erro ao carregar dados. Verifique o console (F12).</td></tr>`;
+    }
+  }
+
+  function getFormData() {
+    const data = {};
+    new FormData(form).forEach((value, key) => { data[key.toLowerCase()] = value.trim(); });
+    data.qtdlote = Number(data.qtdlote);
+    return data;
+  }
+
+  function render() {
+      const f = busca.value.toLowerCase();
+      let rowsToRender = registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
+      tbody.innerHTML = rowsToRender.map(r => `
+        <tr data-id="${r.id}">
+          <td><input type="checkbox" class="checkbox rowSel" /></td>
+          <td>${escapeHTML(r.om)}</td>
+          <td>${formatDate(r.createdat)}</td>
+          <td>${escapeHTML(r.serial ?? '')}</td>
+          <td>${escapeHTML(r.designador ?? '')}</td>
+          <td>${escapeHTML(r.tipodefeito ?? '')}</td>
+          <td>${escapeHTML(r.pn ?? '')}</td>
+          <td>${escapeHTML(r.obs ?? '')}</td>
+        </tr>
+      `).join('');
+      updateMetrics(rowsToRender);
+      updateSelectionState();
+  }
+
+  function updateMetrics(visibleRows) {
+    if(!mTotal) return;
+    mTotal.textContent = visibleRows.length;
+    mOMs.textContent = new Set(visibleRows.map(r => r.om)).size;
+    const counts = visibleRows.reduce((acc, r) => {
+      acc[r.tipodefeito] = (acc[r.tipodefeito] || 0) + 1;
+      return acc;
+    }, {});
+    const top3 = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0,3);
+    if(mDistrib) mDistrib.innerHTML = top3.map(([k,v]) => `<div>${escapeHTML(k)}: <strong>${v}</strong></div>`).join('') || '—';
+  }
+
+  function resetForm() {
+    const om = form.om.value;
+    const qtdlote = form.qtdlote.value;
+    form.reset();
+    form.dataset.editing = '';
+    btnGravar.textContent = '➕ Gravar';
+    form.om.value = om; 
+    form.qtdlote.value = qtdlote;
+    form.designador.focus();
+  }
+
   function updateSelectionState() {
     const checkedCount = selectedIds().length;
     btnExcluir.disabled = checkedCount === 0;
@@ -82,17 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selAll.checked = false;
         selAll.indeterminate = false;
     }
-  }
-
-  function resetForm() {
-    const om = form.om.value;
-    const qtdlote = form.qtdlote.value;
-    form.reset();
-    form.dataset.editing = '';
-    btnGravar.textContent = '➕ Gravar';
-    form.om.value = om; 
-    form.qtdlote.value = qtdlote;
-    form.designador.focus();
   }
 
   form.addEventListener('submit', async (e) => {
@@ -123,8 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(`Erro ao salvar o registro: ${error.message}`);
     }
   });
-
-  btnLimpar.addEventListener('click', resetForm);
 
   btnExcluir.addEventListener('click', async () => {
     const idsParaExcluir = selectedIds();
@@ -159,6 +238,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
         form.designador.focus();
     }
+  });
+  
+  selAll.addEventListener('change', () => {
+      const isChecked = selAll.checked;
+      document.querySelectorAll('.rowSel').forEach(checkbox => {
+          checkbox.checked = isChecked;
+      });
+      updateSelectionState();
   });
 
 });
