@@ -37,7 +37,6 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; 
   if (token == null) return res.sendStatus(401); 
-
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403); 
     req.user = user;
@@ -71,16 +70,17 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, name, username, role FROM users ORDER BY name');
+        const result = await pool.query('SELECT id, name, username, role FROM users ORDER BY id');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+// Rota para o Admin criar novos usuários
 app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     const { name, username, password, role = 'operator' } = req.body;
-    if (!name || !username || !password) return res.status(400).json({ error: "Todos os campos são obrigatórios." });
+    if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);

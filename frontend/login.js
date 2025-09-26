@@ -7,25 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameInput = document.querySelector('#username');
     
     const numberOfComponents = 40;
-    const componentTypes = [
-        'smd-resistor', 'smd-resistor', 'smd-resistor', 'smd-resistor',
-        'smd-capacitor', 'smd-capacitor', 'smd-capacitor',
-        'smd-led', 'smd-led',
-        'smd-ic'
-    ];
-
+    const componentTypes = [ 'smd-resistor','smd-resistor','smd-capacitor','smd-capacitor','smd-led','smd-ic' ];
     for (let i = 0; i < numberOfComponents; i++) {
         const component = document.createElement('div');
         const randomType = componentTypes[Math.floor(Math.random() * componentTypes.length)];
         component.classList.add('smd-component', randomType);
         let sizeW, sizeH;
-        if (randomType === 'smd-ic') {
-            sizeW = Math.random() * 20 + 20;
-            sizeH = sizeW;
-        } else {
-            sizeW = Math.random() * 10 + 6;
-            sizeH = sizeW * 0.5;
-        }
+        if (randomType === 'smd-ic') { sizeW = Math.random() * 20 + 20; sizeH = sizeW; } 
+        else { sizeW = Math.random() * 10 + 6; sizeH = sizeW * 0.5; }
         component.style.width = `${sizeW}px`;
         component.style.height = `${sizeH}px`;
         component.style.left = `${Math.random() * 100}%`;

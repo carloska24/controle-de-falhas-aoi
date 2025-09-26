@@ -1,15 +1,19 @@
+/* Estilos específicos para a página de admin */
 .admin-card {
     background: var(--panel);
     border-radius: 12px;
     padding: 24px;
     border: 1px solid var(--border-color);
 }
+
 .admin-section {
     margin-bottom: 32px;
 }
+
 .admin-section:last-child {
     margin-bottom: 0;
 }
+
 .section-title {
     font-size: 20px;
     color: var(--text-light);
@@ -17,27 +21,35 @@
     padding-bottom: 12px;
     margin-bottom: 24px;
 }
+
 .table-wrapper {
     max-height: 400px;
-    overflow-y: auto;
+    overflow-y: auto; /* Adiciona uma barra de rolagem se a lista de usuários for muito grande */
 }
+
 #usersTable {
     width: 100%;
     border-collapse: collapse;
 }
-#usersTable th, #usersTable td {
+
+#usersTable th, 
+#usersTable td {
     border-bottom: 1px solid var(--border-color);
     padding: 12px 15px;
     text-align: left;
+    vertical-align: middle;
 }
+
 #usersTable thead th {
     background-color: #1f2937;
-    position: sticky;
+    position: sticky; /* Faz o cabeçalho ficar fixo ao rolar a tabela */
     top: 0;
 }
+
 #usersTable tbody tr:nth-child(even) {
-    background-color: #111827;
+    background-color: #111827; /* Efeito "zebrado" para melhor leitura */
 }
+
 .btn-delete {
     background: transparent;
     border: 1px solid var(--danger);
@@ -46,7 +58,16 @@
     font-size: 12px;
     border-radius: 6px;
     cursor: pointer;
+    transition: background-color 0.2s;
 }
+
 .btn-delete:hover {
     background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-delete:disabled {
+    border-color: var(--border-color);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    opacity: 0.5;
 }
