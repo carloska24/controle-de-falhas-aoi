@@ -236,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
       {om:'OM-2025-DEMO2', qtdlote:30, tipodefeito:'Componente Errado', designador:'U1'},
     ];
     try {
+      btnDemo.disabled = true; btnDemo.textContent = 'Gravando...';
       for(const item of demoData) {
         const fullItem = { ...item, id: uid(), createdat: new Date().toISOString(), status: 'Registrado', operador: user.username };
         await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(fullItem) });
@@ -243,6 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
       await carregarRegistros();
     } catch (error) {
       alert(`Falha ao adicionar dados de exemplo: ${error.message}`);
+    } finally {
+      btnDemo.disabled = false;
+      btnDemo.textContent = '⚙️ Modo Demo';
     }
   });
   

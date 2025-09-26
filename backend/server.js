@@ -52,6 +52,19 @@ function isAdmin(req, res, next) {
     }
 }
 
+app.post('/api/auth/register', async (req, res) => {
+    const { name, username, password, role = 'operator' } = req.body;
+    if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(password, salt);
+        const newUser = await pool.query("INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, username, role", [name, username, password_hash, role]);
+        res.status(201).json(newUser.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: "Nome de usuário já cadastrado ou erro no servidor." });
+    }
+});
+
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -74,19 +87,6 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    }
-});
-
-app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
-    const { name, username, password, role = 'operator' } = req.body;
-    if (!name || !username || !password) return res.status(400).json({ error: "Todos os campos são obrigatórios." });
-    try {
-        const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash(password, salt);
-        const newUser = await pool.query("INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, username, role", [name, username, password_hash, role]);
-        res.status(201).json(newUser.rows[0]);
-    } catch (err) {
-        res.status(500).json({ error: "Nome de usuário já cadastrado ou erro no servidor." });
     }
 });
 

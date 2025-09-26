@@ -32,17 +32,20 @@
             </div>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">Usuário ou E-mail</label>
+                    <label for="username">Nome de Usuário</label>
                     <input type="text" id="username" name="username" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Senha</label>
-                    <input type="password" id="password" name="password" required>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" required>
+                        <span id="togglePassword" class="toggle-password">👁️</span>
+                    </div>
                 </div>
                 <button type="submit" class="btn-login">Entrar</button>
             </form>
             <div class="admin-login">
-                <a href="#" id="adminLink">Entrar como Admin para cadastrar funcionários</a>
+                <a href="admin.html" id="adminLink">Entrar como Admin para cadastrar funcionários</a>
             </div>
         </div>
         <footer class="login-footer">
