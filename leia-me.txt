@@ -14,5 +14,4 @@ git add .
 git commit -m "FIX: Refazendo tudo"
 git push
 
-FAZER O DEPLOY QUANDO OS CREDITOS RENOVAREM
 CARLOS 25/09/2025
