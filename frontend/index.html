@@ -4,8 +4,6 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
     <title>Registro de Defeitos SMD</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,6 +18,10 @@
 
 <div class="container main-layout">
     <div class="main-column">
+        <header>
+            <div class="title">Registro de Defeitos SMD — Beta-1</div>
+        </header>
+        
         <section class="card">
           <div class="chip">Formulário de Registro</div>
           <form id="formRegistro">
@@ -32,9 +34,7 @@
                 <div class="grid cols-4">
                   <div class="field"><label for="tipodefeito">Tipo de Defeito *</label><select id="tipodefeito" name="tipodefeito" required><option value="">— Selecione —</option><option>Curto</option><option>Sem Solda</option><option>Tombstone</option><option>Componente Errado</option><option>Solda Fria</option><option>Componente Ausente</option></select></div>
                   <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn"/></div>
-                  
-                  <div class="field"><label for="cod_cad">Cod.CAD</label><input id="cod_cad" name="cod_cad"/></div>
-                  
+                  <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao"/></div>
                   <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs"></textarea></div>
                 </div>
                 <div class="toolbar"><div class="left"><button class="btn primary" type="submit">➕ Gravar</button><button class="btn outline" id="btnLimpar" type="button">Limpar</button></div><div class="right"><span class="note">Campos com * são obrigatórios</span></div></div>
@@ -53,7 +53,6 @@
                         <th>Designador</th>
                         <th>Defeito</th>
                         <th>PN</th>
-                        <th>Cod.CAD</th>
                         <th>Obs.</th>
                     </tr>
                 </thead>
@@ -63,7 +62,26 @@
         </section>
     </div>
 
+    <div class="sidebar-column">
+        <section class="card noprint">
+          <div class="toolbar">
+            <div class="left">
+              <button class="btn danger" disabled id="btnExcluir">🗑️ Excluir</button>
+              <button class="btn outline" id="btnDemo">⚙️ Demo</button>
+              <button class="btn outline" id="btnBackup">💾 Backup</button>
+            </div>
+          </div>
+          <div class="right">
+              <input class="search-input field input" id="busca" placeholder="🔎 Buscar..."/>
+            </div>
+          <div class="metrics" id="metrics">
+              <div class="metric"><div class="muted">Registros</div><div class="val" id="mTotal">0</div></div>
+              <div class="metric"><div class="muted">OM distintas</div><div class="val" id="mOMs">0</div></div>
+              <div class="metric full-width"><div class="muted">Distribuição por Defeito (top 3)</div><div class="val" id="mDistrib">—</div></div>
+          </div>
+        </section>
     </div>
+</div>
 
 <script src="script.js"></script>
 </body>
