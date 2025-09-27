@@ -18,4 +18,4 @@ CARLOS 25/09/2025
 
 Administrador
 login: DevNaPratica
-Senha: DevNaPratica2025
+Senha: 123456
