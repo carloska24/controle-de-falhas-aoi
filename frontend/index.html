@@ -4,6 +4,8 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
     <title>Registro de Defeitos SMD</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,9 +20,7 @@
 
 <div class="container main-layout">
     <div class="main-column">
-        <header>
-            <div class="title">Registro de Defeitos SMD — Beta-1</div>
-        </header>
+        <header><div class="title">Registro de Defeitos SMD — Beta-1</div></header>
         
         <section class="card">
           <div class="chip">Formulário de Registro</div>
@@ -78,6 +78,34 @@
               <div class="metric"><div class="muted">OM distintas</div><div class="val" id="mOMs">0</div></div>
               <div class="metric full-width"><div class="muted">Distribuição por Defeito (top 3)</div><div class="val" id="mDistrib">—</div></div>
           </div>
+        </section>
+
+        <section class="card" id="qualidadeCard">
+            <div class="chip">Qualidade do Lote</div>
+            <div class="quality-wrap-vertical">
+                <div class="quality-fig">
+                    <canvas id="pieChart" width="220" height="220"></canvas>
+                    <div class="quality-center" id="pieCenter">—</div>
+                </div>
+                <div class="quality-text">
+                    <div class="quality-title"><span class="quality-emoji">😐</span> <span id="qualText">Qualidade Indefinida</span></div>
+                    <div class="quality-aux">Informe o <b>Total Inspecionado</b> para calcular.</div>
+                    <div class="grid cols-2 quality-controls">
+                        <div class="field"><label for="totalInspec">Total Inspecionado *</label><input id="totalInspec" min="0" type="number"/></div>
+                        <div class="field"><label for="escopoQualidade">Escopo</label><select id="escopoQualidade"><option value="visiveis">Visíveis na Tabela</option><option value="selecionados">Apenas Selecionados</option></select></div>
+                    </div>
+                    <div class="quality-aux" id="qualDetalhe">—</div>
+                </div>
+            </div>
+        </section>
+
+         <section class="card noprint">
+            <div class="chip">Relatórios</div>
+             <div class="grid cols-2">
+                <button class="btn warn" id="btnReqPDF">📄 Requisição (PDF)</button>
+                <button class="btn" id="btnPDF">🛠️ Reparo (PDF)</button>
+                <button class="btn outline" id="btnReqCSV">⬇️ Reparo (CSV)</button>
+            </div>
         </section>
     </div>
 </div>
