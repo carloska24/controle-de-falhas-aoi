@@ -2,9 +2,6 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Adicionamos a referência global para a biblioteca jsPDF
-  const { jsPDF } = window.jspdf || {};
-
   const token = localStorage.getItem('authToken');
   const user = JSON.parse(localStorage.getItem('user'));
 
@@ -23,8 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
   const btnDemo = document.querySelector('#btnDemo');
-  const btnPDF = document.querySelector('#btnPDF'); // NOVO: Botão Reparo (PDF)
-  const btnReqCSV = document.querySelector('#btnReqCSV'); // NOVO: Botão Reparo (CSV)
   const selAll = document.querySelector('#selAll');
   const busca = document.querySelector('#busca');
   const tbody = document.querySelector('#tbody');
@@ -83,75 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
     alert(`${demoData.length} registros de demonstração foram adicionados.\nEles não serão salvos no banco de dados.`);
   });
-
-  // NOVO: LÓGICA DE EXPORTAÇÃO PARA CSV
-  if (btnReqCSV) {
-    btnReqCSV.addEventListener('click', () => {
-      const idsSelecionados = selectedIds();
-      if (idsSelecionados.length === 0) {
-        alert('Por favor, selecione os registros que deseja exportar para CSV.');
-        return;
-      }
-      const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
-      const header = ['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'PN', 'Observacoes'];
-      let csvContent = header.join(',') + '\n';
-      dadosParaExportar.forEach(r => {
-        const row = [
-          r.om,
-          formatDate(r.createdat),
-          r.serial || '',
-          r.designador,
-          r.tipodefeito,
-          r.pn || '',
-          (r.obs || '').replace(/,/g, ';')
-        ];
-        csvContent += row.join(',') + '\n';
-      });
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-  }
-
-  // NOVO: LÓGICA DE EXPORTAÇÃO PARA PDF
-  if (btnPDF && jsPDF) {
-    btnPDF.addEventListener('click', () => {
-      const idsSelecionados = selectedIds();
-      if (idsSelecionados.length === 0) {
-        alert('Por favor, selecione os registros que deseja exportar para PDF.');
-        return;
-      }
-      const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
-      const doc = new jsPDF();
-      doc.text('Relatório de Falhas para Reparo', 14, 16);
-      doc.setFontSize(10);
-      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
-      const head = [['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'Obs']];
-      const body = dadosParaExportar.map(r => [
-        r.om,
-        formatDate(r.createdat),
-        r.serial || '-',
-        r.designador,
-        r.tipodefeito,
-        r.obs || '-'
-      ]);
-      if (doc.autoTable) {
-        doc.autoTable({
-          startY: 30,
-          head: head,
-          body: body,
-          theme: 'grid',
-          headStyles: { fillColor: [41, 128, 185] },
-        });
-      }
-      doc.save(`relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.pdf`);
-    });
-  }
   
   carregarRegistros();
 
