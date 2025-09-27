@@ -93,9 +93,27 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
-    const { name, username, password, role = 'operator' } = req.body;
+app.post('/api/users', async (req, res, next) => {
+    // Verifica se já existe algum usuário no banco
+    const userCountResult = await pool.query('SELECT COUNT(*) FROM users');
+    const userCount = parseInt(userCountResult.rows[0].count, 10);
+
+    if (userCount > 0) {
+        // Se já existem usuários, a rota se torna protegida e só admins podem criar novos
+        authenticateToken(req, res, () => isAdmin(req, res, next));
+    } else {
+        // Se for o PRIMEIRO usuário, permite a criação sem autenticação
+        next();
+    }
+}, async (req, res) => {
+    const { name, username, password } = req.body;
     if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
+
+    // Descobre se o primeiro usuário deve ser 'admin' ou 'operator'
+    const userCountResult = await pool.query('SELECT COUNT(*) FROM users');
+    const userCount = parseInt(userCountResult.rows[0].count, 10);
+    const role = userCount === 0 ? 'admin' : 'operator'; // O PRIMEIRO usuário é automaticamente admin
+
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
@@ -162,5 +180,5 @@ app.delete('/api/registros', authenticateToken, async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-  setupDatabase();
+  // setupDatabase(); // O ideal é que a criação da tabela seja feita por um script separado, mas vamos manter por enquanto
 });
