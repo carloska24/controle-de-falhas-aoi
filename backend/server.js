@@ -21,8 +21,23 @@ const pool = new Pool({
 });
 
 const setupDatabase = async () => {
-  const createRegistrosTable = `CREATE TABLE IF NOT EXISTS registros (id TEXT PRIMARY KEY, om TEXT NOT NULL, qtdlote INTEGER NOT NULL, serial TEXT, designador TEXT NOT NULL, tipodefeito TEXT NOT NULL, pn TEXT, descricao TEXT, obs TEXT, createdat TEXT NOT NULL, status TEXT, operador TEXT);`;
+  const createRegistrosTable = `
+    CREATE TABLE IF NOT EXISTS registros (
+      id TEXT PRIMARY KEY, 
+      om TEXT NOT NULL, 
+      qtdlote INTEGER NOT NULL, 
+      serial TEXT, 
+      designador TEXT NOT NULL, 
+      tipodefeito TEXT NOT NULL, 
+      pn TEXT, 
+      descricao TEXT,
+      obs TEXT, 
+      createdat TEXT NOT NULL, 
+      status TEXT, 
+      operador TEXT
+    );`;
   const createUsersTable = `CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role VARCHAR(20) NOT NULL DEFAULT 'operator');`;
+  
   try {
     await pool.query(createRegistrosTable);
     console.log('Tabela "registros" verificada com sucesso.');
@@ -37,6 +52,7 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; 
   if (token == null) return res.sendStatus(401); 
+  
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403); 
     req.user = user;
@@ -77,7 +93,6 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// Rota para o Admin criar novos usuários
 app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     const { name, username, password, role = 'operator' } = req.body;
     if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });

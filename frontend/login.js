@@ -1,94 +1,76 @@
-/* 📁 login.css (VERSÃO ATUALIZADA E PADRONIZADA) */
+// 📁 login.js (VERSÃO FINAL COM LÓGICA DE LOGIN E ANIMAÇÃO)
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.querySelector('#loginForm');
+    
+    // ENDEREÇO DO SEU SERVIDOR NO RENDER
+    const API_BASE_URL = 'https://controle-de-falhas-aoi.onrender.com';
 
-/* USA AS MESMAS VARIÁVEIS GLOBAIS DO style.css */
-:root {
-    --bg: #0f172a;
-    --panel: #1e293b;
-    --text: #e5e7eb;
-    --text-dim: #94a3b8;
-    --primary: #22c55e; /* Cor principal padronizada */
-    --border-color: #334155;
-    --metal-contact: #aeb2b5;
-}
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.querySelector('#username').value;
+        const password = document.querySelector('#password').value;
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
 
-body {
-    font-family: 'Roboto', sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    overflow: hidden;
-}
+            const data = await response.json();
 
-#animation-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
-.smd-component { position: absolute; top: -50px; opacity: .6; animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite; }
-.smd-resistor { background: linear-gradient(to right, var(--metal-contact) 15%, #1a1a1a 15%, #1a1a1a 85%, var(--metal-contact) 85%); }
-.smd-capacitor { background: linear-gradient(to right, var(--metal-contact) 15%, #6d4c41 15%, #6d4c41 85%, var(--metal-contact) 85%); }
-@keyframes fall {
-    from { transform: translateY(0) rotate(0deg); }
-    to { transform: translateY(105vh) rotate(360deg); }
-}
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro ao tentar fazer login.');
+            }
 
-.logo-svg-container { margin: 0 auto 10px auto; width: 150px; }
-.logo-svg-container .icon-shape { fill: var(--panel); stroke: var(--primary); stroke-width: 8; }
-.logo-svg-container .icon-code { stroke: var(--primary); filter: drop-shadow(0 0 8px hsla(145, 63%, 49%, 0.6)); } /* Ajustado para a cor primária */
-.logo-svg-container .logo-text .dev-part { font-family: 'Roboto Mono', monospace; font-weight: 500; font-size: 28px; fill: var(--text); }
-.logo-svg-container .logo-text .pratica-part { font-family: 'Poppins', sans-serif; font-weight: 400; font-size: 28px; fill: var(--primary); }
+            // Salva o token e os dados do usuário no localStorage
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
 
-.login-container { z-index: 1; display: flex; flex-direction: column; width: 100%; max-width: 400px; padding: 20px; }
-.login-card { background-color: rgba(30, 41, 59, .8); backdrop-filter: blur(5px); border-radius: 12px; border: 1px solid var(--border-color); padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
-.card-header { text-align: center; margin-bottom: 24px; }
-.card-header h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 0; }
-.card-header p { color: var(--text-dim); font-size: 14px; margin-top: 4px; } /* Ajustado para uma cor mais neutra */
+            // Redireciona para a página principal
+            window.location.href = 'index.html';
 
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px; }
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg);
-    color: var(--text);
-    font-size: 16px;
-    outline: none;
-    transition: border-color .2s, box-shadow .2s;
-}
-.form-group input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3); /* Sombra de foco verde */
-}
+        } catch (error) {
+            alert(`Falha no login: ${error.message}`);
+        }
+    });
 
-.btn-login {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    background-color: var(--primary); /* Cor principal padronizada */
-    color: #000; /* Texto escuro para melhor contraste com o verde */
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color .2s;
-}
-.btn-login:hover { background-color: #16a34a; }
+    // Lógica para mostrar/esconder a senha
+    const togglePassword = document.querySelector('#togglePassword');
+    if (togglePassword) {
+        togglePassword.addEventListener('click', () => {
+            const passwordInput = document.querySelector('#password');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+        });
+    }
+    
+    // ==========================================================
+    // CÓDIGO PARA GERAR A ANIMAÇÃO DOS COMPONENTES SMD
+    // ==========================================================
+    const animationContainer = document.querySelector('#animation-container');
+    if(animationContainer) {
+        const componentTypes = ['smd-resistor', 'smd-capacitor'];
+        for (let i = 0; i < 40; i++) { // Cria 40 componentes
+            const component = document.createElement('div');
+            component.classList.add('smd-component');
+            
+            // Escolhe um tipo de componente aleatoriamente
+            const type = componentTypes[Math.floor(Math.random() * componentTypes.length)];
+            component.classList.add(type);
 
-.admin-login { text-align: center; margin-top: 24px; }
-.admin-login a { color: var(--text-dim); font-size: 13px; text-decoration: none; }
-.admin-login a:hover { text-decoration: underline; color: var(--text); }
+            // Define tamanho e posição aleatórios
+            const size = Math.random() * 15 + 5; // Tamanho entre 5px e 20px
+            component.style.width = `${size}px`;
+            component.style.height = `${size * 0.6}px`;
+            component.style.left = `${Math.random() * 100}vw`;
 
-.login-footer { text-align: center; margin-top: 32px; color: var(--text-dim); }
-.login-footer p { font-size: 12px; }
-.logo-footer { font-size: 16px; font-weight: 900; color: #4b5563; letter-spacing: -.5px; margin-top: 4px; }
+            // Define velocidade e atraso aleatórios para a animação
+            component.style.animationDuration = `${Math.random() * 5 + 5}s`; // Duração entre 5s e 10s
+            component.style.animationDelay = `${Math.random() * 5}s`; // Atraso de até 5s
 
-.password-wrapper { position: relative; display: flex; align-items: center; }
-.password-wrapper input { padding-right: 40px; }
-.toggle-password { position: absolute; right: 12px; cursor: pointer; user-select: none; opacity: .7; }
+            animationContainer.appendChild(component);
+        }
+    }
+});

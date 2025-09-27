@@ -1,8 +1,6 @@
-/* 📁 style.css (VERSÃO ATUALIZADA COM LAYOUT PAISAGEM) */
-
 :root {
     --bg: #0f172a;
-    --panel: #1e293b; /* Um pouco mais claro que o fundo do admin */
+    --panel: #1e293b;
     --muted: #334155;
     --text: #e5e7eb;
     --text-dim: #94a3b8;
@@ -21,12 +19,12 @@ body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    padding-top: 60px; /* Espaço para o cabeçalho fixo */
+    padding-top: 60px;
 }
 
 .container {
     padding: 16px 24px 32px;
-    max-width: 1600px; /* Aumentado para telas largas */
+    max-width: 1600px;
     margin: 0 auto;
 }
 
@@ -38,9 +36,7 @@ header { padding: 16px 0; }
     border-radius: 12px;
     padding: 24px;
 }
-.noprint { /* Classe para esconder elementos na impressão */
-    display: block;
-}
+.noprint { display: block; }
 
 .grid { display: grid; gap: 16px; }
 .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -95,24 +91,15 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 
 .chip { background-color: var(--muted); color: var(--primary); padding: 4px 10px; border-radius: 20px; display: inline-block; font-size: 12px; font-weight: 600; margin-bottom: 16px; }
 
-.metrics { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
-.metric { flex: 1 1 40%; background: #0f172a; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; }
-.metric.full-width { flex-basis: 100%; }
-.metric .val { font-size: 24px; font-weight: 700; color: var(--primary); }
-.muted { color: var(--text-dim); }
-
-.note { font-size: 12px; color: var(--text-dim); }
-
 .app-header { background-color: var(--panel); border-bottom: 1px solid var(--border-color); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: fixed; top: 0; left: 0; width: 100%; z-index: 100; }
 .app-title { font-size: 20px; font-weight: 700; }
 .user-info { display: flex; align-items: center; gap: 16px; }
 #userDisplay { color: var(--text); font-weight: 500; }
 #btnLogout { width: auto; }
 
-/* ===== LAYOUT PAISAGEM ===== */
 .main-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr; /* Coluna da esquerda 2x maior que a da direita */
+    grid-template-columns: 2fr 1fr;
     gap: 24px;
     align-items: flex-start;
 }
@@ -122,22 +109,11 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
     gap: 24px;
 }
 .main-column > .card, .sidebar-column > .card {
-    margin-top: 0; /* Remove a margem extra, o gap do grid já cuida disso */
+    margin-top: 0;
 }
 
-/* Empilha as colunas em telas menores */
 @media (max-width: 1024px) {
     .main-layout {
         grid-template-columns: 1fr;
     }
 }
-
-.quality-wrap-vertical { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.quality-fig { position: relative; width: 180px; height: 180px; }
-.quality-fig canvas { width: 100%; height: 100%; display: block; }
-.quality-center { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 32px; color: var(--text); }
-.quality-text { width: 100%; text-align: center; }
-.quality-title { font-weight: 700; margin-bottom: 6px; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.quality-emoji { font-size: 28px; }
-.quality-aux { color: var(--text-dim); font-size: 13px; margin-top: 8px; }
-.quality-controls { margin-top: 16px; }

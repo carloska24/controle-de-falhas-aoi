@@ -68,7 +68,6 @@
             <div class="left">
               <button class="btn danger" disabled id="btnExcluir">🗑️ Excluir</button>
               <button class="btn outline" id="btnDemo">⚙️ Demo</button>
-              <button class="btn outline" id="btnBackup">💾 Backup</button>
             </div>
           </div>
           <div class="right">
@@ -79,34 +78,6 @@
               <div class="metric"><div class="muted">OM distintas</div><div class="val" id="mOMs">0</div></div>
               <div class="metric full-width"><div class="muted">Distribuição por Defeito (top 3)</div><div class="val" id="mDistrib">—</div></div>
           </div>
-        </section>
-
-        <section class="card" id="qualidadeCard">
-            <div class="chip">Qualidade do Lote</div>
-            <div class="quality-wrap-vertical">
-                <div class="quality-fig">
-                    <canvas id="pieChart" width="220" height="220"></canvas>
-                    <div class="quality-center" id="pieCenter">—</div>
-                </div>
-                <div class="quality-text">
-                    <div class="quality-title"><span class="quality-emoji">😐</span> <span id="qualText">Qualidade Indefinida</span></div>
-                    <div class="quality-aux">Informe o <b>Total Inspecionado</b> para calcular.</div>
-                    <div class="grid cols-2 quality-controls">
-                        <div class="field"><label for="totalInspec">Total Inspecionado *</label><input id="totalInspec" min="0" type="number"/></div>
-                        <div class="field"><label for="escopoQualidade">Escopo</label><select id="escopoQualidade"><option value="visiveis">Visíveis</option><option value="selecionados">Selecionados</option></select></div>
-                    </div>
-                    <div class="quality-aux" id="qualDetalhe">—</div>
-                </div>
-            </div>
-        </section>
-
-         <section class="card noprint">
-            <div class="chip">Relatórios</div>
-             <div class="grid cols-2">
-                <button class="btn warn" id="btnReqPDF">📄 Requisição (PDF)</button>
-                <button class="btn" id="btnPDF">🛠️ Reparo (PDF)</button>
-                <button class="btn outline" id="btnReqCSV">⬇️ Reparo (CSV)</button>
-            </div>
         </section>
     </div>
 </div>
