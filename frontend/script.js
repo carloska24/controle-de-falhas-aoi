@@ -1,4 +1,9 @@
+// 📁 script.js (VERSÃO FINALMENTE COMPLETA E CORRIGIDA)
+
 document.addEventListener('DOMContentLoaded', () => {
+
+  // Adicionamos a referência global para a biblioteca jsPDF
+  const { jsPDF } = window.jspdf || {};
 
   const token = localStorage.getItem('authToken');
   const user = JSON.parse(localStorage.getItem('user'));
@@ -10,12 +15,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const API_URL = 'https://controle-de-falhas-aoi.onrender.com/api/registros';
   let registros = [];
+  let sort = { key: 'createdat', dir: 'desc' };
   
+  // Seletores de elementos da página
   const form = document.querySelector('#formRegistro');
   const btnGravar = form.querySelector('button[type="submit"]');
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
   const btnDemo = document.querySelector('#btnDemo');
+  const btnPDF = document.querySelector('#btnPDF'); // NOVO: Botão Reparo (PDF)
+  const btnReqCSV = document.querySelector('#btnReqCSV'); // NOVO: Botão Reparo (CSV)
   const selAll = document.querySelector('#selAll');
   const busca = document.querySelector('#busca');
   const tbody = document.querySelector('#tbody');
@@ -33,6 +42,121 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.href = 'login.html';
       });
   }
+
+  async function fetchAutenticado(url, options = {}) { /* ...código existente... */ }
+  async function carregarRegistros() { /* ...código existente... */ }
+  function getFormData() { /* ...código existente... */ }
+  function render() { /* ...código existente... */ }
+  function updateMetrics(visibleRows) { /* ...código existente... */ }
+  function resetForm() { /* ...código existente... */ }
+
+  // ==================================================================
+  // FUNÇÕES AUXILIARES (re-adicionadas para corrigir o erro)
+  // ==================================================================
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+  function escapeHTML(s) { return s ? s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : ''; }
+  function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
+  function selectedIds() { return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); }
+  // ==================================================================
+  
+  function updateSelectionState() { /* ...código existente... */ }
+
+  // --- EVENT LISTENERS ---
+  
+  form.addEventListener('submit', async (e) => { /* ...código existente... */ });
+  btnLimpar.addEventListener('click', resetForm);
+  btnExcluir.addEventListener('click', async () => { /* ...código existente... */ });
+  tbody.addEventListener('dblclick', (e) => { /* ...código existente... */ });
+  tbody.addEventListener('change', (e) => { if (e.target.classList.contains('rowSel')) { updateSelectionState(); } });
+  selAll.addEventListener('change', () => { /* ...código existente... */ });
+  busca.addEventListener('input', render);
+  
+  btnDemo.addEventListener('click', () => {
+    const demoData = [
+      { id: uid(), om: 'OM-11223', qtdlote: 150, serial: 'SN-A01', designador: 'C101', tipodefeito: 'Componente Ausente', pn: '12345-01', descricao: 'CAP 10uF', obs: 'Verificar alimentador', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
+      { id: uid(), om: 'OM-11223', qtdlote: 150, serial: 'SN-A05', designador: 'R203', tipodefeito: 'Solda Fria', pn: '54321-02', descricao: 'RES 10K', obs: 'Perfil de forno', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
+      { id: uid(), om: 'OM-44556', qtdlote: 75, serial: 'SN-B02', designador: 'U1', tipodefeito: 'Curto', pn: '98765-03', descricao: 'CI REG TENS', obs: 'Pinos 1 e 2 em curto', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
+      { id: uid(), om: 'OM-44556', qtdlote: 75, serial: 'SN-B09', designador: 'Q15', tipodefeito: 'Tombstone', pn: '55555-04', descricao: 'TRANSISTOR BC547', obs: '', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
+      { id: uid(), om: 'OM-77889', qtdlote: 300, serial: 'SN-C11', designador: 'D5', tipodefeito: 'Componente Errado', pn: '33333-05', descricao: 'DIODO ZENER', obs: 'Invertido com D6', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' }
+    ];
+    registros.unshift(...demoData);
+    render();
+    alert(`${demoData.length} registros de demonstração foram adicionados.\nEles não serão salvos no banco de dados.`);
+  });
+
+  // NOVO: LÓGICA DE EXPORTAÇÃO PARA CSV
+  if (btnReqCSV) {
+    btnReqCSV.addEventListener('click', () => {
+      const idsSelecionados = selectedIds();
+      if (idsSelecionados.length === 0) {
+        alert('Por favor, selecione os registros que deseja exportar para CSV.');
+        return;
+      }
+      const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+      const header = ['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'PN', 'Observacoes'];
+      let csvContent = header.join(',') + '\n';
+      dadosParaExportar.forEach(r => {
+        const row = [
+          r.om,
+          formatDate(r.createdat),
+          r.serial || '',
+          r.designador,
+          r.tipodefeito,
+          r.pn || '',
+          (r.obs || '').replace(/,/g, ';')
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+
+  // NOVO: LÓGICA DE EXPORTAÇÃO PARA PDF
+  if (btnPDF && jsPDF) {
+    btnPDF.addEventListener('click', () => {
+      const idsSelecionados = selectedIds();
+      if (idsSelecionados.length === 0) {
+        alert('Por favor, selecione os registros que deseja exportar para PDF.');
+        return;
+      }
+      const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+      const doc = new jsPDF();
+      doc.text('Relatório de Falhas para Reparo', 14, 16);
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
+      const head = [['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'Obs']];
+      const body = dadosParaExportar.map(r => [
+        r.om,
+        formatDate(r.createdat),
+        r.serial || '-',
+        r.designador,
+        r.tipodefeito,
+        r.obs || '-'
+      ]);
+      if (doc.autoTable) {
+        doc.autoTable({
+          startY: 30,
+          head: head,
+          body: body,
+          theme: 'grid',
+          headStyles: { fillColor: [41, 128, 185] },
+        });
+      }
+      doc.save(`relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.pdf`);
+    });
+  }
+  
+  carregarRegistros();
+
+  // ----- Funções completas que eu havia omitido antes -----
+  // (Cole o bloco inteiro para garantir)
 
   async function fetchAutenticado(url, options = {}) {
       const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
@@ -57,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
       render();
     } catch (error) {
       console.error('Falha ao carregar registros:', error);
-      tbody.innerHTML = `<<tr><td colspan="8" style="text-align:center; color: #ef4444;">Erro ao carregar dados. Verifique o console (F12).</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: #ef4444;">Erro ao carregar dados. Verifique o console (F12).</td></tr>`;
     }
   }
 
@@ -87,10 +211,28 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSelectionState();
   }
 
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
-  function escapeHTML(s) { return s ? s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : ''; }
-  function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
-  function selectedIds() { return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); }
+  function updateMetrics(visibleRows) {
+    if(!mTotal) return;
+    mTotal.textContent = visibleRows.length;
+    mOMs.textContent = new Set(visibleRows.map(r => r.om)).size;
+    const counts = visibleRows.reduce((acc, r) => {
+      acc[r.tipodefeito] = (acc[r.tipodefeito] || 0) + 1;
+      return acc;
+    }, {});
+    const top3 = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0,3);
+    if(mDistrib) mDistrib.innerHTML = top3.map(([k,v]) => `<div>${escapeHTML(k)}: <strong>${v}</strong></div>`).join('') || '—';
+  }
+
+  function resetForm() {
+    const om = form.om.value;
+    const qtdlote = form.qtdlote.value;
+    form.reset();
+    form.dataset.editing = '';
+    btnGravar.textContent = '➕ Gravar';
+    form.om.value = om; 
+    form.qtdlote.value = qtdlote;
+    form.designador.focus();
+  }
 
   function updateSelectionState() {
     const checkedCount = selectedIds().length;
@@ -171,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.designador.focus();
     }
   });
-
+  
   selAll.addEventListener('change', () => {
       const isChecked = selAll.checked;
       document.querySelectorAll('.rowSel').forEach(checkbox => {
@@ -180,5 +322,4 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSelectionState();
   });
 
-  carregarRegistros();
 });
