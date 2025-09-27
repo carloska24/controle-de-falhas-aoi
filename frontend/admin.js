@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 alert(`Usuário ${username} cadastrado com sucesso!`);
                 registerForm.reset();
-                if (token) { // Se já estiver logado, atualiza a lista
+                if (token) {
                     fetchUsers();
-                } else { // Se for o primeiro usuário, avisa para fazer login
-                    alert('Agora você pode fazer o login.');
+                } else {
+                    alert('Primeiro usuário Admin criado com sucesso! Agora você será redirecionado para a tela de login.');
                     window.location.href = 'login.html';
                 }
             } catch (error) {
@@ -104,19 +104,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // LÓGICA PRINCIPAL: Decide o que mostrar na página
+    // LÓGICA PRINCIPAL
     if (token && user && user.role === 'admin') {
-        // MODO ADMIN LOGADO
         if (userDisplay) userDisplay.textContent = user.name || user.username;
         fetchUsers();
     } else {
-        // MODO CRIAÇÃO DO PRIMEIRO ADMIN (OU USUÁRIO NÃO-ADMIN)
-        // Esconde a lista de usuários e o botão Sair
         if(usersSection) usersSection.style.display = 'none';
         if(userDisplay) userDisplay.style.display = 'none';
         if(btnLogout) btnLogout.style.display = 'none';
-        
-        // Se tentar acessar sem ser admin, mas já existirem usuários, bloqueia
-        // (Isso requer uma pequena mudança no backend)
     }
 });
