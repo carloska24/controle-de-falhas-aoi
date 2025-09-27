@@ -1,4 +1,4 @@
-// 📁 login.js (VERSÃO COM ÍCONE CORRIGIDO)
+// 📁 login.js (VERSÃO COM REDIRECIONAMENTO INTELIGENTE)
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.querySelector('#loginForm');
@@ -22,11 +22,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(data.error || 'Erro ao tentar fazer login.');
             }
+            
+            // Salva as informações no localStorage
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             
-            // Redireciona para a página principal para TODOS os usuários
-            window.location.href = 'index.html';
+            // ==========================================================
+            // NOVA LÓGICA DE REDIRECIONAMENTO
+            // ==========================================================
+            if (data.user.role === 'admin') {
+                // Se for admin, vai para a página de administração
+                window.location.href = 'admin.html';
+            } else {
+                // Se for operador, vai para a página principal
+                window.location.href = 'index.html';
+            }
+            // ==========================================================
+
         } catch (error) {
             alert(`Falha no login: ${error.message}`);
         }
