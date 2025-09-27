@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Redireciona para a página principal para TODOS os usuários
             window.location.href = 'index.html';
-
         } catch (error) {
             alert(`Falha no login: ${error.message}`);
         }

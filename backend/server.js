@@ -21,30 +21,18 @@ const pool = new Pool({
 });
 
 const setupDatabase = async () => {
-  const createRegistrosTable = `
-    CREATE TABLE IF NOT EXISTS registros (
-      id TEXT PRIMARY KEY, 
-      om TEXT NOT NULL, 
-      qtdlote INTEGER NOT NULL, 
-      serial TEXT, 
-      designador TEXT NOT NULL, 
-      tipodefeito TEXT NOT NULL, 
-      pn TEXT, 
-      descricao TEXT,
-      obs TEXT, 
-      createdat TEXT NOT NULL, 
-      status TEXT, 
-      operador TEXT
-    );`;
   const createUsersTable = `CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role VARCHAR(20) NOT NULL DEFAULT 'operator');`;
+  const createRegistrosTable = `CREATE TABLE IF NOT EXISTS registros (id TEXT PRIMARY KEY, om TEXT NOT NULL, qtdlote INTEGER NOT NULL, serial TEXT, designador TEXT NOT NULL, tipodefeito TEXT NOT NULL, pn TEXT, descricao TEXT, obs TEXT, createdat TEXT NOT NULL, status TEXT, operador TEXT);`;
   
   try {
-    await pool.query(createRegistrosTable);
-    console.log('Tabela "registros" verificada com sucesso.');
     await pool.query(createUsersTable);
-    console.log('Tabela "users" verificada com sucesso.');
+    console.log('Tabela "users" verificada/criada com sucesso.');
+    await pool.query(createRegistrosTable);
+    console.log('Tabela "registros" verificada/criada com sucesso.');
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
+    // Em um ambiente de produção real, talvez você queira que o processo pare se o DB falhar.
+    // process.exit(1); 
   }
 };
 
@@ -180,5 +168,6 @@ app.delete('/api/registros', authenticateToken, async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-  // setupDatabase(); // O ideal é que a criação da tabela seja feita por um script separado, mas vamos manter por enquanto
+  // CHAMA A FUNÇÃO DE SETUP DO BANCO DE DADOS NA INICIALIZAÇÃO
+  setupDatabase();
 });
