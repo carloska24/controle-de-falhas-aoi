@@ -31,8 +31,6 @@ const setupDatabase = async () => {
     console.log('Tabela "registros" verificada/criada com sucesso.');
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
-    // Em um ambiente de produção real, talvez você queira que o processo pare se o DB falhar.
-    // process.exit(1); 
   }
 };
 
@@ -56,6 +54,7 @@ function isAdmin(req, res, next) {
     }
 }
 
+// ROTA DE LOGIN
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -72,6 +71,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// ROTAS DE USUÁRIOS (ADMIN)
 app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, username, role FROM users ORDER BY id');
@@ -82,26 +82,19 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
 });
 
 app.post('/api/users', async (req, res, next) => {
-    // Verifica se já existe algum usuário no banco
     const userCountResult = await pool.query('SELECT COUNT(*) FROM users');
     const userCount = parseInt(userCountResult.rows[0].count, 10);
-
     if (userCount > 0) {
-        // Se já existem usuários, a rota se torna protegida e só admins podem criar novos
         authenticateToken(req, res, () => isAdmin(req, res, next));
     } else {
-        // Se for o PRIMEIRO usuário, permite a criação sem autenticação
         next();
     }
 }, async (req, res) => {
     const { name, username, password } = req.body;
     if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
-
-    // Descobre se o primeiro usuário deve ser 'admin' ou 'operator'
     const userCountResult = await pool.query('SELECT COUNT(*) FROM users');
     const userCount = parseInt(userCountResult.rows[0].count, 10);
-    const role = userCount === 0 ? 'admin' : 'operator'; // O PRIMEIRO usuário é automaticamente admin
-
+    const role = userCount === 0 ? 'admin' : 'operator';
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
@@ -126,6 +119,7 @@ app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
+// ROTAS DE REGISTROS
 app.get('/api/registros', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM registros ORDER BY createdat DESC');
@@ -168,6 +162,5 @@ app.delete('/api/registros', authenticateToken, async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-  // CHAMA A FUNÇÃO DE SETUP DO BANCO DE DADOS NA INICIALIZAÇÃO
   setupDatabase();
 });
