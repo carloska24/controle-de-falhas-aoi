@@ -26,8 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const mTotal = document.querySelector('#mTotal');
   const mOMs = document.querySelector('#mOMs');
   const mDistrib = document.querySelector('#mDistrib');
-  
-  // Seletores da Qualidade
   const pie = document.querySelector('#pieChart');
   const pieCenter = document.querySelector('#pieCenter');
   const qualEmoji = document.querySelector('.quality-emoji');
@@ -36,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const qualDetalhe = document.querySelector('#qualDetalhe');
   const totalInspec = document.querySelector('#totalInspec');
   const escopoQualidade = document.querySelector('#escopoQualidade');
-
 
   if (userDisplay && user) { userDisplay.textContent = user.name || user.username; }
   if (btnLogout) {
@@ -113,10 +110,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if(mDistrib) mDistrib.innerHTML = top3.map(([k,v]) => `<div>${escapeHTML(k)}: <strong>${v}</strong></div>`).join('') || '—';
   }
   
-  // LÓGICA DE QUALIDADE
   function getRowsForScope() {
     const scope = escopoQualidade.value;
-    if (scope === 'selecionados') return registros.filter(r => selectedIds().includes(r.id));
+    if (scope === 'selecionados') {
+        const ids = selectedIds();
+        return registros.filter(r => ids.includes(r.id));
+    }
     return registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(busca.value.toLowerCase()));
   }
 
@@ -153,40 +152,127 @@ document.addEventListener('DOMContentLoaded', () => {
       const R = pie.width / 2;
       ctx.clearRect(0,0,pie.width,pie.height);
       const goodAngle = (goodPct / 100) * 2 * Math.PI;
-      
-      // Cor de fundo (falhas)
       ctx.beginPath();
       ctx.moveTo(R, R);
       ctx.arc(R, R, R, 0, 2 * Math.PI);
-      ctx.fillStyle = '#ef4444'; // Cor vermelha para falhas
+      ctx.fillStyle = '#ef4444';
       ctx.fill();
-      
-      // Cor de frente (aprovados)
       ctx.beginPath();
       ctx.moveTo(R, R);
       ctx.arc(R, R, R, -0.5 * Math.PI, goodAngle - 0.5 * Math.PI);
-      ctx.fillStyle = '#22c55e'; // Cor verde para aproveitamento
+      ctx.fillStyle = '#22c55e';
       ctx.fill();
   }
 
-  // FUNÇÕES AUXILIARES
   function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
   function escapeHTML(s) { return s ? s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : ''; }
   function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
   function selectedIds() { return Array.from(document.querySelectorAll('.rowSel:checked')).map(cb => cb.closest('tr').dataset.id); }
 
-  // EVENT LISTENERS
-  form.addEventListener('submit', async (e) => { /* ...código completo... */ });
-  btnLimpar.addEventListener('click', () => { /* ...código completo... */ });
-  btnExcluir.addEventListener('click', async () => { /* ...código completo... */ });
-  tbody.addEventListener('dblclick', (e) => { /* ...código completo... */ });
-  btnDemo.addEventListener('click', () => { /* ...código completo... */ });
+  function resetForm() {
+    const om = form.om.value;
+    const qtdlote = form.qtdlote.value;
+    form.reset();
+    form.dataset.editing = '';
+    btnGravar.textContent = '➕ Gravar';
+    form.om.value = om; 
+    form.qtdlote.value = qtdlote;
+    form.designador.focus();
+  }
   
-  // Listeners de Qualidade
+  function updateSelectionState() {
+    const checkedCount = selectedIds().length;
+    btnExcluir.disabled = checkedCount === 0;
+    const totalCheckboxes = document.querySelectorAll('.rowSel').length;
+    if (totalCheckboxes > 0 && checkedCount === totalCheckboxes) {
+        selAll.checked = true;
+        selAll.indeterminate = false;
+    } else if (checkedCount > 0) {
+        selAll.checked = false;
+        selAll.indeterminate = true;
+    } else {
+        selAll.checked = false;
+        selAll.indeterminate = false;
+    }
+  }
+  
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editingId = form.dataset.editing;
+    const data = getFormData();
+    if (!data.om || !data.qtdlote || !data.designador || !data.tipodefeito) {
+        alert('Por favor, preencha todos os campos obrigatórios (*).');
+        return;
+    }
+    try {
+        if (editingId) {
+            const updateData = { om: data.om, qtdlote: data.qtdlote, serial: data.serial, designador: data.designador, tipodefeito: data.tipodefeito, pn: data.pn, descricao: data.descricao, obs: data.obs };
+            await fetchAutenticado(`${API_URL}/${editingId}`, { method: 'PUT', body: JSON.stringify(updateData) });
+            const index = registros.findIndex(r => r.id === editingId);
+            if (index !== -1) { registros[index] = { ...registros[index], ...updateData }; }
+        } else {
+            data.id = uid();
+            data.createdat = new Date().toISOString();
+            data.status = 'aberto';
+            data.operador = user.name || user.username;
+            await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(data) });
+            registros.unshift(data);
+        }
+        resetForm();
+        render();
+    } catch (error) {
+        alert(`Erro ao salvar o registro: ${error.message}`);
+    }
+  });
+
+  btnExcluir.addEventListener('click', async () => {
+    const idsParaExcluir = selectedIds();
+    if (idsParaExcluir.length === 0) { return; }
+    if (confirm(`Tem certeza que deseja excluir ${idsParaExcluir.length} registro(s)?`)) {
+        try {
+            await fetchAutenticado(API_URL, { method: 'DELETE', body: JSON.stringify({ ids: idsParaExcluir }) });
+            registros = registros.filter(r => !idsParaExcluir.includes(r.id));
+            render();
+        } catch (error) {
+            alert(`Erro ao excluir registros: ${error.message}`);
+        }
+    }
+  });
+
+  tbody.addEventListener('dblclick', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const id = tr.dataset.id;
+    const registroParaEditar = registros.find(r => r.id === id);
+    if (registroParaEditar) {
+        form.om.value = registroParaEditar.om || '';
+        form.qtdlote.value = registroParaEditar.qtdlote || '';
+        form.serial.value = registroParaEditar.serial || '';
+        form.designador.value = registroParaEditar.designador || '';
+        form.tipodefeito.value = registroParaEditar.tipodefeito || '';
+        form.pn.value = registroParaEditar.pn || '';
+        form.descricao.value = registroParaEditar.descricao || '';
+        form.obs.value = registroParaEditar.obs || '';
+        form.dataset.editing = id;
+        btnGravar.textContent = '💾 Atualizar Registro';
+        window.scrollTo(0, 0);
+        form.designador.focus();
+    }
+  });
+
+  btnDemo.addEventListener('click', () => {
+    const demoData = [
+      { id: uid(), om: 'OM-11223', qtdlote: 150, serial: 'SN-A01', designador: 'C101', tipodefeito: 'Componente Ausente', pn: '12345-01', descricao: 'CAP 10uF', obs: 'Verificar alimentador', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
+      { id: uid(), om: 'OM-44556', qtdlote: 75, serial: 'SN-B02', designador: 'U1', tipodefeito: 'Curto', pn: '98765-03', descricao: 'CI REG TENS', obs: 'Pinos 1 e 2 em curto', createdat: new Date().toISOString(), status: 'aberto', operador: 'Demo' },
+    ];
+    registros.unshift(...demoData);
+    render();
+    alert(`${demoData.length} registros de demonstração foram adicionados.\nEles não serão salvos no banco de dados.`);
+  });
+  
   [totalInspec, escopoQualidade].forEach(el => { if(el) el.addEventListener('input', updateQuality); });
-  busca.addEventListener('input', () => { render(); }); // Busca também atualiza o gráfico
+  busca.addEventListener('input', () => { render(); });
   
-  // Listeners de Seleção
   tbody.addEventListener('change', (e) => { 
     if (e.target.classList.contains('rowSel')) { 
       updateSelectionState();
@@ -200,11 +286,45 @@ document.addEventListener('DOMContentLoaded', () => {
       if(escopoQualidade.value === 'selecionados') updateQuality();
   });
   
-  // Listeners de Exportação
-  btnReqCSV.addEventListener('click', () => { /* ...código completo... */ });
-  btnPDF.addEventListener('click', () => { /* ...código completo... */ });
+  btnReqCSV.addEventListener('click', () => {
+    const idsSelecionados = selectedIds();
+    if (idsSelecionados.length === 0) {
+      alert('Por favor, selecione os registros que deseja exportar para CSV.');
+      return;
+    }
+    const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+    const header = ['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'PN', 'Descricao', 'Observacoes'];
+    let csvContent = header.join(',') + '\n';
+    dadosParaExportar.forEach(r => {
+      const row = [r.om, formatDate(r.createdat), r.serial || '', r.designador, r.tipodefeito, r.pn || '', r.descricao || '', (r.obs || '').replace(/,/g, ';')];
+      csvContent += row.join(',') + '\n';
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
+
+  btnPDF.addEventListener('click', () => {
+    const idsSelecionados = selectedIds();
+    if (idsSelecionados.length === 0) {
+      alert('Por favor, selecione os registros que deseja exportar para PDF.');
+      return;
+    }
+    const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+    const doc = new jsPDF();
+    doc.text('Relatório de Falhas para Reparo', 14, 16);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
+    const head = [['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'Obs']];
+    const body = dadosParaExportar.map(r => [r.om, formatDate(r.createdat), r.serial || '-', r.designador, r.tipodefeito, r.obs || '-']);
+    doc.autoTable({ startY: 30, head: head, body: body, theme: 'grid', headStyles: { fillColor: [41, 128, 185] }, });
+    doc.save(`relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.pdf`);
+  });
   
   carregarRegistros();
-
-  // (Cole o código completo das funções que foram omitidas para garantir)
 });
