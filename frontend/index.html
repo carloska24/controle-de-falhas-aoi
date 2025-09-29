@@ -3,7 +3,9 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>Registro de Defeitos SMD — v3.3</title>
+    <title>Registro de Defeitos SMD</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,100 +13,101 @@
 <div class="app-header">
     <div class="app-title">Controle de Falhas AOI</div>
     <div class="user-info">
-        <span id="userEmailDisplay"></span>
+        <span id="userDisplay"></span>
         <button id="btnLogout" class="btn outline">Sair</button>
     </div>
 </div>
 
-<div class="container">
-    <header>
-        <div class="title">Registro de Defeitos SMD — Beta-1</div>
-        <div class="subtitle"></div>
-    </header>
-    
-    <section aria-labelledby="form-title" class="card">
-        <div class="chip" id="form-title">Formulário de Registro</div>
-        <form autocomplete="on" id="formRegistro">
-            <div class="grid cols-4">
-                <div class="field"><label for="om">OM (Ordem de Montagem) *</label><input id="om" name="om" placeholder="Ex.: OM-2025-0091" required=""/></div>
-                <div class="field"><label for="qtdlote">Qtd de Placas do Lote *</label><input id="qtdlote" min="1" name="qtdlote" placeholder="Ex.: 50" required="" type="number"/></div>
-                <div class="field"><label for="serial">Serial Number da Placa</label><input id="serial" name="serial" placeholder="Ex.: SN123456"/></div>
-                <div class="field"><label for="designador">Designador *</label><input id="designador" name="designador" placeholder="Ex.: R15, C3, U1…" required=""/></div>
-            </div>
-            <div class="grid cols-4">
-                <div class="field"><label for="tipodefeito">Tipo de Defeito *</label><select id="tipodefeito" name="tipodefeito" required=""><option value="">— Selecione —</option><option>Curto</option><option>Sem Solda</option><option>Tombstone</option><option>Componente Errado</option><option>Solda Fria</option><option>Componente Ausente</option></select></div>
-                <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn" placeholder="Ex.: RC0603FR-0710KL"/></div>
-                <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao" placeholder="Ex.: Resistor 10k 1% 0603"/></div>
-                <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs" placeholder="Detalhes adicionais (opcional)"></textarea></div>
-            </div>
-            <div class="toolbar"><div class="left"><button class="btn primary" title="Ctrl+S" type="submit">➕ Gravar</button><button class="btn outline" id="btnLimpar" type="button">Limpar</button></div><div class="right"><span class="note">Campos com * são obrigatórios</span></div></div>
-        </form>
-    </section>
-
-    <section class="card noprint">
-      <div class="toolbar">
-        <div class="left">
-          <button class="btn danger" disabled="" id="btnExcluir">🗑️ Excluir Selecionado</button>
-          <button class="btn warn" id="btnReqPDF">📄 Requisição de Materiais (PDF)</button>
-          <button class="btn outline" id="btnReqCSV" title="Exportar apenas ausentes em CSV">⬇️ CSV (Reparo)</button>
-          <button class="btn" id="btnPDF">🛠️ Componentes p/ Reparo (PDF)</button>
-          <button class="btn outline" id="btnDemo" title="Adicionar registros de exemplo">⚙️ Modo Demo</button>
-          <button class="btn outline" id="btnBackup" title="Exportar JSON">💾 Backup</button>
-        </div>
-        <div class="right">
-          <input class="search-input field input" id="busca" placeholder="🔎 Buscar por OM, Serial, Designador, Defeito…"/>
-        </div>
-      </div>
-      <div class="metrics" id="metrics">
-          <div class="metric"><div class="muted">Registros</div><div class="val" id="mTotal">0</div></div>
-          <div class="metric"><div class="muted">OM distintas</div><div class="val" id="mOMs">0</div></div>
-          <div class="metric"><div class="muted">Distribuição por Defeito (top 3)</div><div class="val" id="mDistrib">—</div></div>
-      </div>
-    </section>
-
-    <section class="card" id="qualidadeCard">
-        <div class="chip">Qualidade do Lote</div>
-        <div class="quality-wrap">
-            <div class="quality-fig">
-                <canvas aria-label="Gráfico de pizza da qualidade" height="220" id="pieChart" width="220"></canvas>
-                <div class="quality-center" id="pieCenter">—</div>
-            </div>
-            <div class="quality-text">
-                <div class="quality-title" id="qualTitle"><span class="quality-emoji">😐</span> <span id="qualText">Qualidade Indefinida</span></div>
-                <div class="quality-aux" id="qualAux">Informe o <b>Total Inspecionado</b>. As falhas são contadas a partir dos <i>registros do escopo</i>.</div>
-                <div class="quality-legend">
-                    <span class="legend-box legend-good"></span><span class="muted">Aproveitamento</span>
-                    <span class="legend-box legend-bad"></span><span class="muted">Falhas</span>
+<div class="container main-layout">
+    <div class="main-column">
+        <header><div class="title">Registro de Defeitos SMD — Beta-1</div></header>
+        
+        <section class="card">
+          <div class="chip">Formulário de Registro</div>
+          <form id="formRegistro">
+                <div class="grid cols-4">
+                  <div class="field"><label for="om">OM (Ordem de Montagem) *</label><input id="om" name="om" required/></div>
+                  <div class="field"><label for="qtdlote">Qtd de Placas do Lote *</label><input id="qtdlote" min="1" name="qtdlote" required type="number"/></div>
+                  <div class="field"><label for="serial">Serial Number da Placa</label><input id="serial" name="serial"/></div>
+                  <div class="field"><label for="designador">Designador *</label><input id="designador" name="designador" required/></div>
                 </div>
-                <div class="grid cols-3 quality-controls" style="margin-top:10px">
-                    <div class="field"><label for="totalInspec">Total Inspecionado *</label><input id="totalInspec" min="0" placeholder="Ex.: 500" type="number"/></div>
-                    <div class="field"><label for="escopoQualidade">Escopo das Falhas</label><select id="escopoQualidade"><option value="visiveis">Filtrados/Visíveis</option><option value="selecionados">Selecionados</option><option value="todos">Todos</option></select></div>
-                    <div class="field"><label for="mostrarTexto">Exibição</label><select id="mostrarTexto"><option value="aproveitamento">Aproveitamento (bom)</option><option value="falha">Taxa de falhas</option></select></div>
+                <div class="grid cols-4">
+                  <div class="field"><label for="tipodefeito">Tipo de Defeito *</label><select id="tipodefeito" name="tipodefeito" required><option value="">— Selecione —</option><option>Curto</option><option>Sem Solda</option><option>Tombstone</option><option>Componente Errado</option><option>Solda Fria</option><option>Componente Ausente</option></select></div>
+                  <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn"/></div>
+                  <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao"/></div>
+                  <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs"></textarea></div>
                 </div>
-                <div class="quality-aux" id="qualDetalhe" style="margin-top:8px">—</div>
-            </div>
-        </div>
-    </section>
+                <div class="toolbar"><div class="left"><button class="btn primary" type="submit">➕ Gravar</button><button class="btn outline" id="btnLimpar" type="button">Limpar</button></div><div class="right"><span class="note">Campos com * são obrigatórios</span></div></div>
+          </form>
+        </section>
+        
+        <section class="card">
+            <div class="chip">Registros</div>
+            <table id="tabela">
+                <thead>
+                    <tr>
+                        <th><input class="checkbox" id="selAll" type="checkbox"/></th>
+                        <th>OM</th>
+                        <th>Data/Hora</th>
+                        <th>Serial</th>
+                        <th>Designador</th>
+                        <th>Defeito</th>
+                        <th>PN</th>
+                        <th>Obs.</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+            <div class="note">Dica: Duplo clique em uma linha para editar.</div>
+        </section>
+    </div>
 
-    <section class="card">
-        <div class="chip">Registros</div>
-        <table id="tabela">
-            <thead>
-                <tr>
-                    <th style="width:32px"><input class="checkbox" id="selAll" title="Selecionar todos" type="checkbox"/></th>
-                    <th class="sortable" data-key="om">OM <span class="sort-ind">↕</span></th>
-                    <th class="sortable" data-key="createdat">Data/Hora <span class="sort-ind">↕</span></th>
-                    <th class="sortable" data-key="serial">Serial <span class="sort-ind">↕</span></th>
-                    <th class="sortable" data-key="designador">Designador <span class="sort-ind">↕</span></th>
-                    <th class="sortable" data-key="tipodefeito">Defeito <span class="sort-ind">↕</span></th>
-                    <th class="sortable" data-key="pn">PN <span class="sort-ind">↕</span></th>
-                    <th class="sortable" data-key="obs">Obs. <span class="sort-ind">↕</span></th>
-                </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-        </table>
-        <div class="note" style="margin-top:8px">Dica: clique no cabeçalho para ordenar. Duplo clique em uma linha para editar.</div>
-    </section>
+    <div class="sidebar-column">
+        <section class="card noprint">
+          <div class="toolbar">
+            <div class="left">
+              <button class="btn danger" disabled id="btnExcluir">🗑️ Excluir</button>
+              <button class="btn outline" id="btnDemo">⚙️ Demo</button>
+            </div>
+          </div>
+          <div class="right">
+              <input class="search-input field input" id="busca" placeholder="🔎 Buscar..."/>
+            </div>
+          <div class="metrics" id="metrics">
+              <div class="metric"><div class="muted">Registros</div><div class="val" id="mTotal">0</div></div>
+              <div class="metric"><div class="muted">OM distintas</div><div class="val" id="mOMs">0</div></div>
+              <div class="metric full-width"><div class="muted">Distribuição por Defeito (top 3)</div><div class="val" id="mDistrib">—</div></div>
+          </div>
+        </section>
+
+        <section class="card" id="qualidadeCard">
+            <div class="chip">Qualidade do Lote</div>
+            <div class="quality-wrap-vertical">
+                <div class="quality-fig">
+                    <canvas id="pieChart" width="220" height="220"></canvas>
+                    <div class="quality-center" id="pieCenter">—</div>
+                </div>
+                <div class="quality-text">
+                    <div class="quality-title"><span class="quality-emoji">😐</span> <span id="qualText">Qualidade Indefinida</span></div>
+                    <div class="quality-aux">Informe o <b>Total Inspecionado</b> para calcular.</div>
+                    <div class="grid cols-2 quality-controls">
+                        <div class="field"><label for="totalInspec">Total Inspecionado *</label><input id="totalInspec" min="0" type="number"/></div>
+                        <div class="field"><label for="escopoQualidade">Escopo</label><select id="escopoQualidade"><option value="visiveis">Visíveis na Tabela</option><option value="selecionados">Apenas Selecionados</option></select></div>
+                    </div>
+                    <div class="quality-aux" id="qualDetalhe">—</div>
+                </div>
+            </div>
+        </section>
+
+         <section class="card noprint">
+            <div class="chip">Relatórios</div>
+             <div class="grid cols-2">
+                <button class="btn warn" id="btnReqPDF">📄 Requisição (PDF)</button>
+                <button class="btn" id="btnPDF">🛠️ Reparo (PDF)</button>
+                <button class="btn outline" id="btnReqCSV">⬇️ Reparo (CSV)</button>
+            </div>
+        </section>
+    </div>
 </div>
 
 <script src="script.js"></script>

@@ -118,7 +118,7 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// Rota para criar um novo usuário (protegida, apenas para admins)
+// Rota para criar um novo usuário (protegida, apenas para administradores)
 app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     const { name, username, password, role = 'operator' } = req.body;
     if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });

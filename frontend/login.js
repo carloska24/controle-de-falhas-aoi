@@ -1,4 +1,7 @@
+// 📁 login.js (VERSÃO COM NOVOS ÍCONES E ANIMAÇÃO SMD)
+
 document.addEventListener('DOMContentLoaded', () => {
+<<<<<<< HEAD
     // =================================================================
     // CONFIGURAÇÕES E SELETORES DO DOM
     // =================================================================
@@ -29,8 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Animação de fundo
+=======
+    const API_BASE_URL = 'https://controle-de-falhas-aoi.onrender.com';
+    const loginForm = document.querySelector('#loginForm');
+    const animationContainer = document.querySelector('#animation-container');
+    const passwordInput = document.querySelector('#password');
+    const togglePassword = document.querySelector('#togglePassword');
+    const usernameInput = document.querySelector('#username');
+    
+    // SUA LÓGICA DE ANIMAÇÃO MANTIDA
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     const numberOfComponents = 40;
-    const componentTypes = [ 'smd-resistor', 'smd-resistor', 'smd-resistor', 'smd-capacitor', 'smd-capacitor', 'smd-led', 'smd-ic' ];
+    const componentTypes = [ 'smd-resistor','smd-resistor','smd-capacitor','smd-capacitor','smd-led','smd-ic' ];
     for (let i = 0; i < numberOfComponents; i++) {
         const component = document.createElement('div');
         const randomType = componentTypes[Math.floor(Math.random() * componentTypes.length)];
@@ -48,7 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
         animationContainer.appendChild(component);
     }
     
+<<<<<<< HEAD
     // Lógica do Formulário
+=======
+    // LÓGICA DE LOGIN ATUALIZADA
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     loginForm.addEventListener('submit', async (event) => {
         event.preventDefault(); 
         const username = usernameInput.value;
@@ -68,17 +85,23 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            // Redirecionamento baseado na função (role) do usuário
+            // LÓGICA DE REDIRECIONAMENTO INTELIGENTE
             if (data.user.role === 'admin') {
                 window.location.href = 'admin.html';
             } else {
                 window.location.href = 'index.html';
             }
-            
         } catch (error) {
             alert(`Falha no login: ${error.message}`);
             submitButton.disabled = false;
             submitButton.textContent = 'Entrar';
         }
+    });
+
+    // SUA LÓGICA DO ÍCONE DE EMOJI MANTIDA
+    togglePassword.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
     });
 });

@@ -48,11 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const totalInspec = document.querySelector('#totalInspec');
   const escopoQualidade = document.querySelector('#escopoQualidade');
   const mostrarTexto = document.querySelector('#mostrarTexto');
-  const userEmailDisplay = document.querySelector('#userEmailDisplay');
+  const userNameDisplay = document.querySelector('#userNameDisplay');
   const btnLogout = document.querySelector('#btnLogout');
 
   // Lógica do Cabeçalho
-  if (userEmailDisplay && user) { userEmailDisplay.textContent = user.email; }
+  if (userNameDisplay && user) { userNameDisplay.textContent = user.name || user.username; }
   if (btnLogout) {
       btnLogout.addEventListener('click', () => {
           localStorage.removeItem('authToken');

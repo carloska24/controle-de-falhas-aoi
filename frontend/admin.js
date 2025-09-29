@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // SELETORES DO DOM
     // =================================================================
-    const userEmailDisplay = document.querySelector('#userEmailDisplay');
+    const userNameDisplay = document.querySelector('#userNameDisplay');
     const btnLogout = document.querySelector('#btnLogout');
     const registerForm = document.querySelector('#registerForm');
     const usersTbody = document.querySelector('#usersTbody');
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
 
     // Preenche informações do usuário e botão de logout
-    if (userEmailDisplay) userEmailDisplay.textContent = user.name || user.email;
+    if (userNameDisplay) userNameDisplay.textContent = user.name || user.username;
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             localStorage.removeItem('authToken');

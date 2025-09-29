@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* Estilos para o Painel Administrativo */
 
 /* Herda as variáveis de cor e fontes do style.css principal,
@@ -11,6 +12,9 @@ body {
     padding-bottom: 40px;
 }
 
+=======
+/* Estilos específicos para a página de admin */
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 .admin-card {
     background-color: rgba(30, 41, 59, .8); /* --panel com transparência */
     backdrop-filter: blur(5px);
@@ -29,15 +33,28 @@ body {
     width: 100%;
 }
 
+<<<<<<< HEAD
 .section-header {
     display: flex;
     align-items: center;
     gap: 12px;
+=======
+.admin-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 20px;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     margin-bottom: 24px;
     border-bottom: 1px solid var(--border-color, #334155);
     padding-bottom: 12px;
 }
 
+<<<<<<< HEAD
 .section-icon {
     width: 28px;
     height: 28px;
@@ -67,6 +84,11 @@ body {
     overflow-x: auto;
     border: 1px solid var(--border-color, #334155);
     border-radius: 8px;
+=======
+.table-wrapper {
+    max-height: 400px;
+    overflow-y: auto; /* Adiciona uma barra de rolagem se a lista de usuários for muito grande */
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 }
 
 #usersTable {
@@ -74,6 +96,7 @@ body {
     border-collapse: collapse;
 }
 
+<<<<<<< HEAD
 #usersTable th,
 #usersTable td {
     padding: 12px 16px;
@@ -109,4 +132,44 @@ body {
 #usersTable .btn.danger.small {
     padding: 4px 10px;
     font-size: 12px;
+=======
+#usersTable th, 
+#usersTable td {
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 15px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+#usersTable thead th {
+    background-color: #1f2937;
+    position: sticky; /* Faz o cabeçalho ficar fixo ao rolar a tabela */
+    top: 0;
+}
+
+#usersTable tbody tr:nth-child(even) {
+    background-color: #111827; /* Efeito "zebrado" para melhor leitura */
+}
+
+.btn-delete {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-delete:disabled {
+    border-color: var(--border-color);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    opacity: 0.5;
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 }

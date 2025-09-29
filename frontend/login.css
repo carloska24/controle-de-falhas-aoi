@@ -1,10 +1,18 @@
+<<<<<<< HEAD
 /* 📁 login.css (VERSÃO COM ROLAGEM HABILITADA PARA CELULAR) */
+=======
+/* 📁 login.css (VERSÃO ATUALIZADA E PADRONIZADA) */
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
 :root {
+<<<<<<< HEAD
     --bg-dark: #0f172a;
+=======
+    --bg: #0f172a;
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     --panel: #1e293b;
     --text: #e5e7eb;
     --text-dim: #94a3b8;
@@ -17,6 +25,7 @@
 
 body {
     font-family: 'Roboto', sans-serif;
+<<<<<<< HEAD
     background-color: var(--bg-dark);
     color: var(--text);
     display: flex;
@@ -26,6 +35,15 @@ body {
     /* overflow: hidden; --- REMOVIDO para permitir rolagem */
     padding-top: 40px;    /* ADICIONADO para espaçamento no topo */
     padding-bottom: 40px; /* ADICIONADO para espaçamento no final */
+=======
+    background-color: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 }
 
 #animation-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
@@ -51,7 +69,11 @@ body {
 .login-card { background-color: rgba(30, 41, 59, .8); backdrop-filter: blur(5px); border-radius: 12px; border: 1px solid var(--border-color); padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
 .card-header { text-align: center; margin-bottom: 24px; }
 .card-header h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 0; }
+<<<<<<< HEAD
 .card-header .company-subtitle {
+=======
+.card-header .company-subtitle { /* MUDANÇA AQUI */
+>>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     color: var(--primary);
     font-size: 14px;
     margin-top: 4px;
