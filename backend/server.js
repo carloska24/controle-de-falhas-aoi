@@ -1,3 +1,4 @@
+require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -13,12 +14,19 @@ app.use(express.json());
 
 const connectionString = process.env.DATABASE_URL;
 
-const pool = new Pool({
-  connectionString: connectionString,
-  ssl: {
+// Configuração do banco de dados
+const dbConfig = {
+  connectionString: connectionString
+};
+
+// Adiciona a configuração SSL apenas em ambiente de produção (como no Render)
+if (process.env.NODE_ENV === 'production') {
+  dbConfig.ssl = {
     rejectUnauthorized: false
-  }
-});
+  };
+}
+
+const pool = new Pool(dbConfig);
 
 const setupDatabase = async () => {
   const createRegistrosTable = `
@@ -42,6 +50,22 @@ const setupDatabase = async () => {
     console.log('Tabela "registros" verificada com sucesso.');
     await pool.query(createUsersTable);
     console.log('Tabela "users" verificada com sucesso.');
+
+    // Verifica se existe algum usuário. Se não, cria um admin padrão.
+    const userCheck = await pool.query("SELECT COUNT(*) FROM users");
+    if (parseInt(userCheck.rows[0].count, 10) === 0) {
+      console.log('Nenhum usuário encontrado. Criando usuário "admin" padrão...');
+      const adminName = 'Administrador';
+      const adminUsername = 'admin';
+      const adminPassword = 'admin'; // Senha simples para o primeiro acesso
+      const salt = await bcrypt.genSalt(10);
+      const password_hash = await bcrypt.hash(adminPassword, salt);
+      await pool.query(
+        "INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, 'admin')",
+        [adminName, adminUsername, password_hash]
+      );
+      console.log('Usuário "admin" com senha "admin" criado com sucesso!');
+    }
   } catch (err) {
     console.error('Erro ao criar tabelas:', err);
   }
@@ -94,8 +118,8 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// ROTA DE CRIAÇÃO DE USUÁRIO COM SEGURANÇA TEMPORARIAMENTE DESATIVADA
-app.post('/api/users', async (req, res) => {
+// Rota para criar um novo usuário (protegida, apenas para admins)
+app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     const { name, username, password, role = 'operator' } = req.body;
     if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
     try {

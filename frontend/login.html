@@ -15,39 +15,48 @@
         <div class="login-card">
             <div class="card-header">
                 <div class="logo-svg-container">
-                    <svg id="logo-principal" viewBox="0 0 250 300" xmlns="http://www.w3.org/2000/svg">
+                    <svg id="logo-principal" viewBox="0 0 250 250" xmlns="http://www.w3.org/2000/svg">
                         <path class="icon-shape" d="M125 10 L235 70 L235 190 L125 250 L15 190 L15 70 Z"/>
                         <g class="icon-code" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
                             <path d="M75 80 L35 130 L75 180"/>
                             <path d="M150 180 L180 130 L210 180"/>
                             <line x1="135" y1="180" x2="225" y2="80"/>
                         </g>
-                        <text y="285" x="125" text-anchor="middle" class="logo-text">
-                            <tspan class="dev-part">Dev</tspan><tspan class="pratica-part">NaPratica</tspan>
-                        </text>
                     </svg>
                 </div>
+                <h3 class="logo-text-external">DevNaPratica</h3>
+                
                 <h2>Controle de Falhas AOI</h2>
-                <p>CADService Produtos Eletrônicos</p>
+                <p class="company-subtitle">CADService Produtos Eletrônicos</p>
             </div>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">Usuário ou E-mail</label>
+                    <label for="username">Nome de Usuário</label>
                     <input type="text" id="username" name="username" required>
-                </div>
+                    <meta charset="UTF-8">
                 <div class="form-group">
                     <label for="password">Senha</label>
-                    <input type="password" id="password" name="password" required>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" required>
+                        <span id="togglePassword" class="toggle-password" style="display: flex; align-items: center; cursor:pointer;">
+                            <span id="eyeIcon" style="display:inline;">
+                                <svg width="24" height="18" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <ellipse cx="12" cy="9" rx="10" ry="7" fill="#232b36" stroke="#7c4a03" stroke-width="2"/>
+                                    <ellipse cx="12" cy="9" rx="7" ry="4.5" fill="#fff"/>
+                                    <circle cx="12" cy="9" r="3" fill="#7c4a03"/>
+                                    <circle cx="12" cy="9" r="1.2" fill="#fff"/>
+                                </svg>
+                            </span>
+                            <span id="monkeyIcon" style="display:none; font-size:22px; margin-left:2px;">🙈</span>
+                        </span>
+                    </div>
                 </div>
                 <button type="submit" class="btn-login">Entrar</button>
             </form>
-            <div class="admin-login">
-                <a href="#" id="adminLink">Entrar como Admin para cadastrar funcionários</a>
             </div>
-        </div>
         <footer class="login-footer">
             <p>Desenvolvido por:</p>
-            <div class="logo-footer">DevNaPratica</div>
+                                <h3 class="logo-text-external">DevNaPratica</h3>
         </footer>
     </div>
     <script src="login.js"></script>

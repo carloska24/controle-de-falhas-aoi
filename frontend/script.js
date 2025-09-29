@@ -11,7 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  const API_URL = 'https://controle-de-falhas-aoi.onrender.com/api/registros';
+  // Detecta se estamos em ambiente local ou de produção para definir a URL da API
+  const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+  const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+  const API_URL = `${API_BASE_URL}/api/registros`;
   let registros = [];
   let sort = { key: 'createdat', dir: 'desc' };
   let filterText = '';

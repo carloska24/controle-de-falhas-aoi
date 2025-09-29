@@ -1,52 +1,112 @@
+/* Estilos para o Painel Administrativo */
+
+/* Herda as variáveis de cor e fontes do style.css principal,
+   mas garantimos um fundo consistente. */
+body {
+    background-color: var(--bg-dark, #0f172a);
+}
+
+.container {
+    padding-top: 20px;
+    padding-bottom: 40px;
+}
+
 .admin-card {
-    background: var(--panel);
+    background-color: rgba(30, 41, 59, .8); /* --panel com transparência */
+    backdrop-filter: blur(5px);
     border-radius: 12px;
-    padding: 24px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color, #334155);
+    padding: 24px 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
 }
+
 .admin-section {
-    margin-bottom: 32px;
+    width: 100%;
 }
-.admin-section:last-child {
-    margin-bottom: 0;
-}
-.section-title {
-    font-size: 20px;
-    color: var(--text-light);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 12px;
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin-bottom: 24px;
+    border-bottom: 1px solid var(--border-color, #334155);
+    padding-bottom: 12px;
 }
+
+.section-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--primary, #22c55e);
+    flex-shrink: 0;
+}
+
+.section-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text, #e5e7eb);
+    margin: 0;
+}
+
+/* Estilização do Formulário */
+#registerForm .field input {
+    background-color: var(--bg-dark, #0f172a); /* Fundo mais escuro para contraste */
+}
+
+#registerForm .toolbar {
+    justify-content: flex-start;
+    margin-top: 20px;
+}
+
+/* Estilização da Tabela */
 .table-wrapper {
-    max-height: 400px;
-    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid var(--border-color, #334155);
+    border-radius: 8px;
 }
+
 #usersTable {
     width: 100%;
     border-collapse: collapse;
 }
-#usersTable th, #usersTable td {
-    border-bottom: 1px solid var(--border-color);
-    padding: 12px 15px;
+
+#usersTable th,
+#usersTable td {
+    padding: 12px 16px;
     text-align: left;
+    border-bottom: 1px solid var(--border-color, #334155);
 }
-#usersTable thead th {
-    background-color: #1f2937;
-    position: sticky;
-    top: 0;
+
+#usersTable thead {
+    background-color: rgba(51, 65, 85, 0.5); /* Cor de borda com opacidade */
 }
-#usersTable tbody tr:nth-child(even) {
-    background-color: #111827;
+
+#usersTable th {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dim, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-.btn-delete {
-    background: transparent;
-    border: 1px solid var(--danger);
-    color: var(--danger);
-    padding: 4px 8px;
+
+#usersTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+#usersTable tbody tr:hover {
+    background-color: rgba(51, 65, 85, 0.3);
+}
+
+#usersTable td {
+    color: var(--text, #e5e7eb);
+}
+
+/* Botão de Excluir na Tabela */
+#usersTable .btn.danger.small {
+    padding: 4px 10px;
     font-size: 12px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-.btn-delete:hover {
-    background: rgba(239, 68, 68, 0.1);
 }
