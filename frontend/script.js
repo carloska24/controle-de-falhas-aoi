@@ -330,11 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
         operador: 'Demo'
     }));
 
-    // Salva os dados de demo na sessão para persistir entre as páginas
+    // Adiciona os novos dados de demo à lista existente e à sessionStorage
+    registros.unshift(...newDemoData);
     sessionStorage.setItem('demoData', JSON.stringify([...existingDemoData, ...newDemoData]));
-    // Recarrega os registros para incluir os dados da demo
-    carregarRegistros(); 
     showToast(`${newDemoData.length} novos registros de demonstração foram adicionados.`, 'info');
+    render(); // Apenas renderiza novamente, sem recarregar da API
   });
   
   [totalInspec, escopoQualidade].forEach(el => { if(el) el.addEventListener('input', updateQuality); });

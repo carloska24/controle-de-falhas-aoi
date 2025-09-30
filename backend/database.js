@@ -50,18 +50,22 @@ async function initializeDatabase() {
     await dbRun(createRegistrosTable);
     console.log('Tabela "registros" verificada/criada com sucesso!');
     
-    await dbRun(createUsersTable);
-    console.log('Tabela "users" verificada/criada com sucesso!');
-    
-    // Garante que o usuário admin exista, sem apagar os outros
-    const adminExists = await dbGet('SELECT * FROM users WHERE username = ?', ['admin']);
-    if (!adminExists) {
-      console.log('Usuário "admin" não encontrado. Criando...');
-      const saltRounds = 10;
-      const adminPassword = 'admin';
-      const hash = await bcrypt.hash(adminPassword, saltRounds);
-      await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Administrador', 'admin', hash, 'admin']);
-      console.log('Usuário "admin" criado com sucesso!');
+    // Verifica se a tabela de usuários já existe
+    const tableExists = await dbGet("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    if (!tableExists) {
+        console.log('Tabela "users" não encontrada, criando...');
+        await dbRun(createUsersTable);
+        console.log('Tabela "users" criada com sucesso!');
+        
+        // Cria o usuário admin padrão APENAS na primeira vez que a tabela é criada
+        console.log('Criando usuário "admin" padrão...');
+        const saltRounds = 10;
+        const adminPassword = 'admin';
+        const hash = await bcrypt.hash(adminPassword, saltRounds);
+        await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Administrador', 'admin', hash, 'admin']);
+        console.log('Usuário "admin" criado com sucesso!');
+    } else {
+        console.log('Tabela "users" já existente.');
     }
     
     console.log('Banco de dados inicializado com sucesso.');

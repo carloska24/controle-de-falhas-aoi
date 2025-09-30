@@ -108,11 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const updatedDemoData = demoData.map(d => d.id === id ? item : d);
             sessionStorage.setItem('demoData', JSON.stringify(updatedDemoData));
             showToast('Status (demo) atualizado para "Reparado".', 'success');
-            renderTable();
+            renderTable(); // Apenas renderiza a tabela, sem recarregar da API
             return;
         }
 
-        // Se for um item real, faz a chamada para a API
         try {
             await fetchAutenticado(`${API_URL}/${id}/status`, {
                 method: 'PUT',
