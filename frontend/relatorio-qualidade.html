@@ -23,16 +23,25 @@
         <!-- Filtros -->
         <div class="card filter-bar">
             <div class="field">
-                <label for="dateRange">Período</label>
-                <select id="dateRange">
+                <label for="dateRange">Período Rápido</label>
+                <select id="dateRange" class="filter-control">
                     <option value="all" selected>Todo o Período</option>
                     <option value="7">Últimos 7 dias</option>
                     <option value="30">Últimos 30 dias</option>
+                    <option value="custom">Personalizado</option>
                 </select>
+            </div>
+            <div class="field custom-date-range hidden">
+                <label for="startDate">Data de Início</label>
+                <input type="date" id="startDate" class="filter-control">
+            </div>
+            <div class="field custom-date-range hidden">
+                <label for="endDate">Data de Fim</label>
+                <input type="date" id="endDate" class="filter-control">
             </div>
             <div class="field">
                 <label for="omFilter">Ordem de Montagem (OM)</label>
-                <select id="omFilter">
+                <select id="omFilter" class="filter-control">
                     <option value="all">Todas as OMs</option>
                 </select>
             </div>
@@ -60,6 +69,7 @@
 
         <!-- Gráficos -->
         <div class="chart-grid">
+            <div class="card chart-card full-width"><canvas id="tendenciaFalhasChart"></canvas></div>
             <div class="card chart-card"><canvas id="defeitosPorTipoChart"></canvas></div>
             <div class="card chart-card"><canvas id="defeitosPorCategoriaChart"></canvas></div>
         </div>

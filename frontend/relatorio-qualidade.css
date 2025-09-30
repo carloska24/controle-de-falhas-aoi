@@ -7,12 +7,16 @@
 .filter-bar {
     display: flex;
     gap: 16px;
-    align-items: flex-end;
+    align-items: flex-start;
     padding: 16px 24px;
 }
 
 .filter-bar .field {
     flex-grow: 1;
+}
+
+.custom-date-range.hidden {
+    display: none;
 }
 
 .kpi-grid {

@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.querySelector('#loadingOverlay');
     const dateRangeSelect = document.querySelector('#dateRange');
     const omFilterSelect = document.querySelector('#omFilter');
+    const startDateInput = document.querySelector('#startDate');
+    const endDateInput = document.querySelector('#endDate');
 
     // =================================================================
     // Funções Utilitárias
@@ -56,11 +58,24 @@ document.addEventListener('DOMContentLoaded', () => {
         let dadosFiltrados = [...allData];
 
         // Filtro por Período
-        const dias = parseInt(dateRangeSelect.value, 10);
-        if (!isNaN(dias)) {
-            const dataLimite = new Date();
-            dataLimite.setDate(dataLimite.getDate() - dias);
-            dadosFiltrados = dadosFiltrados.filter(d => new Date(d.createdat) >= dataLimite);
+        const periodoSelecionado = dateRangeSelect.value;
+        if (periodoSelecionado === 'custom') {
+            const startDate = startDateInput.value ? new Date(startDateInput.value + 'T00:00:00') : null;
+            const endDate = endDateInput.value ? new Date(endDateInput.value + 'T23:59:59') : null;
+
+            if (startDate) {
+                dadosFiltrados = dadosFiltrados.filter(d => new Date(d.createdat) >= startDate);
+            }
+            if (endDate) {
+                dadosFiltrados = dadosFiltrados.filter(d => new Date(d.createdat) <= endDate);
+            }
+        } else if (periodoSelecionado !== 'all') {
+            const dias = parseInt(periodoSelecionado, 10);
+            if (!isNaN(dias)) {
+                const dataLimite = new Date();
+                dataLimite.setDate(dataLimite.getDate() - dias);
+                dadosFiltrados = dadosFiltrados.filter(d => new Date(d.createdat) >= dataLimite);
+            }
         }
 
         // Filtro por OM
@@ -88,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Renderizar Gráficos
         renderizarGraficoDefeitos(contagemDefeitos);
         renderizarGraficoCategorias(falhasSoldagem, falhasPosicionamento);
+        renderizarGraficoTendencia(dadosFiltrados);
     }
 
     function renderizarGraficoDefeitos(contagem) {
@@ -139,6 +155,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function renderizarGraficoTendencia(dados) {
+        const ctx = document.getElementById('tendenciaFalhasChart').getContext('2d');
+
+        // Agrupa as falhas por dia
+        const falhasPorDia = dados.reduce((acc, item) => {
+            const data = new Date(item.createdat).toISOString().split('T')[0]; // Normaliza para YYYY-MM-DD
+            acc[data] = (acc[data] || 0) + 1;
+            return acc;
+        }, {});
+
+        const sortedData = Object.entries(falhasPorDia).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+        if (charts.tendencia) charts.tendencia.destroy();
+        charts.tendencia = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedData.map(item => item[0]),
+                datasets: [{
+                    label: 'Falhas por Dia',
+                    data: sortedData.map(item => item[1]),
+                    borderColor: '#ef4444', // var(--danger)
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: 'Tendência de Falhas ao Longo do Tempo', color: '#e5e7eb', font: { size: 16 } },
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' }, ticks: { color: '#94a3b8' } },
+                    y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 } }
+                }
+            }
+        });
+    }
+
     async function inicializar() {
         setLoading(true);
         if (userDisplay) userDisplay.textContent = user.name || user.username;
@@ -177,9 +234,16 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'login.html';
     });
 
-    [dateRangeSelect, omFilterSelect].forEach(select => {
-        select.addEventListener('change', processarErenderizarDados);
+    document.querySelectorAll('.filter-control').forEach(control => {
+        control.addEventListener('change', processarErenderizarDados);
     });
+
+    dateRangeSelect.addEventListener('change', () => {
+        const isCustom = dateRangeSelect.value === 'custom';
+        document.querySelectorAll('.custom-date-range').forEach(el => {
+            el.classList.toggle('hidden', !isCustom);
+        });
+    })
 
     // Iniciar a página
     inicializar();
