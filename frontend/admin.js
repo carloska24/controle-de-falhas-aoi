@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
         options.headers = { ...defaultHeaders, ...options.headers };
         const response = await fetch(url, options);
         if (response.status === 401 || response.status === 403) {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
+            localStorage.clear();
+            sessionStorage.clear();
             window.location.href = 'login.html';
             throw new Error('Acesso não autorizado ou token expirado.');
         }
@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userDisplay) userDisplay.textContent = user.name || user.email;
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
+            localStorage.clear();
+            sessionStorage.clear();
             window.location.href = 'login.html';
         });
     }
@@ -122,8 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listener para os botões de exclusão (delegação de evento)
     usersTbody.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('btn-delete')) {
-            const userId = e.target.dataset.id;
+        const deleteButton = e.target.closest('.btn-delete');
+        if (deleteButton) {
+            const userId = deleteButton.dataset.id;
             if (confirm('Tem certeza que deseja excluir este usuário?')) {
                 try {
                     await fetchAutenticado(`${USERS_API_URL}/${userId}`, { method: 'DELETE' });

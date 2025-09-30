@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (userDisplay && user) { userDisplay.textContent = user.name || user.username; }
   if (btnLogout) {
       btnLogout.addEventListener('click', () => {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
+          localStorage.clear(); // Limpa o token de login
+          sessionStorage.clear(); // Limpa os dados de demonstração da sessão
           window.location.href = 'login.html';
       });
   }
@@ -53,8 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
       options.headers = { ...defaultHeaders, ...options.headers };
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken'); localStorage.removeItem('user');
+      if (response.status === 401 || response.status === 403) {        localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';
         throw new Error('Token inválido ou expirado.');
       }

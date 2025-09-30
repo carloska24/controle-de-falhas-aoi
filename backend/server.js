@@ -98,7 +98,8 @@ app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
         const password_hash = await bcrypt.hash(password, salt);
         // A query agora usa RETURNING para PostgreSQL, mas o lastID ainda funciona para SQLite
         const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id", [name, username, password_hash, role]);
-        const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = $1", [result.lastID]);
+        const newUserId = result.lastID; // lastID funciona para ambos os bancos com a nossa abstração
+        const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = $1", [newUserId]);
         res.status(201).json(newUser);
     } catch (err) {
         res.status(500).json({ error: "Nome de usuário já cadastrado ou erro no servidor." });

@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         options.headers = { ...defaultHeaders, ...options.headers };
         const response = await fetch(url, options);
         if (response.status === 401 || response.status === 403) {
-            localStorage.clear();
+            localStorage.clear(); sessionStorage.clear();
             window.location.href = 'login.html';
             throw new Error('Token inválido ou expirado.');
         }
@@ -80,15 +80,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableHead.innerHTML = `<tr><th>OM</th><th>Data</th><th>Serial</th><th>Designador</th><th>Defeito</th><th>Obs.</th><th>Status</th><th>Ação</th></tr>`;
         tableBody.innerHTML = dadosFiltrados.map(item => `
-            <tr>
-                <td>${item.om}</td>
-                <td>${formatDate(item.createdat)}</td>
-                <td>${item.serial || '—'}</td>
-                <td>${item.designador}</td>
-                <td>${item.tipodefeito}</td>
-                <td>${item.obs || '—'}</td>
-                <td><span class="status-tag status-${item.status}">${item.status}</span></td>
-                <td style="text-align: center;">
+            <tr data-id="${item.id}">
+                <td data-label="OM">${item.om}</td>
+                <td data-label="Data">${formatDate(item.createdat)}</td>
+                <td data-label="Serial">${item.serial || '—'}</td>
+                <td data-label="Designador">${item.designador}</td>
+                <td data-label="Defeito">${item.tipodefeito}</td>
+                <td data-label="Obs.">${item.obs || '—'}</td>
+                <td data-label="Status"><span class="status-tag status-${item.status}">${item.status}</span></td>
+                <td data-label="Ação" style="text-align: center;">
                     ${item.status === 'aberto' ? `<button class="btn primary small btn-reparar" data-id="${item.id}">Marcar como Reparado</button>` : '—'}
                 </td>
             </tr>
@@ -150,7 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // Event Listeners
     // =================================================================
-    btnLogout.addEventListener('click', () => { localStorage.clear(); window.location.href = 'login.html'; });
+    btnLogout.addEventListener('click', () => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    });
     [omFilter, statusFilter].forEach(el => el.addEventListener('change', renderTable));
     tableBody.addEventListener('click', (e) => {
         if (e.target.classList.contains('btn-reparar')) {

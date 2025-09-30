@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         options.headers = { ...defaultHeaders, ...options.headers };
         const response = await fetch(url, options);
         if (response.status === 401 || response.status === 403) {
-            localStorage.clear();
+            localStorage.clear(); sessionStorage.clear();
             window.location.href = 'login.html';
             throw new Error('Token inválido ou expirado.');
         }
@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     btnLogout.addEventListener('click', () => {
         localStorage.clear();
+        sessionStorage.clear();
         window.location.href = 'login.html';
     });
 
