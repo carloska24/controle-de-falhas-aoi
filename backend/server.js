@@ -52,10 +52,10 @@ app.get('/api/setup/initial-admin', async (req, res) => {
         }
 
         const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash('admin', salt);
-        await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", ['Administrador', 'admin', password_hash, 'admin']);
+        const password_hash = await bcrypt.hash('123456', salt);
+        await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", ['Admin DevNaPratica', 'DevNaPratica', password_hash, 'admin']);
         
-        res.status(201).json({ message: "Usuário administrador inicial criado com sucesso. Faça o login com 'admin' e 'admin'." });
+        res.status(201).json({ message: "Usuário administrador inicial 'DevNaPratica' criado com sucesso. Faça o login com a senha '123456'." });
     } catch (err) {
         res.status(500).json({ error: `Erro durante o setup inicial: ${err.message}` });
     }
