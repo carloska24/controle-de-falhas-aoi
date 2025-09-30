@@ -112,3 +112,12 @@ body {
 @media (max-width: 480px) {
     .login-card { padding: 24px; }
 }
+
+/* Corrige a cor do texto em campos com preenchimento automático do navegador */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--bg-dark) inset !important;
+    -webkit-text-fill-color: var(--text) !important;
+}
