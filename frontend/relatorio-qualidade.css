@@ -36,7 +36,7 @@
 }
 
 .kpi-value {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
     color: var(--primary);
     line-height: 1.1;
@@ -45,9 +45,15 @@
     text-overflow: ellipsis;
 }
 
+/* Permite que o nome do defeito (que pode ser longo) quebre a linha */
+#kpiPrincipalDefeito {
+    white-space: normal;
+    word-break: break-word;
+}
+
 .chart-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 24px;
     align-items: flex-start;
 }
