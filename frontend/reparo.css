@@ -1,0 +1,16 @@
+.status-tag {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-aberto {
+    background-color: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+}
+.status-reparado {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}

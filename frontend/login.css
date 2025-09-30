@@ -1,18 +1,9 @@
-<<<<<<< HEAD
-/* 📁 login.css (VERSÃO COM ROLAGEM HABILITADA PARA CELULAR) */
-=======
-/* 📁 login.css (VERSÃO ATUALIZADA E PADRONIZADA) */
->>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
 :root {
-<<<<<<< HEAD
     --bg-dark: #0f172a;
-=======
-    --bg: #0f172a;
->>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     --panel: #1e293b;
     --text: #e5e7eb;
     --text-dim: #94a3b8;
@@ -25,25 +16,13 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-<<<<<<< HEAD
     background-color: var(--bg-dark);
     color: var(--text);
-    display: flex;
-    justify-content: center;
-    /* align-items: center; --- REMOVIDO para permitir rolagem */
     min-height: 100vh;
-    /* overflow: hidden; --- REMOVIDO para permitir rolagem */
-    padding-top: 40px;    /* ADICIONADO para espaçamento no topo */
-    padding-bottom: 40px; /* ADICIONADO para espaçamento no final */
-=======
-    background-color: var(--bg);
-    color: var(--text);
-    display: flex;
+    padding: 2rem 1rem; /* Espaçamento para telas maiores e menores */
+    display: flex;      /* Centraliza o card verticalmente e horizontalmente */
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    overflow: hidden;
->>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
 }
 
 #animation-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
@@ -59,21 +38,28 @@ body {
     to { transform: translateY(105vh) rotate(360deg); }
 }
 
-.logo-svg-container { margin: 0 auto 10px auto; width: 150px; }
+.logo-svg-container {
+    margin: 0 auto 10px auto;
+    width: 200px; /* Aumentado para evitar corte */
+    text-align: center;
+}
 .logo-svg-container .icon-shape { fill: var(--panel); stroke: var(--primary); stroke-width: 8; }
 .logo-svg-container .icon-code { stroke: var(--primary); filter: drop-shadow(0 0 8px hsla(145, 63%, 49%, 0.6)); }
-.logo-svg-container .logo-text .dev-part { font-family: 'Roboto Mono', monospace; font-weight: 500; font-size: 28px; fill: var(--text); }
-.logo-svg-container .logo-text .pratica-part { font-family: 'Poppins', sans-serif; font-weight: 400; font-size: 28px; fill: var(--primary); }
 
-.login-container { z-index: 1; display: flex; flex-direction: column; width: 100%; max-width: 400px; padding: 20px; }
+/* --- Estilo do Logo-Texto Refinado --- */
+.logo-svg-container .logo-text {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    letter-spacing: -0.5px; /* Ajuste fino entre as letras */
+}
+.logo-svg-container .logo-text .dev-part { font-weight: 700; fill: var(--text); }
+.logo-svg-container .logo-text .pratica-part { font-weight: 400; fill: var(--primary); }
+
+.login-container { z-index: 1; width: 100%; max-width: 400px; }
 .login-card { background-color: rgba(30, 41, 59, .8); backdrop-filter: blur(5px); border-radius: 12px; border: 1px solid var(--border-color); padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
 .card-header { text-align: center; margin-bottom: 24px; }
 .card-header h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 0; }
-<<<<<<< HEAD
 .card-header .company-subtitle {
-=======
-.card-header .company-subtitle { /* MUDANÇA AQUI */
->>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     color: var(--primary);
     font-size: 14px;
     margin-top: 4px;
@@ -83,7 +69,7 @@ body {
 .form-group label { display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px; }
 .form-group input {
     width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);
-    background-color: var(--bg); color: var(--text); font-size: 16px; outline: none;
+    background-color: var(--bg-dark); color: var(--text); font-size: 16px; outline: none;
     transition: border-color .2s, box-shadow .2s;
 }
 .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3); }
@@ -95,10 +81,34 @@ body {
 }
 .btn-login:hover { background-color: #16a34a; }
 
-.login-footer { text-align: center; margin-top: 32px; color: var(--text-dim); }
-.login-footer p { font-size: 12px; }
-.logo-footer { font-size: 16px; font-weight: 900; color: #4b5563; letter-spacing: -.5px; margin-top: 4px; }
+.login-footer {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+.login-footer p { font-size: 12px; color: var(--text-dim); }
+.login-footer .logo-text-external {
+    font-size: 16px;
+    font-weight: 400;
+}
+.login-footer .logo-text-external .dev-part {
+    font-family: 'Roboto Mono', monospace;
+    color: var(--text);
+}
+.login-footer .logo-text-external .pratica-part {
+    font-family: 'Poppins', sans-serif;
+    color: var(--primary);
+}
 
 .password-wrapper { position: relative; display: flex; align-items: center; }
 .password-wrapper input { padding-right: 40px; }
 .toggle-password { position: absolute; right: 12px; cursor: pointer; user-select: none; opacity: .7; }
+
+/* ================= Media Query para Responsividade ================= */
+@media (max-width: 480px) {
+    .login-card { padding: 24px; }
+}

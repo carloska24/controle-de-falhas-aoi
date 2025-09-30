@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Qualidade - Controle de Falhas</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./relatorio-qualidade.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div class="app-header">
+        <div class="app-title">Análise de Qualidade</div>
+        <div class="user-info">
+            <a href="index.html" class="btn outline">Voltar ao Registro</a>
+            <span id="userDisplay"></span>
+            <button id="btnLogout" class="btn outline">Sair</button>
+        </div>
+    </div>
+
+    <div class="container report-container">
+        <!-- Filtros -->
+        <div class="card filter-bar">
+            <div class="field">
+                <label for="dateRange">Período</label>
+                <select id="dateRange">
+                    <option value="all" selected>Todo o Período</option>
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="30">Últimos 30 dias</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="omFilter">Ordem de Montagem (OM)</label>
+                <select id="omFilter">
+                    <option value="all">Todas as OMs</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="card kpi-card">
+                <div class="kpi-title">Total de Falhas</div>
+                <div class="kpi-value" id="kpiTotalFalhas">0</div>
+            </div>
+            <div class="card kpi-card">
+                <div class="kpi-title">Principal Defeito</div>
+                <div class="kpi-value" id="kpiPrincipalDefeito">—</div>
+            </div>
+            <div class="card kpi-card">
+                <div class="kpi-title">Falhas de Soldagem</div>
+                <div class="kpi-value" id="kpiFalhasSoldagem">0</div>
+            </div>
+            <div class="card kpi-card">
+                <div class="kpi-title">Falhas de Posicionamento</div>
+                <div class="kpi-value" id="kpiFalhasPosicionamento">0</div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="chart-grid">
+            <div class="card chart-card"><canvas id="defeitosPorTipoChart"></canvas></div>
+            <div class="card chart-card"><canvas id="defeitosPorCategoriaChart"></canvas></div>
+        </div>
+
+    </div>
+    <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
+    <script src="./relatorio-qualidade.js"></script>
+</body>
+</html>

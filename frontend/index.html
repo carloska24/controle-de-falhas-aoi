@@ -6,7 +6,7 @@
     <title>Registro de Defeitos SMD</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
@@ -20,10 +20,13 @@
 
 <div class="container main-layout">
     <div class="main-column">
-        <header><div class="title">Registro de Defeitos SMD — Beta-1</div></header>
+        <header><div class="title">Registro de Defeitos SMD</div></header>
         
         <section class="card">
-          <div class="chip">Formulário de Registro</div>
+          <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22H15C20 22 22 20 22 15V13" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 2.5L9.87 8.13C9.69 8.31 9.56 8.7 9.53 8.94L9.08 12.22C8.97 13.01 9.49 13.53 10.28 13.42L13.56 12.97C13.79 12.94 14.18 12.81 14.36 12.63L20 7C20.93 6.07 21.32 4.79 20.46 3.93C19.6 3.07 18.32 3.46 17.39 4.39" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 5.5C15.5348 6.53481 16.1652 7.96519 16.1652 9.5" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Formulário de Registro</span>
+          </h2>
           <form id="formRegistro">
                 <div class="grid cols-4">
                   <div class="field"><label for="om">OM (Ordem de Montagem) *</label><input id="om" name="om" required/></div>
@@ -32,17 +35,42 @@
                   <div class="field"><label for="designador">Designador *</label><input id="designador" name="designador" required/></div>
                 </div>
                 <div class="grid cols-4">
-                  <div class="field"><label for="tipodefeito">Tipo de Defeito *</label><select id="tipodefeito" name="tipodefeito" required><option value="">— Selecione —</option><option>Curto</option><option>Sem Solda</option><option>Tombstone</option><option>Componente Errado</option><option>Solda Fria</option><option>Componente Ausente</option></select></div>
+                  <div class="field"><label for="tipodefeito">Tipo de Defeito *</label>
+                    <select id="tipodefeito" name="tipodefeito" required>
+                      <option value="">— Selecione —</option>
+                      <optgroup label="Falhas Relacionadas à Soldagem">
+                        <option>Curto-circuito</option>
+                        <option>Solda Fria</option>
+                        <option>Excesso de Solda</option>
+                        <option>Insuficiência de Solda</option>
+                        <option>Tombstone</option>
+                        <option>Bilboard</option>
+                        <option>Solder Ball</option>
+                      </optgroup>
+                      <optgroup label="Falhas de Posicionamento">
+                        <option>Componente Ausente</option><option>Componente Danificado</option><option>Componente Deslocado</option><option>Componente Incorreto</option><option>Componente Invertido</option><option>Polaridade Incorreta</option>
+                      </optgroup>
+                    </select>
+                  </div>
                   <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn"/></div>
                   <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao"/></div>
                   <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs"></textarea></div>
                 </div>
-                <div class="toolbar"><div class="left"><button class="btn primary" type="submit">➕ Gravar</button><button class="btn outline" id="btnLimpar" type="button">Limpar</button></div><div class="right"><span class="note">Campos com * são obrigatórios</span></div></div>
+                <div class="toolbar">
+                  <div class="left">
+                    <button class="btn primary" type="submit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 19V5C3 3.89543 3.89543 3 5 3H16.1716C16.702 3 17.2107 3.21071 17.5858 3.58579L20.4142 6.41421C20.7893 6.78929 21 7.29799 21 7.82843V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 9H15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12.4V19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="btn-text">Gravar</span></button>
+                    <button class="btn outline" id="btnLimpar" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 9L9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 9L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Limpar</button>
+                  </div>
+                  <div class="right"><span class="note">Campos com * são obrigatórios</span></div>
+                </div>
           </form>
         </section>
         
         <section class="card">
-            <div class="chip">Registros</div>
+            <h2 class="section-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.75 9H8.25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.75 15H8.25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Registros</span>
+            </h2>
             <table id="tabela">
                 <thead>
                     <tr>
@@ -64,14 +92,14 @@
 
     <div class="sidebar-column">
         <section class="card noprint">
-          <div class="toolbar">
-            <div class="left">
-              <button class="btn danger" disabled id="btnExcluir">🗑️ Excluir</button>
-              <button class="btn outline" id="btnDemo">⚙️ Demo</button>
-            </div>
-          </div>
-          <div class="right">
-              <input class="search-input field input" id="busca" placeholder="🔎 Buscar..."/>
+            <div class="toolbar spaced">
+              <div class="left">
+                <button class="btn danger" disabled id="btnExcluir"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir</button>
+                <button class="btn outline" id="btnDemo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.26 18.7L15.48 14.92M15.48 14.92C16.9935 13.4065 17.9996 11.3935 18 9.25C18.0004 7.10651 17.0065 5.0935 15.493 3.58C13.9795 2.06651 11.9665 1.07261 9.82301 1.07223C7.67951 1.07185 5.66651 2.06576 4.15301 3.57926C2.63951 5.09276 1.64561 7.10576 1.64523 9.24926C1.64485 11.3928 2.63876 13.4058 4.15226 14.9193C5.66576 16.4328 7.67876 17.4267 9.82226 17.4271C11.9658 17.4275 13.9788 16.4336 15.4923 14.9201" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.74023 12.4999H12.2602" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.50024 15.26V9.73999" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Demo</button>
+              </div>
+              <div class="right">
+                <input class="search-input" id="busca" placeholder="🔎 Buscar..."/>
+              </div>
             </div>
           <div class="metrics" id="metrics">
               <div class="metric"><div class="muted">Registros</div><div class="val" id="mTotal">0</div></div>
@@ -81,7 +109,10 @@
         </section>
 
         <section class="card" id="qualidadeCard">
-            <div class="chip">Qualidade do Lote</div>
+            <h2 class="section-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.58984 14.62L11.3298 17.53C11.7198 18.19 12.2798 18.19 12.6698 17.53L14.4098 14.62" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3.5V12.5" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.25 2H13.75" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.63086 7.4L7.46086 8.49" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.541 8.49L18.371 7.4" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 13.25H6" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 13.25H20" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 22C16.42 22 20 18.42 20 14C20 9.58 16.42 6 12 6C7.58 6 4 9.58 4 14C4 18.42 7.58 22 12 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Qualidade do Lote</span>
+            </h2>
             <div class="quality-wrap-vertical">
                 <div class="quality-fig">
                     <canvas id="pieChart" width="220" height="220"></canvas>
@@ -100,16 +131,25 @@
         </section>
 
          <section class="card noprint">
-            <div class="chip">Relatórios</div>
+            <h2 class="section-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.16992 14.83L14.8299 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.8299 14.83L9.16992 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Relatórios</span>
+            </h2>
              <div class="grid cols-2">
-                <button class="btn warn" id="btnReqPDF">📄 Requisição (PDF)</button>
-                <button class="btn" id="btnPDF">🛠️ Reparo (PDF)</button>
-                <button class="btn outline" id="btnReqCSV">⬇️ Reparo (CSV)</button>
+                <a href="relatorio-qualidade.html" class="btn primary full-width">Análise de Qualidade</a>
+                <button class="btn warn" id="btnReqPDF">Requisição (PDF)</button>
+                <button class="btn" id="btnPDF">Reparo (PDF)</button>
+                <button class="btn outline" id="btnReqCSV">Reparo (CSV)</button>
             </div>
         </section>
     </div>
 </div>
 
-<script src="script.js"></script>
+<div id="toastContainer"></div>
+<div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+</div>
+
+<script src="./script.js"></script>
 </body>
 </html>

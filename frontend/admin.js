@@ -20,10 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // SELETORES DO DOM
     // =================================================================
-    const userNameDisplay = document.querySelector('#userNameDisplay');
+    const userDisplay = document.querySelector('#userDisplay');
     const btnLogout = document.querySelector('#btnLogout');
     const registerForm = document.querySelector('#registerForm');
     const usersTbody = document.querySelector('#usersTbody');
+    const toastContainer = document.querySelector('#toastContainer');
 
     // =================================================================
     // FUNÇÃO CENTRAL DE COMUNICAÇÃO COM A API
@@ -47,11 +48,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =================================================================
+    // FUNÇÃO DE FEEDBACK (TOAST)
+    // =================================================================
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease-in forwards';
+            toast.addEventListener('animationend', () => toast.remove());
+        }, 3000);
+    }
+    // Adiciona a animação de saída ao CSS dinamicamente
+    document.head.insertAdjacentHTML('beforeend', '<style>@keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }</style>');
+
+    // =================================================================
     // LÓGICA DA PÁGINA
     // =================================================================
 
-    // Preenche informações do usuário e botão de logout
-    if (userNameDisplay) userNameDisplay.textContent = user.name || user.username;
+    // Preenche informações do usuário e configura o botão de logout
+    if (userDisplay) userDisplay.textContent = user.name || user.email;
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             localStorage.removeItem('authToken');
@@ -65,17 +82,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const users = await fetchAutenticado(USERS_API_URL);
             usersTbody.innerHTML = users.map(u => `
-                <tr>
+                <tr data-user-id="${u.id}">
                     <td>${u.name}</td>
                     <td>${u.username}</td>
                     <td>${u.role}</td>
-                    <td>
-                        ${u.role !== 'admin' ? `<button class="btn danger small btn-delete" data-id="${u.id}">Excluir</button>` : ''}
+                    <td style="text-align: center;">
+                        ${u.role !== 'admin' ? `
+                        <button class="btn-icon btn-delete" data-id="${u.id}" aria-label="Excluir usuário">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>` : ''}
                     </td>
                 </tr>
             `).join('');
         } catch (error) {
-            alert(`Erro ao carregar usuários: ${error.message}`);
+            showToast(`Erro ao carregar usuários: ${error.message}`, 'error');
         }
     }
 
@@ -85,17 +105,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = document.getElementById('name').value;
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
 
         try {
             await fetchAutenticado(USERS_API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ name, username, password, role: 'operator' })
+                body: JSON.stringify({ name, username, password, role })
             });
-            alert('Operador cadastrado com sucesso!');
+            showToast('Usuário cadastrado com sucesso!');
             registerForm.reset();
-            carregarUsuarios(); // Recarrega a lista
+            carregarUsuarios(); // Recarrega a lista após o cadastro
         } catch (error) {
-            alert(`Erro ao cadastrar operador: ${error.message}`);
+            showToast(`Erro ao cadastrar operador: ${error.message}`, 'error');
         }
     });
 
@@ -106,13 +127,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm('Tem certeza que deseja excluir este usuário?')) {
                 try {
                     await fetchAutenticado(`${USERS_API_URL}/${userId}`, { method: 'DELETE' });
-                    alert('Usuário excluído com sucesso!');
-                    carregarUsuarios(); // Recarrega a lista
+                    carregarUsuarios(); // Recarrega a lista após a exclusão
+                    showToast('Usuário excluído com sucesso.');
                 } catch (error) {
-                    alert(`Erro ao excluir usuário: ${error.message}`);
+                    showToast(`Erro ao excluir usuário: ${error.message}`, 'error');
                 }
             }
         }
+    });
+
+    // Lógica para mostrar/ocultar senha
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    togglePasswordBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        togglePasswordBtn.classList.toggle('visible', isPassword);
     });
 
     // Carga inicial dos dados

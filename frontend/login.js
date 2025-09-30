@@ -1,47 +1,19 @@
 // 📁 login.js (VERSÃO COM NOVOS ÍCONES E ANIMAÇÃO SMD)
 
 document.addEventListener('DOMContentLoaded', () => {
-<<<<<<< HEAD
     // =================================================================
     // CONFIGURAÇÕES E SELETORES DO DOM
     // =================================================================
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
     const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
-    
+
     const loginForm = document.querySelector('#loginForm');
     const usernameInput = document.querySelector('#username');
     const passwordInput = document.getElementById('password');
     const togglePassword = document.getElementById('togglePassword');
-    const eyeIcon = document.getElementById('eyeIcon');
-    const monkeyIcon = document.getElementById('monkeyIcon');
     const animationContainer = document.querySelector('#animation-container');
-    
-    // Alternância de exibição de senha (olho/macaquinho)
-    if (togglePassword && passwordInput && eyeIcon && monkeyIcon) {
-        togglePassword.addEventListener('click', () => {
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                eyeIcon.style.display = 'none';
-                monkeyIcon.style.display = 'inline';
-            } else {
-                passwordInput.type = 'password';
-                eyeIcon.style.display = 'inline';
-                monkeyIcon.style.display = 'none';
-            }
-        });
-    }
 
     // Animação de fundo
-=======
-    const API_BASE_URL = 'https://controle-de-falhas-aoi.onrender.com';
-    const loginForm = document.querySelector('#loginForm');
-    const animationContainer = document.querySelector('#animation-container');
-    const passwordInput = document.querySelector('#password');
-    const togglePassword = document.querySelector('#togglePassword');
-    const usernameInput = document.querySelector('#username');
-    
-    // SUA LÓGICA DE ANIMAÇÃO MANTIDA
->>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     const numberOfComponents = 40;
     const componentTypes = [ 'smd-resistor','smd-resistor','smd-capacitor','smd-capacitor','smd-led','smd-ic' ];
     for (let i = 0; i < numberOfComponents; i++) {
@@ -60,12 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
         component.style.animationDelay = `${delay}s`;
         animationContainer.appendChild(component);
     }
-    
-<<<<<<< HEAD
+
     // Lógica do Formulário
-=======
-    // LÓGICA DE LOGIN ATUALIZADA
->>>>>>> cf1a0302190a645e88a985811af995e3fba74c04
     loginForm.addEventListener('submit', async (event) => {
         event.preventDefault(); 
         const username = usernameInput.value;
@@ -85,11 +53,21 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            // LÓGICA DE REDIRECIONAMENTO INTELIGENTE
-            if (data.user.role === 'admin') {
-                window.location.href = 'admin.html';
-            } else {
-                window.location.href = 'index.html';
+            // Lógica de Redirecionamento Baseada na Função (Role)
+            switch (data.user.role) {
+                case 'admin':
+                    window.location.href = 'admin.html';
+                    break;
+                case 'reparo':
+                    window.location.href = 'reparo.html';
+                    break;
+                case 'qualidade':
+                    window.location.href = 'relatorio-qualidade.html';
+                    break;
+                case 'operator':
+                default:
+                    window.location.href = 'index.html';
+                    break;
             }
         } catch (error) {
             alert(`Falha no login: ${error.message}`);
@@ -98,10 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // SUA LÓGICA DO ÍCONE DE EMOJI MANTIDA
-    togglePassword.addEventListener('click', () => {
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-        passwordInput.setAttribute('type', type);
-        togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
-    });
+    // Alternância de exibição de senha (olho/macaquinho)
+    if (togglePassword && passwordInput) {
+        const eyeIcon = document.getElementById('eyeIcon');
+        const monkeyIcon = document.getElementById('monkeyIcon');
+
+        togglePassword.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            if (eyeIcon) eyeIcon.style.display = isPassword ? 'none' : 'inline';
+            if (monkeyIcon) monkeyIcon.style.display = isPassword ? 'inline' : 'none';
+        });
+    }
 });

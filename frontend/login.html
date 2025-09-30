@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&family=Poppins:wght@400&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="login.css">
+    <link rel="stylesheet" href="./login.css">
 </head>
 <body>
     <div id="animation-container"></div>
@@ -15,7 +15,7 @@
         <div class="login-card">
             <div class="card-header">
                 <div class="logo-svg-container">
-                    <svg id="logo-principal" viewBox="0 0 250 250" xmlns="http://www.w3.org/2000/svg">
+                    <svg id="logo-principal" viewBox="0 0 250 260" xmlns="http://www.w3.org/2000/svg">
                         <path class="icon-shape" d="M125 10 L235 70 L235 190 L125 250 L15 190 L15 70 Z"/>
                         <g class="icon-code" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
                             <path d="M75 80 L35 130 L75 180"/>
@@ -23,8 +23,11 @@
                             <line x1="135" y1="180" x2="225" y2="80"/>
                         </g>
                     </svg>
+                    <svg class="logo-text" viewBox="0 0 220 35">
+                        <text x="25" y="27" class="dev-part">Dev</text>
+                        <text x="80" y="27" class="pratica-part">NaPratica</text>
+                    </svg>
                 </div>
-                <h3 class="logo-text-external">DevNaPratica</h3>
                 
                 <h2>Controle de Falhas AOI</h2>
                 <p class="company-subtitle">CADService Produtos Eletrônicos</p>
@@ -32,7 +35,8 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Nome de Usuário</label>
-                    <input type="text" id="username" name="username" required>                
+                    <input type="text" id="username" name="username" required>
+                </div>
                 <div class="form-group">
                     <label for="password">Senha</label>
                     <div class="password-wrapper">
@@ -40,10 +44,10 @@
                         <span id="togglePassword" class="toggle-password" style="display: flex; align-items: center; cursor:pointer;">
                             <span id="eyeIcon" style="display:inline;">
                                 <svg width="24" height="18" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <ellipse cx="12" cy="9" rx="10" ry="7" fill="#232b36" stroke="#7c4a03" stroke-width="2"/>
-                                    <ellipse cx="12" cy="9" rx="7" ry="4.5" fill="#fff"/>
-                                    <circle cx="12" cy="9" r="3" fill="#7c4a03"/>
-                                    <circle cx="12" cy="9" r="1.2" fill="#fff"/>
+                                    <ellipse cx="12" cy="9" rx="10" ry="7" fill="#232b36" stroke="#7c4a03" stroke-width="2"></ellipse>
+                                    <ellipse cx="12" cy="9" rx="7" ry="4.5" fill="#fff"></ellipse>
+                                    <circle cx="12" cy="9" r="3" fill="#7c4a03"></circle>
+                                    <circle cx="12" cy="9" r="1.2" fill="#fff"></circle>
                                 </svg>
                             </span>
                             <span id="monkeyIcon" style="display:none; font-size:22px; margin-left:2px;">🙈</span>
@@ -52,12 +56,14 @@
                 </div>
                 <button type="submit" class="btn-login">Entrar</button>
             </form>
+            <footer class="login-footer">
+                <p>Desenvolvido por:</p>
+                <div class="logo-text-external">
+                    <span class="dev-part">Dev</span><span class="pratica-part">NaPratica</span>
+                </div>
+            </footer>
             </div>
-        <footer class="login-footer">
-            <p>Desenvolvido por</p>
-            <h3 class="logo-text-external">DevNaPratica</h3>
-        </footer>
     </div>
-    <script src="login.js"></script>
+    <script src="./login.js"></script>
 </body>
 </html>

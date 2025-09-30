@@ -2,25 +2,26 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Admin - Controle de Falhas</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./admin.css">
 </head>
 <body>
-    <header class="app-header">
-        <div class="app-title">Painel de Administração</div>
+    <div class="app-header">
+        <div class="app-title">Painel Administrativo</div>
         <div class="user-info">
-            <span id="userNameDisplay"></span>
+            <span id="userDisplay"></span>
             <button id="btnLogout" class="btn outline">Sair</button>
         </div>
-    </header>
+    </div>
     <div class="container">
-        <div class="admin-card">
+        <div class="card">
             <div class="admin-section">
-                <div class="section-header">
-                    <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM17 9a5 5 0 1 1-10 0 5 5 0 0 1 10 0ZM9 12a3 3 0 0 0-3 3v1h6v-1a3 3 0 0 0-3-3ZM6 12a5 5 0 0 0-5 5v3h14v-3a5 5 0 0 0-5-5H6Z"/><path d="M18 11a1 1 0 0 1 1 1v1h1a1 1 0 1 1 0 2h-1v1a1 1 0 1 1-2 0v-1h-1a1 1 0 1 1 0-2h1v-1a1 1 0 0 1 1-1Z"/></svg>
-                    <h2 class="section-title">Cadastrar Novo Operador</h2>
-                </div>
+                <h2 class="section-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 11V7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7V11M12 15C10.3431 15 9 16.3431 9 18C9 19.6569 10.3431 21 12 21C13.6569 21 15 19.6569 15 18C15 16.3431 13.6569 15 12 15ZM5 11H19C20.1046 11 21 11.8954 21 13V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V13C3 11.8954 3.89543 11 5 11Z" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Cadastrar Novo Usuário</span>
+                </h2>
                 <form id="registerForm">
                     <div class="grid cols-2">
                         <div class="field">
@@ -33,35 +34,46 @@
                         </div>
                     </div>
                     <div class="field">
-                        <label for="password">Senha Provisória</label>
-                        <input type="password" id="password" required>
+                        <label for="password">Senha Provisória</label>                        
+                        <div class="password-wrapper">
+                            <input type="password" id="password" required>
+                            <button type="button" id="togglePassword" class="toggle-password-btn" aria-label="Mostrar senha"></button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="role">Função do Usuário</label>
+                        <select id="role" required>
+                            <option value="operator" selected>Operador AOI</option>
+                            <option value="reparo">Operador Reparo</option>
+                            <option value="qualidade">Analista de Qualidade</option>
+                            <option value="admin">Administrador</option>
+                        </select>
                     </div>
                     <div class="toolbar">
-                        <button type="submit" class="btn primary">Cadastrar Operador</button>
+                        <button type="submit" class="btn primary">Cadastrar Usuário</button>
                     </div>
                 </form>
             </div>
             <div class="admin-section">
-                <div class="section-header">
-                    <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM17 9a5 5-0 1 1-10 0 5 5 0 0 1 10 0ZM3 12a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6Z"/></svg>
-                    <h2 class="section-title">Usuários Cadastrados</h2>
-                </div>
-                <div class="table-wrapper">
-                    <table id="usersTable">
-                        <thead>
-                            <tr>
-                                <th>Nome Completo</th>
-                                <th>Usuário de Login</th>
-                                <th>Função</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTbody"></tbody>
-                    </table>
-                </div>
+                <h2 class="section-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 21V19C17 16.7909 15.2091 15 13 15H5C2.79086 15 1 16.7909 1 19V21" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 21V19C22.9995 17.3799 22.2223 15.8759 21.0001 14.9997" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3.13C17.1331 3.58731 18.1211 4.38535 18.862 5.4" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Usuários Cadastrados</span>
+                </h2>
+                <table id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Nome Completo</th>
+                            <th>Usuário (Login)</th>
+                            <th>Função</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTbody"></tbody>
+                </table>
             </div>
         </div>
     </div>
-    <script src="admin.js"></script>
+    <div id="toastContainer"></div>
+    <script src="./admin.js"></script>
 </body>
 </html>

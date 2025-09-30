@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Reparo - Controle de Falhas</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./reparo.css">
+</head>
+<body>
+    <div class="app-header">
+        <div class="app-title">Painel de Reparo</div>
+        <div class="user-info">
+            <span id="userDisplay"></span>
+            <button id="btnLogout" class="btn outline">Sair</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="toolbar spaced">
+                <div class="left">
+                    <div class="field">
+                        <label for="omFilter">Filtrar por OM</label>
+                        <select id="omFilter"></select>
+                    </div>
+                    <div class="field">
+                        <label for="statusFilter">Filtrar por Status</label>
+                        <select id="statusFilter">
+                            <option value="all">Todos</option>
+                            <option value="aberto" selected>Abertos</option>
+                            <option value="reparado">Reparados</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <table id="reparoTable">
+                <thead></thead>
+                <tbody id="reparoTbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
+    <div id="toastContainer"></div>
+    <script src="./reparo.js"></script>
+</body>
+</html>
