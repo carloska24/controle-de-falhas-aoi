@@ -40,6 +40,27 @@ function isAdmin(req, res, next) {
 // =================================================================
 // ROTAS
 // =================================================================
+
+// ROTA DE SETUP INICIAL (EMERGÊNCIA)
+// Esta rota cria o primeiro admin se NENHUM admin existir no banco de dados.
+// Ela se torna inoperante após o primeiro admin ser criado.
+app.get('/api/setup/initial-admin', async (req, res) => {
+    try {
+        const adminCount = await dbGet("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
+        if (adminCount && adminCount.count > 0) {
+            return res.status(403).json({ message: "Setup já foi realizado. Um administrador já existe." });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash('admin', salt);
+        await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", ['Administrador', 'admin', password_hash, 'admin']);
+        
+        res.status(201).json({ message: "Usuário administrador inicial criado com sucesso. Faça o login com 'admin' e 'admin'." });
+    } catch (err) {
+        res.status(500).json({ error: `Erro durante o setup inicial: ${err.message}` });
+    }
+});
+
 // ROTAS DE AUTENTICAÇÃO
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
