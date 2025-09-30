@@ -45,17 +45,31 @@ function isAdmin(req, res, next) {
 // Esta rota cria o primeiro admin se NENHUM admin existir no banco de dados.
 // Ela se torna inoperante após o primeiro admin ser criado.
 app.get('/api/setup/initial-admin', async (req, res) => {
-    try {
-        const adminCount = await dbGet("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-        if (adminCount && adminCount.count > 0) {
-            return res.status(403).json({ message: "Setup já foi realizado. Um administrador já existe." });
-        }
+    // Rota de emergência para resetar todos os usuários e criar um admin.
+    // Requer uma chave secreta para ser executada.
+    const { key } = req.query;
+    if (key !== 'reset-total-2024') {
+        return res.status(403).json({ message: "Chave de segurança inválida." });
+    }
 
+    try {
+        console.log('INICIANDO RESET DE EMERGÊNCIA DE USUÁRIOS...');
+        // 1. Apaga todos os usuários existentes.
+        await dbRun("DELETE FROM users");
+        console.log('Todos os usuários foram excluídos.');
+
+        // 2. Cria o novo usuário administrador.
         const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash('123456', salt);
-        await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", ['Admin DevNaPratica', 'DevNaPratica', password_hash, 'admin']);
+        const newAdmin = {
+            name: 'Admin Principal',
+            username: 'DevAdmin',
+            password: '123456'
+        };
+        const password_hash = await bcrypt.hash(newAdmin.password, salt);
+        await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", [newAdmin.name, newAdmin.username, password_hash, 'admin']);
+        console.log(`Novo administrador '${newAdmin.username}' criado com sucesso.`);
         
-        res.status(201).json({ message: "Usuário administrador inicial 'DevNaPratica' criado com sucesso. Faça o login com a senha '123456'." });
+        res.status(201).json({ message: `Reset concluído. O único usuário agora é '${newAdmin.username}' com a senha '${newAdmin.password}'.` });
     } catch (err) {
         res.status(500).json({ error: `Erro durante o setup inicial: ${err.message}` });
     }
@@ -181,15 +195,11 @@ async function startServer() {
         console.log('Ambiente de produção detectado. Usando PostgreSQL.');
         const connectionString = process.env.DATABASE_URL;
         
-        // Configuração de SSL inteligente baseada na connection string
-        const sslConfig = connectionString.includes('ssl=true') 
-            ? { rejectUnauthorized: false } 
-            : false;
-
+        // Força SSL em produção, pois é um requisito do Render.
         const { Pool } = require('pg');
         const pool = new Pool({
             connectionString: connectionString,
-            ssl: sslConfig
+            ssl: { rejectUnauthorized: false } // Configuração padrão para Render
         });
         db = pool;
         const convertToPg = (query) => {
