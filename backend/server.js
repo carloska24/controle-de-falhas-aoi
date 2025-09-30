@@ -109,8 +109,8 @@ app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
-        // Usamos a sintaxe do SQLite, a abstração converte para PG se necessário
-        const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id", [name, username, password_hash, role]);
+        // Query compatível com SQLite e PostgreSQL (sem RETURNING)
+        const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", [name, username, password_hash, role]);
         const newUserId = result.lastID;
         const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = ?", [newUserId]);
         res.status(201).json(newUser);
