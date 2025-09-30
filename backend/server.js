@@ -109,8 +109,8 @@ app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
-        // Query compatível com SQLite e PostgreSQL (sem RETURNING)
-        const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)", [name, username, password_hash, role]);
+        // Reintroduzindo RETURNING id, crucial para PostgreSQL. A camada de abstração lida com a compatibilidade.
+        const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id", [name, username, password_hash, role]);
         const newUserId = result.lastID;
         const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = ?", [newUserId]);
         res.status(201).json(newUser);
@@ -208,7 +208,11 @@ async function startServer() {
         };
         dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
         dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
-        dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => ({ changes: res.rowCount, lastID: res.rows[0]?.id }));
+        dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
+            // Garante que lastID funcione para INSERT ... RETURNING id
+            const lastID = res.rows[0]?.id || null;
+            return { changes: res.rowCount, lastID: lastID };
+        });
     } else {
         // Ambiente de Desenvolvimento (Local com SQLite)
         console.log('Ambiente de desenvolvimento detectado. Usando SQLite.');
@@ -218,15 +222,18 @@ async function startServer() {
         // Espera o banco de dados ser inicializado
         await dbModule.initializeDatabase();
 
+        // Wrapper para remover "RETURNING" que não é suportado pelo SQLite
+        const stripReturning = (query) => query.replace(/RETURNING\s+\w+/i, '');
+
         // Só então define as funções de acesso
         dbAll = (query, params = []) => new Promise((resolve, reject) => {
-            db.all(query, params, (err, rows) => err ? reject(err) : resolve(rows));
+            db.all(stripReturning(query), params, (err, rows) => err ? reject(err) : resolve(rows));
         });
         dbGet = (query, params = []) => new Promise((resolve, reject) => {
-            db.get(query, params, (err, row) => err ? reject(err) : resolve(row));
+            db.get(stripReturning(query), params, (err, row) => err ? reject(err) : resolve(row));
         });
         dbRun = (query, params = []) => new Promise(function(resolve, reject) {
-            db.run(query, params, function(err) { err ? reject(err) : resolve(this); });
+            db.run(stripReturning(query), params, function(err) { err ? reject(err) : resolve(this); });
         });
     }
 
