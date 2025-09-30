@@ -49,26 +49,21 @@ async function initializeDatabase() {
     console.log('Iniciando a inicialização do banco de dados...');
     await dbRun(createRegistrosTable);
     console.log('Tabela "registros" verificada/criada com sucesso!');
-
-    // =================================================================================
-    // ATENÇÃO: O bloco a seguir força a recriação da tabela de usuários.
-    // Ele é executado SOMENTE em ambiente de desenvolvimento (local) para garantir um reset limpo.
-    // Este código NUNCA é executado em produção.
-    await dbRun('DROP TABLE IF EXISTS users');
-    console.log('Tabela "users" antiga removida (reset de desenvolvimento).');
-
+    
     await dbRun(createUsersTable);
-    console.log('Tabela "users" recriada com sucesso!');
-
-    // Adiciona o usuário admin padrão
-    const adminUsername = 'admin';
-    console.log(`Criando usuário padrão: "${adminUsername}"...`);
-    const saltRounds = 10;
-    const adminPassword = 'admin';
-    const hash = await bcrypt.hash(adminPassword, saltRounds);
-    await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Administrador', adminUsername, hash, 'admin']);
-    console.log(`Usuário "${adminUsername}" criado com sucesso!`);
-    // =================================================================================
+    console.log('Tabela "users" verificada/criada com sucesso!');
+    
+    // Garante que o usuário admin exista, sem apagar os outros
+    const adminExists = await dbGet('SELECT * FROM users WHERE username = ?', ['admin']);
+    if (!adminExists) {
+      console.log('Usuário "admin" não encontrado. Criando...');
+      const saltRounds = 10;
+      const adminPassword = 'admin';
+      const hash = await bcrypt.hash(adminPassword, saltRounds);
+      await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Administrador', 'admin', hash, 'admin']);
+      console.log('Usuário "admin" criado com sucesso!');
+    }
+    
     console.log('Banco de dados inicializado com sucesso.');
   } catch (err) {
     console.error('Erro fatal durante a inicialização do banco de dados:', err.message);
