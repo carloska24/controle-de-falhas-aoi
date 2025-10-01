@@ -293,27 +293,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnGerarRequisicao.addEventListener('click', async () => {
-    const idsParaRequisicao = selectedIds();
-    if (idsParaRequisicao.length === 0) return;
+    const todosIdsSelecionados = selectedIds();
+    if (todosIdsSelecionados.length === 0) return;
 
-    // Validação: Apenas permite gerar requisição para defeitos específicos
-    const defeitosPermitidos = ['Componente Ausente', 'Componente Danificado'];
-    const registrosSelecionados = registros.filter(r => idsParaRequisicao.includes(r.id));
-    const registrosInvalidos = registrosSelecionados.filter(r => !defeitosPermitidos.includes(r.tipodefeito));
+    // Nova Lógica: Filtra automaticamente apenas os registros com defeitos válidos para requisição.
+    const defeitosPermitidos = ['Componente Ausente', 'Componente Danificado', 'Componente Incorreto'];
+    const registrosSelecionados = registros.filter(r => todosIdsSelecionados.includes(r.id));
+    const registrosValidos = registrosSelecionados.filter(r => defeitosPermitidos.includes(r.tipodefeito));
 
-    if (registrosInvalidos.length > 0) {
-        const nomesDefeitosInvalidos = [...new Set(registrosInvalidos.map(r => r.tipodefeito))].join(', ');
-        showToast(`Requisições só podem ser geradas para 'Componente Ausente' ou 'Componente Danificado'. Você selecionou falhas do tipo: ${nomesDefeitosInvalidos}.`, 'error');
+    if (registrosValidos.length === 0) {
+        showToast('Nenhum dos itens selecionados é elegível para requisição (Componente Ausente, Danificado ou Incorreto).', 'info');
         return;
     }
 
-
-    if (confirm(`Gerar requisição de componentes para ${idsParaRequisicao.length} falha(s) selecionada(s)?`)) {
+    if (confirm(`Gerar requisição de componentes para ${registrosValidos.length} falha(s) elegível(is)?`)) {
         try {
             setLoading(true);
             const response = await fetchAutenticado(`${API_BASE_URL}/api/requisicoes`, {
                 method: 'POST',
-                body: JSON.stringify({ registroIds: idsParaRequisicao })
+                body: JSON.stringify({ registroIds: registrosValidos.map(r => r.id) })
             });
             showToast(`Requisição #${response.requisicaoId} gerada com sucesso!`, 'success');
         } catch (error) { showToast(`Erro ao gerar requisição: ${error.message}`, 'error'); } finally { setLoading(false); }

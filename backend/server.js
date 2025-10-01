@@ -270,35 +270,42 @@ app.post('/api/requisicoes', authenticateToken, async (req, res) => {
     }
 
     try {
-        const placeholders = registroIds.map(() => '?').join(',');
+        const placeholders = registroIds.map(() => '?').join(','); // Cria placeholders como ?,?,?
         const registros = await dbAll(`SELECT om, pn, descricao FROM registros WHERE id IN (${placeholders})`, registroIds);
 
         if (registros.length === 0) {
             return res.status(404).json({ error: "Nenhum registro válido encontrado para os IDs fornecidos." });
         }
 
-        const om = registros[0].om; // Assume que todos os registros são da mesma OM
-        const itemsAgrupados = registros.reduce((acc, r) => { // Agrupa por PN para contar as quantidades
-            if (r.pn) { // Apenas considera registros com Part Number
-                acc[r.pn] = (acc[r.pn] || 0) + 1;
+        // Nova Lógica: Agrupa os registros por OM para criar requisições separadas.
+        const registrosPorOM = registros.reduce((acc, registro) => {
+            const om = registro.om;
+            if (!acc[om]) {
+                acc[om] = [];
             }
+            acc[om].push(registro);
             return acc;
         }, {});
 
-        const descricoes = new Map(registros.map(r => [r.pn, r.descricao])); // Mapeia PN para sua descrição
+        const requisicoesCriadas = [];
+        for (const om in registrosPorOM) {
+            const registrosDaOM = registrosPorOM[om];
 
-        const items = Object.entries(itemsAgrupados).map(([pn, quantidade_requisitada]) => ({
-            pn,
-            descricao: descricoes.get(pn) || 'Sem descrição',
-            quantidade_requisitada,
-            quantidade_entregue: 0 // Inicializa a quantidade entregue como 0
-        }));
+            const items = registrosDaOM.map(registro => ({
+                pn: registro.pn,
+                descricao: registro.descricao || 'Sem descrição',
+                quantidade_requisitada: 1,
+                quantidade_entregue: 0
+            }));
 
-        const result = await dbRun(
-            "INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)",
-            [om, JSON.stringify(items), new Date().toISOString(), created_by]
-        );
-        res.status(201).json({ message: "Requisição criada com sucesso", requisicaoId: result.lastID });
+            const result = await dbRun(
+                "INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)",
+                [om, JSON.stringify(items), new Date().toISOString(), created_by]
+            );
+            requisicoesCriadas.push(result.lastID);
+        }
+
+        res.status(201).json({ message: `${requisicoesCriadas.length} requisição(ões) criada(s) com sucesso.`, requisicaoIds: requisicoesCriadas });
     } catch (err) { res.status(500).json({ error: `Erro ao criar requisição: ${err.message}` }); }
 });
 
