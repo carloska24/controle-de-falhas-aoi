@@ -350,8 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setLoading(true);
     try {
+        const demoRecords = [];
         for (let i = 0; i < 3; i++) { // Alterado para criar 3 registros por vez.
-            const demoRecord = {
+            demoRecords.push({
                 id: uid(),
                 om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`, // Gera OMs mais consistentes como DEMO-OM-1, 2 ou 3
                 qtdlote: 150,
@@ -359,15 +360,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 designador: `C${Math.floor(Math.random() * 500)}`,
                 tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)], // Seleciona um defeito aleatório.
                 pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
-                descricao: 'Capacitor Cerâmico',
+                descricao: 'Componente de Demonstração',
                 createdat: new Date().toISOString(),
                 status: 'aberto',
                 operador: user.name || user.username,
-            };
-            await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(demoRecord) });
+            });
         }
+        const newRecords = await fetchAutenticado(`${API_URL}/batch`, { method: 'POST', body: JSON.stringify(demoRecords) });
+        registros.unshift(...newRecords); // Adiciona os novos registros no início do array local
+        render(); // Apenas renderiza novamente, sem buscar tudo do zero
         showToast(`3 novos registros de demonstração foram salvos no banco de dados.`, 'info');
-        await carregarRegistros(); // Recarrega tudo para mostrar os novos itens
     } catch (error) {
         showToast(`Erro ao criar dados de demonstração: ${error.message}`, 'error');
     } finally {

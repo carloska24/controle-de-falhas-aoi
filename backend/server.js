@@ -200,6 +200,29 @@ app.post('/api/registros', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/registros/batch', authenticateToken, async (req, res) => {
+    const records = req.body;
+    if (!Array.isArray(records) || records.length === 0) {
+        return res.status(400).json({ error: "O corpo da requisição deve ser um array de registros." });
+    }
+
+    try {
+        // Usando uma transação para garantir a atomicidade
+        await dbRun('BEGIN');
+        const insertPromises = records.map(r => {
+            const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
+            return dbRun(queryText, values);
+        });
+        await Promise.all(insertPromises);
+        await dbRun('COMMIT');
+        res.status(201).json(records); // Retorna os registros criados
+    } catch (err) {
+        await dbRun('ROLLBACK');
+        res.status(500).json({ error: `Erro ao inserir registros em lote: ${err.message}` });
+    }
+});
+
 app.put('/api/registros/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const r = req.body;
