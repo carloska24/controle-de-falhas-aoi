@@ -27,9 +27,12 @@ header { padding: 16px 0; }
 }
 /* Corrige a cor do texto em campos com preenchimento automático do navegador */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active  {
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
     -webkit-box-shadow: 0 0 0 30px var(--bg) inset !important;
     -webkit-text-fill-color: var(--text) !important;
 }

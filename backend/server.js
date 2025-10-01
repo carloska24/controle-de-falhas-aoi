@@ -111,12 +111,46 @@ app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
         const password_hash = await bcrypt.hash(password, salt);
         // Reintroduzindo RETURNING id, crucial para PostgreSQL. A camada de abstração lida com a compatibilidade.
         const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id", [name, username, password_hash, role]);
-        const newUserId = result.lastID;
-        const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = ?", [newUserId]);
+        const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = ?", [result.lastID]);
+        if (!newUser) {
+            // Se o RETURNING falhou ou o lastID não funcionou, lança um erro claro.
+            throw new Error("Falha ao recuperar o usuário recém-criado. O ID não foi retornado.");
+        }
         res.status(201).json(newUser);
     } catch (err) {
         res.status(500).json({ error: "Nome de usuário já cadastrado ou erro no servidor." });
     }
+});
+
+app.put('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { name, username, role, password } = req.body; // Adiciona 'password'
+
+    if (!name || !username || !role) {
+        return res.status(400).json({ error: "Nome, nome de usuário e função são obrigatórios." });
+    }
+
+    try {
+        let result;
+        if (password) {
+            // Se uma nova senha foi fornecida, cria o hash e atualiza tudo
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash(password, salt);
+            result = await dbRun(
+                "UPDATE users SET name = ?, username = ?, role = ?, password_hash = ? WHERE id = ?",
+                [name, username, role, password_hash, id]
+            );
+        } else {
+            // Se não, atualiza apenas os outros campos
+            result = await dbRun(
+                "UPDATE users SET name = ?, username = ?, role = ? WHERE id = ?",
+                [name, username, role, id]
+            );
+        }
+        if (result.changes === 0) return res.status(404).json({ message: "Usuário não encontrado" });
+        const updatedUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = ?", [id]);
+        res.json(updatedUser);
+    } catch (err) { res.status(500).json({ error: "Erro ao atualizar usuário. O nome de usuário pode já estar em uso." }); }
 });
 
 app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
@@ -187,20 +221,61 @@ app.delete('/api/registros', authenticateToken, async (req, res) => {
 });
 
 // =================================================================
+// ROTAS DE REQUISIÇÃO (ALMOXARIFADO)
+// =================================================================
+app.post('/api/requisicoes', authenticateToken, async (req, res) => {
+    const { registroIds } = req.body;
+    const created_by = req.user.name || req.user.username;
+
+    if (!registroIds || registroIds.length === 0) {
+        return res.status(400).json({ error: "Nenhum ID de registro fornecido." });
+    }
+
+    try {
+        const placeholders = registroIds.map(() => '?').join(',');
+        const registros = await dbAll(`SELECT om, pn FROM registros WHERE id IN (${placeholders})`, registroIds);
+
+        if (registros.length === 0) {
+            return res.status(404).json({ error: "Nenhum registro válido encontrado para os IDs fornecidos." });
+        }
+
+        const om = registros[0].om; // Assume que todos os registros são da mesma OM
+        const itemsAgrupados = registros.reduce((acc, r) => {
+            if (r.pn) { // Apenas considera registros com Part Number
+                acc[r.pn] = (acc[r.pn] || 0) + 1;
+            }
+            return acc;
+        }, {});
+
+        const items = Object.entries(itemsAgrupados).map(([pn, quantidade]) => ({ pn, quantidade }));
+
+        const result = await dbRun(
+            "INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)",
+            [om, JSON.stringify(items), new Date().toISOString(), created_by]
+        );
+        res.status(201).json({ message: "Requisição criada com sucesso", requisicaoId: result.lastID });
+    } catch (err) { res.status(500).json({ error: `Erro ao criar requisição: ${err.message}` }); }
+});
+
+// =================================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // =================================================================
 async function startServer() {
-    if (process.env.DATABASE_URL) {
-        // Ambiente de Produção (Render com PostgreSQL)
-        console.log('Ambiente de produção detectado. Usando PostgreSQL.');
+    // A variável NODE_ENV é o padrão para diferenciar ambientes. Render a define como 'production'.
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction && process.env.DATABASE_URL) {
+        // --- AMBIENTE DE PRODUÇÃO (RENDER) ---
+        console.log('Ambiente de produção detectado. Conectando ao PostgreSQL com SSL.');
         const connectionString = process.env.DATABASE_URL;
-        
-        // Força SSL em produção, pois é um requisito do Render.
+
         const { Pool } = require('pg');
         const pool = new Pool({
             connectionString: connectionString,
-            ssl: { rejectUnauthorized: false } // Configuração padrão para Render
+            // Força SSL em produção, que é um requisito do Render.
+            ssl: { rejectUnauthorized: false }
         });
+
         db = pool;
         const convertToPg = (query) => {
             let i = 0;
@@ -209,37 +284,6 @@ async function startServer() {
         dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
         dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
         dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
-            // Garante que lastID funcione para INSERT ... RETURNING id
-            const lastID = res.rows[0]?.id || null;
-            return { changes: res.rowCount, lastID: lastID };
-        });
-    } else {
-        // Ambiente de Desenvolvimento (Local com SQLite)
-        console.log('Ambiente de desenvolvimento detectado. Usando SQLite.');
-        const dbModule = require('./database');
-        db = dbModule.db;
-        
-        // Espera o banco de dados ser inicializado
-        await dbModule.initializeDatabase();
-
-        // Wrapper para remover "RETURNING" que não é suportado pelo SQLite
-        const stripReturning = (query) => query.replace(/RETURNING\s+\w+/i, '');
-
-        // Só então define as funções de acesso
-        dbAll = (query, params = []) => new Promise((resolve, reject) => {
-            db.all(stripReturning(query), params, (err, rows) => err ? reject(err) : resolve(rows));
-        });
-        dbGet = (query, params = []) => new Promise((resolve, reject) => {
-            db.get(stripReturning(query), params, (err, row) => err ? reject(err) : resolve(row));
-        });
-        dbRun = (query, params = []) => new Promise(function(resolve, reject) {
-            db.run(stripReturning(query), params, function(err) { err ? reject(err) : resolve(this); });
-        });
-    }
-
-    app.listen(PORT, () => {
-        console.log(`Servidor rodando na porta ${PORT}`);
-    });
-}
-
-startServer();
+            // Se o RETURNING falhou ou o lastID não funcionou, lança um erro claro.
+            throw new Error("Falha ao recuperar o usuário recém-criado. O ID não foi retornado.");
+        }

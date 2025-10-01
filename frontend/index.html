@@ -71,6 +71,16 @@
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.75 9H8.25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.75 15H8.25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span>Registros</span>
             </h2>
+            <div class="toolbar">
+              <div class="left">
+                <button id="btnExcluir" class="btn danger" disabled>Excluir Selecionados</button>
+                <button id="btnGerarRequisicao" class="btn warn" disabled>Gerar Requisição</button>
+                <button id="btnDemo" class="btn outline">Adicionar Demo</button>
+              </div>
+              <div class="right">
+                <input class="search-input" id="busca" placeholder="🔎 Buscar..."/>
+              </div>
+            </div>
             <table id="tabela">
                 <thead>
                     <tr>
@@ -92,15 +102,6 @@
 
     <div class="sidebar-column">
         <section class="card noprint">
-            <div class="toolbar spaced">
-              <div class="left">
-                <button class="btn danger" disabled id="btnExcluir"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir</button>
-                <button class="btn outline" id="btnDemo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.26 18.7L15.48 14.92M15.48 14.92C16.9935 13.4065 17.9996 11.3935 18 9.25C18.0004 7.10651 17.0065 5.0935 15.493 3.58C13.9795 2.06651 11.9665 1.07261 9.82301 1.07223C7.67951 1.07185 5.66651 2.06576 4.15301 3.57926C2.63951 5.09276 1.64561 7.10576 1.64523 9.24926C1.64485 11.3928 2.63876 13.4058 4.15226 14.9193C5.66576 16.4328 7.67876 17.4267 9.82226 17.4271C11.9658 17.4275 13.9788 16.4336 15.4923 14.9201" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.74023 12.4999H12.2602" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.50024 15.26V9.73999" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Demo</button>
-              </div>
-              <div class="right">
-                <input class="search-input" id="busca" placeholder="🔎 Buscar..."/>
-              </div>
-            </div>
           <div class="metrics" id="metrics">
               <div class="metric"><div class="muted">Registros</div><div class="val" id="mTotal">0</div></div>
               <div class="metric"><div class="muted">OM distintas</div><div class="val" id="mOMs">0</div></div>

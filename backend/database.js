@@ -26,11 +26,11 @@ async function initializeDatabase() {
     qtdlote INTEGER NOT NULL,
     serial TEXT,
     designador TEXT NOT NULL,
-    tipoDefeito TEXT NOT NULL,
+    tipodefeito TEXT NOT NULL,
     pn TEXT,
     descricao TEXT,
     obs TEXT,
-    createdAt TEXT NOT NULL,
+    createdat TEXT NOT NULL,
     status TEXT,
     operador TEXT
   )`;
@@ -45,28 +45,37 @@ async function initializeDatabase() {
     role TEXT NOT NULL DEFAULT 'operator'
   )`;
 
+  // SQL para criar a tabela "requisicoes"
+  const createRequisicoesTable = `
+  CREATE TABLE IF NOT EXISTS requisicoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    om TEXT NOT NULL,
+    items TEXT NOT NULL, -- JSON com a lista de {pn, quantidade}
+    status TEXT NOT NULL DEFAULT 'pendente', -- pendente, separado, entregue
+    created_at TEXT NOT NULL,
+    created_by TEXT NOT NULL
+  )`;
+
   try {
     console.log('Iniciando a inicialização do banco de dados...');
     await dbRun(createRegistrosTable);
+    await dbRun(createRequisicoesTable);
     console.log('Tabela "registros" verificada/criada com sucesso!');
     
-    // Verifica se a tabela de usuários já existe
-    const tableExists = await dbGet("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
-    if (!tableExists) {
-        console.log('Tabela "users" não encontrada, criando...');
-        await dbRun(createUsersTable);
-        console.log('Tabela "users" criada com sucesso!');
-        
-        // Cria o usuário admin padrão APENAS na primeira vez que a tabela é criada
-        console.log('Criando usuário "admin" padrão...');
-        const saltRounds = 10;
-        const adminPassword = 'admin';
-        const hash = await bcrypt.hash(adminPassword, saltRounds);
-        await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Administrador', 'admin', hash, 'admin']);
-        console.log('Usuário "admin" criado com sucesso!');
-    } else {
-        console.log('Tabela "users" já existente.');
-    }
+    // FORÇA A RECRIAÇÃO DA TABELA DE USUÁRIOS PARA RESETAR O AMBIENTE DE DESENVOLVIMENTO
+    await dbRun('DROP TABLE IF EXISTS users');
+    console.log('Tabela "users" antiga removida (reset de desenvolvimento).');
+
+    await dbRun(createUsersTable);
+    console.log('Tabela "users" recriada com sucesso!');
+
+    // Adiciona o usuário admin padrão
+    console.log('Criando usuário "admin" padrão...');
+    const saltRounds = 10;
+    const adminPassword = 'admin';
+    const hash = await bcrypt.hash(adminPassword, saltRounds);
+    await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Administrador', 'admin', hash, 'admin']);
+    console.log('Usuário "admin" criado com sucesso!');
     
     console.log('Banco de dados inicializado com sucesso.');
   } catch (err) {

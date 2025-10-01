@@ -33,6 +33,24 @@
     top: 60px; /* Altura do app-header */
 }
 
+.actions-cell {
+    text-align: center;
+    display: flex;
+    gap: 8px;
+}
+
+.inline-edit {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 14px;
+    /* Adicionando estilos base para consistência visual */
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    outline: none;
+}
+
 #usersTable tbody tr:hover {
     background-color: rgba(255, 255, 255, 0.03);
 }
@@ -47,6 +65,7 @@
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s;
+    gap: 8px;
 }
 .btn-icon svg {
     stroke: var(--text-dim);
@@ -58,6 +77,8 @@
 .btn-icon:hover svg {
     stroke: #ef4444; /* Cor de perigo */
 }
+.btn-icon.edit-btn:hover { background-color: rgba(59, 130, 246, 0.1); }
+.btn-icon.edit-btn:hover svg { stroke: #3b82f6; }
 
 /* Estilo para o botão de mostrar/ocultar senha */
 .password-wrapper { position: relative; }

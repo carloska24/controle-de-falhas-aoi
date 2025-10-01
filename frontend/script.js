@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
   const btnDemo = document.querySelector('#btnDemo');
+  const btnGerarRequisicao = document.querySelector('#btnGerarRequisicao'); // Novo botão
   const btnPDF = document.querySelector('#btnPDF');
   const btnReqCSV = document.querySelector('#btnReqCSV');
   const selAll = document.querySelector('#selAll');
@@ -116,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tbody.innerHTML = rowsToRender.map(r => `
         <tr data-id="${r.id}">
           <td data-label="Selecionar"><input type="checkbox" class="checkbox rowSel" /></td>
-          <td data-label="OM">${escapeHTML(r.om)}</td>
+          <td data-label="OM">${escapeHTML(r.om ?? '')}</td>
           <td data-label="Data/Hora">${formatDate(r.createdat)}</td>
           <td data-label="Serial">${escapeHTML(r.serial ?? '')}</td>
           <td data-label="Designador">${escapeHTML(r.designador ?? '')}</td>
@@ -227,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSelectionState() {
     const checkedCount = selectedIds().length;
     btnExcluir.disabled = checkedCount === 0;
+    btnGerarRequisicao.disabled = checkedCount === 0; // Ativa/desativa o novo botão
     const totalCheckboxes = document.querySelectorAll('.rowSel').length;
     if (totalCheckboxes > 0 && checkedCount === totalCheckboxes) {
         selAll.checked = true;
@@ -286,6 +288,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  btnGerarRequisicao.addEventListener('click', async () => {
+    const idsParaRequisicao = selectedIds();
+    if (idsParaRequisicao.length === 0) return;
+
+    if (confirm(`Gerar requisição de componentes para ${idsParaRequisicao.length} falha(s) selecionada(s)?`)) {
+        try {
+            setLoading(true);
+            const response = await fetchAutenticado(`${API_BASE_URL}/api/requisicoes`, {
+                method: 'POST',
+                body: JSON.stringify({ registroIds: idsParaRequisicao })
+            });
+            showToast(`Requisição #${response.requisicaoId} gerada com sucesso!`, 'success');
+        } catch (error) { showToast(`Erro ao gerar requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
+    }
+  });
+
   tbody.addEventListener('dblclick', (e) => {
     const tr = e.target.closest('tr');
     if (!tr) return;
@@ -325,6 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
         serial: `SN-D${existingDemoData.length + i + 1}`,
         designador: `R${Math.floor(Math.random() * 500)}`,
         tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
+        pn: `100-0${Math.floor(Math.random() * 900) + 100}`, // Adiciona PN de demo
+        descricao: 'Resistor SMD', // Adiciona descrição de demo
         createdat: new Date().toISOString(),
         status: 'aberto', // Garante que todos os registros de demo iniciem como 'aberto'
         operador: 'Demo'
