@@ -98,28 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleReparar(id) {
         const item = allData.find(d => d.id === id);
         if (!item) return;
-
-        // Se for um item de demonstração (não salvo no backend), atualiza apenas localmente
-        const demoData = JSON.parse(sessionStorage.getItem('demoData') || '[]');
-        const isDemoItem = demoData.some(d => d.id === id);
-
-        if (isDemoItem) {
-            item.status = 'reparado';
-            const updatedDemoData = demoData.map(d => d.id === id ? item : d);
-            sessionStorage.setItem('demoData', JSON.stringify(updatedDemoData));
-            showToast('Status (demo) atualizado para "Reparado".', 'success');
-            renderTable(); // Apenas renderiza a tabela, sem recarregar da API
-            return;
-        }
-
         try {
             await fetchAutenticado(`${API_URL}/${id}/status`, {
                 method: 'PUT',
                 body: JSON.stringify({ status: 'reparado' })
             });
-            if (item) item.status = 'reparado';
             showToast('Status atualizado para "Reparado".', 'success');
-            renderTable();
+            await inicializar(); // Recarrega os dados para garantir consistência
         } catch (error) {
             showToast(`Erro ao atualizar status: ${error.message}`, 'error');
         }
@@ -130,10 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
 
         try {
-            const registrosDoBackend = await fetchAutenticado(API_URL) || [];
-            const demoData = JSON.parse(sessionStorage.getItem('demoData') || '[]');
-            // Combina os dados, garantindo que os da demo tenham prioridade e não haja duplicatas
-            allData = [...demoData, ...registrosDoBackend.filter(r => !demoData.some(d => d.id === r.id))];
+            allData = await fetchAutenticado(API_URL) || [];
 
             const oms = ['all', ...new Set(allData.map(d => d.om))];
             omFilter.innerHTML = oms.map(om => `<option value="${om}">${om === 'all' ? 'Todas as OMs' : om}</option>`).join('');

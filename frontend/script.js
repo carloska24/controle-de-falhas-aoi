@@ -44,8 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (userDisplay && user) { userDisplay.textContent = user.name || user.username; }
   if (btnLogout) {
       btnLogout.addEventListener('click', () => {
-          localStorage.clear(); // Limpa o token de login
-          sessionStorage.clear(); // Limpa os dados de demonstração da sessão
+          localStorage.clear();
           window.location.href = 'login.html';
       });
   }
@@ -54,7 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
       options.headers = { ...defaultHeaders, ...options.headers };
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {        localStorage.clear(); sessionStorage.clear();
+      if (response.status === 401 || response.status === 403) {
+        localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';
         throw new Error('Token inválido ou expirado.');
       }
@@ -89,11 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function carregarRegistros() {
     setLoading(true);
     try {
-      const registrosDoBackend = await fetchAutenticado(API_URL) || [];
-      // Verifica se há dados de demo na sessão e os combina com os dados do backend
-      const demoData = JSON.parse(sessionStorage.getItem('demoData') || '[]');
-      // Evita duplicatas, útil se o usuário clicar em demo várias vezes
-      registros = [...demoData, ...registrosDoBackend.filter(r => !demoData.some(d => d.id === r.id))];
+      // Simplificado: Sempre busca os dados mais recentes do backend.
+      registros = await fetchAutenticado(API_URL) || [];
       render();
     } catch (error) {
       console.error('Falha ao carregar registros:', error);
@@ -325,36 +322,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  btnDemo.addEventListener('click', () => {
-    // Pega os dados de demo existentes ou inicia um array vazio
-    const existingDemoData = JSON.parse(sessionStorage.getItem('demoData') || '[]');
-    
-    // Lista de defeitos para gerar dados mais realistas
+  btnDemo.addEventListener('click', async () => {
     const allDefectTypes = [
         'Curto-circuito', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball',
         'Componente Ausente', 'Componente Danificado', 'Componente Deslocado', 'Componente Incorreto', 'Componente Invertido', 'Polaridade Incorreta'
     ];
-
-    // Gera 2 novos registros de demonstração
-    const newDemoData = Array.from({ length: 2 }, (_, i) => ({
-        id: uid(),
-        om: `OM-DEMO-${Math.floor(Math.random() * 5) + 1}`,
-        qtdlote: 100 + Math.floor(Math.random() * 100),
-        serial: `SN-D${existingDemoData.length + i + 1}`,
-        designador: `R${Math.floor(Math.random() * 500)}`,
-        tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
-        pn: `100-0${Math.floor(Math.random() * 900) + 100}`, // Adiciona PN de demo
-        descricao: 'Resistor SMD', // Adiciona descrição de demo
-        createdat: new Date().toISOString(),
-        status: 'aberto', // Garante que todos os registros de demo iniciem como 'aberto'
-        operador: 'Demo'
-    }));
-
-    // Adiciona os novos dados de demo à lista existente e à sessionStorage
-    registros.unshift(...newDemoData);
-    sessionStorage.setItem('demoData', JSON.stringify([...existingDemoData, ...newDemoData]));
-    showToast(`${newDemoData.length} novos registros de demonstração foram adicionados.`, 'info');
-    render(); // Apenas renderiza novamente, sem recarregar da API
+    setLoading(true);
+    try {
+        for (let i = 0; i < 2; i++) {
+            const demoRecord = {
+                id: uid(),
+                om: `DEMO-${Math.floor(Math.random() * 100)}`,
+                qtdlote: 150,
+                serial: `SN-DEMO-${Date.now() + i}`,
+                designador: `C${Math.floor(Math.random() * 500)}`,
+                tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
+                pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
+                descricao: 'Capacitor Cerâmico',
+                createdat: new Date().toISOString(),
+                status: 'aberto',
+                operador: user.name || user.username,
+            };
+            await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(demoRecord) });
+        }
+        showToast('2 novos registros de demonstração foram salvos no banco de dados.', 'info');
+        await carregarRegistros(); // Recarrega tudo para mostrar os novos itens
+    } catch (error) {
+        showToast(`Erro ao criar dados de demonstração: ${error.message}`, 'error');
+    } finally {
+        setLoading(false);
+    }
   });
   
   [totalInspec, escopoQualidade].forEach(el => { if(el) el.addEventListener('input', updateQuality); });

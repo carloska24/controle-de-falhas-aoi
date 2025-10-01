@@ -112,11 +112,8 @@ app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
         // Reintroduzindo RETURNING id, crucial para PostgreSQL. A camada de abstração lida com a compatibilidade.
         const result = await dbRun("INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id", [name, username, password_hash, role]);
         const newUser = await dbGet("SELECT id, name, username, role FROM users WHERE id = ?", [result.lastID]);
-        if (!newUser) {
-            // Se o RETURNING falhou ou o lastID não funcionou, lança um erro claro.
-            throw new Error("Falha ao recuperar o usuário recém-criado. O ID não foi retornado.");
-        }
-        res.status(201).json(newUser);
+        if (!newUser) throw new Error("Falha ao recuperar o usuário recém-criado. O ID não foi retornado.");
+         res.status(201).json(newUser);
     } catch (err) {
         res.status(500).json({ error: "Nome de usuário já cadastrado ou erro no servidor." });
     }
@@ -284,6 +281,60 @@ async function startServer() {
         dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
         dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
         dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
-            // Se o RETURNING falhou ou o lastID não funcionou, lança um erro claro.
-            throw new Error("Falha ao recuperar o usuário recém-criado. O ID não foi retornado.");
-        }
+            // Garante que lastID funcione para INSERT ... RETURNING id
+            const lastID = res.rows[0]?.id || null;
+            return { changes: res.rowCount, lastID: lastID };
+        });
+    } else if (process.env.DATABASE_URL) {
+        // --- AMBIENTE DE DESENVOLVIMENTO COM POSTGRESQL LOCAL ---
+        console.log('Ambiente de desenvolvimento com DATABASE_URL detectado. Conectando ao PostgreSQL local SEM SSL.');
+        const connectionString = process.env.DATABASE_URL;
+
+        const { Pool } = require('pg');
+        const pool = new Pool({
+            connectionString: connectionString,
+            ssl: false // Desativa SSL para banco de dados local
+        });
+
+        db = pool;
+        const convertToPg = (query) => {
+            let i = 0;
+            return query.replace(/\?/g, () => `$${++i}`);
+        };
+        dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
+        dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
+        dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
+            const lastID = res.rows[0]?.id || null;
+            return { changes: res.rowCount, lastID: lastID };
+        });
+    } else {
+        // --- AMBIENTE DE DESENVOLVIMENTO PADRÃO (LOCAL COM SQLITE) ---
+        console.log('Ambiente de desenvolvimento detectado. Usando SQLite.');
+        const dbModule = require('./database');
+        db = dbModule.db;
+        
+        // Espera o banco de dados ser inicializado
+        await dbModule.initializeDatabase();
+
+        // Wrapper para remover "RETURNING" que não é suportado pelo SQLite
+        const stripReturning = (query) => query.replace(/RETURNING\s+\w+/i, '');
+
+        // Só então define as funções de acesso
+        dbAll = (query, params = []) => new Promise((resolve, reject) => {
+            db.all(stripReturning(query), params, (err, rows) => err ? reject(err) : resolve(rows));
+        });
+        dbGet = (query, params = []) => new Promise((resolve, reject) => {
+            db.get(stripReturning(query), params, (err, row) => err ? reject(err) : resolve(row));
+        });
+        dbRun = (query, params = []) => new Promise(function(resolve, reject) {
+            db.run(stripReturning(query), params, function(err) { err ? reject(err) : resolve(this); });
+        });
+    }
+
+    app.listen(PORT, () => {
+        console.log(`Servidor rodando na porta ${PORT}`);
+    });
+}
+
+startServer();
+

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Requisições - Almoxarifado</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div class="app-header">
+    <div class="app-title">
+        <a href="index.html" class="nav-link">Controle de Falhas AOI</a>
+        <span class="nav-separator">&gt;</span>
+        <span>Almoxarifado</span>
+    </div>
+    <div class="user-info">
+        <span id="userDisplay"></span>
+        <button id="btnLogout" class="btn outline">Sair</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-column">
+        <header>
+            <div class="title">Requisições de Componentes</div>
+        </header>
+
+        <section class="card">
+            <h2 class="section-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 8.5C2 5 4 3.5 7 3.5H17C20 3.5 22 5 22 8.5V15.5C22 19 20 20.5 17 20.5H7" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9L13.87 11.5C12.84 12.32 11.15 12.32 10.12 11.5L7 9" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 16.5H8" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12.5H5" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Lista de Requisições Pendentes</span>
+            </h2>
+            <div class="toolbar">
+                <div class="left field">
+                    <label for="filtroOM">Filtrar por OM:</label>
+                    <select id="filtroOM"></select>
+                </div>
+                <div class="right">
+                    <input class="search-input" id="buscaRequisicao" placeholder="🔎 Buscar por OM...">
+                </div>
+            </div>
+            <table id="tabelaRequisicoes">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>OM</th>
+                        <th>Data</th>
+                        <th>Solicitante</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyRequisicoes"></tbody>
+            </table>
+        </section>
+    </div>
+</div>
+
+<div id="toastContainer"></div>
+<div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
+
+<!-- Modal para exibir itens da requisição -->
+<div id="itensModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Itens da Requisição</h2>
+            <button id="closeModal" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <table id="tabelaItens">
+                <thead>
+                    <tr>
+                        <th>Part Number (PN)</th>
+                        <th>Quantidade</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyItens"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="./almoxarifado.js"></script>
+</body>
+</html>
