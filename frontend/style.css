@@ -79,6 +79,11 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 .main-column > .card, .sidebar-column > .card { margin-top: 0; }
 @media (max-width: 1024px) { .main-layout { grid-template-columns: 1fr; } }
 
+/* Classe para esconder elementos de usuários não-admin */
+.admin-only {
+    display: none !important;
+}
+
 /* --- Media Queries para Formulário Responsivo --- */
 @media (max-width: 900px) {
     .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

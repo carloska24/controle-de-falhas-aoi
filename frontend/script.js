@@ -8,6 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  // Lógica de Controle de Acesso: mostra elementos apenas para admins
+  if (user && user.role === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.classList.remove('admin-only');
+    });
+  }
+
   // Detecta se estamos em ambiente local ou de produção para definir a URL da API
   const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
   const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
@@ -115,12 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr data-id="${r.id}">
           <td data-label="Selecionar"><input type="checkbox" class="checkbox rowSel" /></td>
           <td data-label="OM">${escapeHTML(r.om ?? '')}</td>
-          <td data-label="Data/Hora">${formatDate(r.createdat)}</td>
+          <td data-label="Cod. Alt">${escapeHTML(r.pn ?? '')}</td>
           <td data-label="Serial">${escapeHTML(r.serial ?? '')}</td>
           <td data-label="Designador">${escapeHTML(r.designador ?? '')}</td>
           <td data-label="Defeito">${escapeHTML(r.tipodefeito ?? '')}</td>
-          <td data-label="PN">${escapeHTML(r.pn ?? '')}</td>
-          <td data-label="Obs.">${escapeHTML(r.obs ?? '')}</td>
+          <td data-label="Descrição">${escapeHTML(r.descricao ?? '')}</td>
+          <td data-label="Data/Hora">${formatDate(r.createdat)}</td>
         </tr>
       `).join('');
       updateMetrics(rowsToRender);
@@ -289,6 +296,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const idsParaRequisicao = selectedIds();
     if (idsParaRequisicao.length === 0) return;
 
+    // Validação: Apenas permite gerar requisição para defeitos específicos
+    const defeitosPermitidos = ['Componente Ausente', 'Componente Danificado'];
+    const registrosSelecionados = registros.filter(r => idsParaRequisicao.includes(r.id));
+    const registrosInvalidos = registrosSelecionados.filter(r => !defeitosPermitidos.includes(r.tipodefeito));
+
+    if (registrosInvalidos.length > 0) {
+        const nomesDefeitosInvalidos = [...new Set(registrosInvalidos.map(r => r.tipodefeito))].join(', ');
+        showToast(`Requisições só podem ser geradas para 'Componente Ausente' ou 'Componente Danificado'. Você selecionou falhas do tipo: ${nomesDefeitosInvalidos}.`, 'error');
+        return;
+    }
+
+
     if (confirm(`Gerar requisição de componentes para ${idsParaRequisicao.length} falha(s) selecionada(s)?`)) {
         try {
             setLoading(true);
@@ -323,20 +342,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnDemo.addEventListener('click', async () => {
+    // Lista completa de defeitos para gerar dados de demonstração mais realistas.
     const allDefectTypes = [
         'Curto-circuito', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball',
         'Componente Ausente', 'Componente Danificado', 'Componente Deslocado', 'Componente Incorreto', 'Componente Invertido', 'Polaridade Incorreta'
     ];
+
     setLoading(true);
     try {
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) { // Alterado para criar 3 registros por vez.
             const demoRecord = {
                 id: uid(),
-                om: `DEMO-${Math.floor(Math.random() * 100)}`,
+                om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`, // Gera OMs mais consistentes como DEMO-OM-1, 2 ou 3
                 qtdlote: 150,
                 serial: `SN-DEMO-${Date.now() + i}`,
                 designador: `C${Math.floor(Math.random() * 500)}`,
-                tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
+                tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)], // Seleciona um defeito aleatório.
                 pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
                 descricao: 'Capacitor Cerâmico',
                 createdat: new Date().toISOString(),
@@ -345,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(demoRecord) });
         }
-        showToast('2 novos registros de demonstração foram salvos no banco de dados.', 'info');
+        showToast(`3 novos registros de demonstração foram salvos no banco de dados.`, 'info');
         await carregarRegistros(); // Recarrega tudo para mostrar os novos itens
     } catch (error) {
         showToast(`Erro ao criar dados de demonstração: ${error.message}`, 'error');

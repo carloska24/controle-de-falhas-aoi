@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'qualidade':
                     window.location.href = 'relatorio-qualidade.html';
                     break;
+                case 'almoxarifado':
+                    window.location.href = 'almoxarifado.html';
+                    break;
                 case 'operator':
                 default:
                     window.location.href = 'index.html';

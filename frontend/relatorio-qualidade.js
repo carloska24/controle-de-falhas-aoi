@@ -10,6 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Lógica de Controle de Acesso: mostra elementos apenas para admins
+    if (user && user.role === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.classList.remove('admin-only');
+        });
+    }
+
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
     const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
     const API_URL = `${API_BASE_URL}/api/registros`;
@@ -201,10 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
         
         try {
-            const registrosDoBackend = await fetchAutenticado(API_URL);
-            const demoData = JSON.parse(sessionStorage.getItem('demoData') || '[]');
-            // Combina os dados, garantindo que os da demo tenham prioridade e não haja duplicatas
-            allData = [...demoData, ...registrosDoBackend.filter(r => !demoData.some(d => d.id === r.id))];
+            allData = await fetchAutenticado(API_URL) || [];
 
             // Popular filtro de OM
             const oms = [...new Set(allData.map(d => d.om))];

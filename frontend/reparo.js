@@ -7,6 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!token) { window.location.href = 'login.html'; return; }
 
+    // Lógica de Controle de Acesso: mostra elementos apenas para admins
+    if (user && user.role === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.classList.remove('admin-only');
+        });
+    }
+
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
     const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
     const API_URL = `${API_BASE_URL}/api/registros`;

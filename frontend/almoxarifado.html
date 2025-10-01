@@ -5,12 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Requisições - Almoxarifado</title>
     <link rel="stylesheet" href="./style.css">
+    <style>
+        .modal-large {
+            width: 80%; /* Aumenta a largura do modal */
+            max-width: 950px; /* Define uma largura máxima */
+        }
+        /* Estilo para o input dentro da tabela do modal, para combinar com o tema */
+        .input-table {
+            width: 100%;
+            background-color: var(--background-light);
+            border: 1px solid var(--border-color);
+            color: var(--text);
+            padding: 6px 8px;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
 </head>
 <body>
 
 <div class="app-header">
     <div class="app-title">
-        <a href="index.html" class="nav-link">Controle de Falhas AOI</a>
+        <a href="index.html" class="nav-link admin-only">Controle de Falhas AOI</a>
         <span class="nav-separator">&gt;</span>
         <span>Almoxarifado</span>
     </div>
@@ -62,7 +78,7 @@
 
 <!-- Modal para exibir itens da requisição -->
 <div id="itensModal" class="modal-overlay hidden">
-    <div class="modal-content">
+    <div class="modal-content modal-large">
         <div class="modal-header">
             <h2 id="modalTitle">Itens da Requisição</h2>
             <button id="closeModal" class="modal-close-btn">&times;</button>
@@ -71,12 +87,18 @@
             <table id="tabelaItens">
                 <thead>
                     <tr>
-                        <th>Part Number (PN)</th>
-                        <th>Quantidade</th>
+                        <th>OM</th>
+                        <th>Cod. Alt</th>
+                        <th>Descrição</th>
+                        <th>Qtd. Requisitada</th>
+                        <th>Qtd. Entregue</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyItens"></tbody>
             </table>
+        </div>
+        <div class="modal-footer">
+            <button id="btnSalvarItens" class="btn primary">Salvar Entregas</button>
         </div>
     </div>
 </div>

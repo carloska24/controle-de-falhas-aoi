@@ -52,7 +52,7 @@
                       </optgroup>
                     </select>
                   </div>
-                  <div class="field"><label for="pn">PN (Part Number)</label><input id="pn" name="pn"/></div>
+                  <div class="field"><label for="pn">Cod. Alt (Código Alternativo)</label><input id="pn" name="pn"/></div>
                   <div class="field"><label for="descricao">Descrição do Componente</label><input id="descricao" name="descricao"/></div>
                   <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs"></textarea></div>
                 </div>
@@ -86,12 +86,12 @@
                     <tr>
                         <th><input class="checkbox" id="selAll" type="checkbox"/></th>
                         <th>OM</th>
-                        <th>Data/Hora</th>
+                        <th>Cod. Alt</th>
                         <th>Serial</th>
                         <th>Designador</th>
                         <th>Defeito</th>
-                        <th>PN</th>
-                        <th>Obs.</th>
+                        <th>Descrição</th>
+                        <th>Data/Hora</th>
                     </tr>
                 </thead>
                 <tbody id="tbody"></tbody>
@@ -137,8 +137,8 @@
               <span>Relatórios</span>
             </h2>
              <div class="grid cols-2">
-                <a href="relatorio-qualidade.html" class="btn primary full-width">Análise de Qualidade</a>
-                <a href="almoxarifado.html" class="btn primary full-width">Almoxarifado</a>
+                <a href="relatorio-qualidade.html" class="btn primary full-width admin-only">Análise de Qualidade</a>
+                <a href="almoxarifado.html" class="btn primary full-width admin-only">Almoxarifado</a>
             </div>
         </section>
     </div>

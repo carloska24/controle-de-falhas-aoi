@@ -7,6 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!token) { window.location.href = 'login.html'; return; }
 
+    // Lógica de Controle de Acesso: mostra elementos apenas para admins
+    if (user && user.role === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.classList.remove('admin-only');
+        });
+    }
+
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
     const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
     const API_URL = `${API_BASE_URL}/api/requisicoes`;
@@ -28,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.querySelector('#modalTitle');
     const closeModalBtn = document.querySelector('#closeModal');
     const tbodyItens = document.querySelector('#tbodyItens');
+    const btnSalvarItens = document.querySelector('#btnSalvarItens');
 
     // =================================================================
     // Funções Utilitárias
@@ -87,9 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td data-label="Solicitante">${req.created_by}</td>
                 <td data-label="Status"><span class="status-tag status-${req.status}">${req.status}</span></td>
                 <td data-label="Ações">
-                    <button class="btn small btn-ver-itens" data-id="${req.id}" data-items='${req.items}'>Ver Itens</button>
-                    ${user.role === 'admin' ? `
-                    <button class="btn small danger btn-excluir-req" data-id="${req.id}">Excluir</button>
+                    <button class="btn small btn-ver-itens" data-id="${req.id}">Ver Itens</button>
+                    ${req.status !== 'entregue' ? `
+                    <button class="btn small primary btn-atender-req" data-id="${req.id}">Atender</button>
+                    ` : ''}
+                    ${user && user.role === 'admin' ? `
+                    <button class="btn small danger btn-excluir-req" data-id="${req.id}" style="margin-left: 4px;">Excluir</button>
                     ` : ''}
                 </td>
             </tr>
@@ -124,6 +135,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function handleAtenderRequisicao(reqId) {
+        if (!confirm(`Tem certeza que deseja marcar a requisição #${reqId} como "Entregue"?`)) return;
+
+        try {
+            setLoading(true);
+            await fetchAutenticado(`${API_URL}/${reqId}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: 'entregue' })
+            });
+            showToast(`Requisição #${reqId} marcada como "Entregue".`);
+            await inicializar(); // Recarrega os dados para refletir a mudança
+        } catch (error) { showToast(`Erro ao atender requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
+    }
+
+    async function handleExcluirRequisicao(reqId) {
+        if (!confirm(`Tem certeza que deseja excluir a requisição #${reqId}? Esta ação não pode ser desfeita.`)) return;
+
+        try {
+            setLoading(true);
+            await fetchAutenticado(`${API_URL}/${reqId}`, { method: 'DELETE' });
+            
+            // Remove da lista local e renderiza a tabela novamente
+            allRequisicoes = allRequisicoes.filter(r => r.id != reqId);
+            renderTable();
+            popularFiltroOM(); // Atualiza o filtro de OMs caso a última de uma OM seja removida
+
+            showToast(`Requisição #${reqId} excluída com sucesso.`);
+        } catch (error) { showToast(`Erro ao excluir requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
+    }
+
     // =================================================================
     // Event Listeners
     // =================================================================
@@ -137,42 +178,70 @@ document.addEventListener('DOMContentLoaded', () => {
     tableBody.addEventListener('click', async (e) => {
         const target = e.target;
 
+        // Atender requisição
+        if (target.classList.contains('btn-atender-req')) {
+            handleAtenderRequisicao(target.dataset.id);
+        }
+
         // Excluir requisição
         if (target.classList.contains('btn-excluir-req')) {
-            const reqId = target.dataset.id;
-            if (confirm(`Tem certeza que deseja excluir a requisição #${reqId}? Esta ação não pode ser desfeita.`)) {
-                try {
-                    setLoading(true);
-                    await fetchAutenticado(`${API_URL}/${reqId}`, { method: 'DELETE' });
-                    allRequisicoes = allRequisicoes.filter(r => r.id != reqId);
-                    renderTable();
-                    showToast(`Requisição #${reqId} excluída com sucesso.`);
-                } catch (error) {
-                    showToast(`Erro ao excluir requisição: ${error.message}`, 'error');
-                } finally { setLoading(false); }
-            }
+            handleExcluirRequisicao(target.dataset.id);
         }
         // Ver itens da requisição
         if (e.target.classList.contains('btn-ver-itens')) {
             const button = e.target;
             const reqId = button.dataset.id;
-            const items = JSON.parse(button.dataset.items);
+            const requisicao = allRequisicoes.find(r => r.id == reqId);
+            const items = requisicao ? requisicao.items : [];
 
-            modalTitle.textContent = `Itens da Requisição #${reqId}`;
+            modalTitle.textContent = `Requisição #${reqId} (OM: ${requisicao.om})`;
+            modal.dataset.reqId = reqId; // Armazena o ID da requisição no modal
             
             if (items && items.length > 0) {
                 tbodyItens.innerHTML = items.map(item => `
-                    <tr>
+                    <tr data-pn="${item.pn}">
+                        <td>${requisicao.om}</td>
                         <td>${item.pn}</td>
-                        <td>${item.quantidade}</td>
+                        <td>${item.descricao || 'N/A'}</td>
+                        <td>${item.quantidade_requisitada}</td>
+                        <td>
+                            <input 
+                                type="number" 
+                                class="input-table" 
+                                value="${item.quantidade_entregue || 0}" 
+                                min="0" 
+                                max="${item.quantidade_requisitada}"
+                            >
+                        </td>
                     </tr>
                 `).join('');
             } else {
-                tbodyItens.innerHTML = '<tr><td colspan="2">Nenhum item encontrado para esta requisição.</td></tr>';
+                tbodyItens.innerHTML = '<tr><td colspan="5">Nenhum item encontrado para esta requisição.</td></tr>';
             }
 
             modal.classList.remove('hidden');
         }
+    });
+
+    btnSalvarItens.addEventListener('click', async () => {
+        const reqId = modal.dataset.reqId;
+        const requisicaoOriginal = allRequisicoes.find(r => r.id == reqId);
+        if (!requisicaoOriginal) return;
+
+        const updatedItems = Array.from(tbodyItens.querySelectorAll('tr')).map(row => {
+            const pn = row.dataset.pn;
+            const quantidade_entregue = parseInt(row.querySelector('.input-table').value, 10);
+            const itemOriginal = requisicaoOriginal.items.find(i => i.pn === pn);
+            return { ...itemOriginal, quantidade_entregue };
+        });
+
+        try {
+            setLoading(true);
+            await fetchAutenticado(`${API_URL}/${reqId}/itens`, { method: 'PUT', body: JSON.stringify({ items: updatedItems }) });
+            showToast('Quantidades entregues salvas com sucesso!');
+            modal.classList.add('hidden');
+            await inicializar(); // Recarrega tudo para atualizar o status na tabela principal
+        } catch (error) { showToast(`Erro ao salvar itens: ${error.message}`, 'error'); } finally { setLoading(false); }
     });
 
     // Listeners para fechar o modal

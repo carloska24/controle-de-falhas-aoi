@@ -75,6 +75,24 @@ app.get('/api/setup/initial-admin', async (req, res) => {
     }
 });
 
+// ROTA DE LIMPEZA DE REQUISIÇÕES (EMERGÊNCIA)
+app.get('/api/setup/clear-requisicoes', async (req, res) => {
+    const { key } = req.query;
+    if (key !== 'reset-reqs-2024') {
+        return res.status(403).json({ message: "Chave de segurança inválida." });
+    }
+
+    try {
+        console.log('INICIANDO LIMPEZA DA TABELA DE REQUISIÇÕES...');
+        await dbRun("DELETE FROM requisicoes");
+        console.log('Tabela "requisicoes" foi limpa com sucesso.');
+        res.status(200).send(`
+            <h1>Tabela de Requisições Limpa!</h1>
+            <p>Todos os registros de requisições do almoxarifado foram excluídos com sucesso.</p>
+        `);
+    } catch (err) { res.status(500).json({ error: `Erro durante a limpeza: ${err.message}` }); }
+});
+
 // ROTAS DE AUTENTICAÇÃO
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
@@ -230,21 +248,28 @@ app.post('/api/requisicoes', authenticateToken, async (req, res) => {
 
     try {
         const placeholders = registroIds.map(() => '?').join(',');
-        const registros = await dbAll(`SELECT om, pn FROM registros WHERE id IN (${placeholders})`, registroIds);
+        const registros = await dbAll(`SELECT om, pn, descricao FROM registros WHERE id IN (${placeholders})`, registroIds);
 
         if (registros.length === 0) {
             return res.status(404).json({ error: "Nenhum registro válido encontrado para os IDs fornecidos." });
         }
 
         const om = registros[0].om; // Assume que todos os registros são da mesma OM
-        const itemsAgrupados = registros.reduce((acc, r) => {
+        const itemsAgrupados = registros.reduce((acc, r) => { // Agrupa por PN para contar as quantidades
             if (r.pn) { // Apenas considera registros com Part Number
                 acc[r.pn] = (acc[r.pn] || 0) + 1;
             }
             return acc;
         }, {});
 
-        const items = Object.entries(itemsAgrupados).map(([pn, quantidade]) => ({ pn, quantidade }));
+        const descricoes = new Map(registros.map(r => [r.pn, r.descricao])); // Mapeia PN para sua descrição
+
+        const items = Object.entries(itemsAgrupados).map(([pn, quantidade_requisitada]) => ({
+            pn,
+            descricao: descricoes.get(pn) || 'Sem descrição',
+            quantidade_requisitada,
+            quantidade_entregue: 0 // Inicializa a quantidade entregue como 0
+        }));
 
         const result = await dbRun(
             "INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)",
@@ -252,6 +277,64 @@ app.post('/api/requisicoes', authenticateToken, async (req, res) => {
         );
         res.status(201).json({ message: "Requisição criada com sucesso", requisicaoId: result.lastID });
     } catch (err) { res.status(500).json({ error: `Erro ao criar requisição: ${err.message}` }); }
+});
+
+app.get('/api/requisicoes', authenticateToken, async (req, res) => {
+    try {
+        const requisicoes = await dbAll('SELECT * FROM requisicoes ORDER BY created_at DESC');
+        // O campo 'items' é armazenado como TEXT/JSON, então precisamos fazer o parse.
+        const requisicoesComItems = requisicoes.map(r => ({
+            ...r,
+            // Para PostgreSQL (JSON/JSONB), r.items já é um objeto.
+            // Para SQLite (TEXT), r.items é uma string que precisa de parse.
+            items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items
+        }));
+        res.json(requisicoesComItems);
+    } catch (err) { res.status(500).json({ error: `Erro ao buscar requisições: ${err.message}` }); }
+});
+
+app.put('/api/requisicoes/:id/status', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const result = await dbRun('UPDATE requisicoes SET status = ? WHERE id = ?', [status, id]);
+        if (result.changes === 0) return res.status(404).json({ message: "Requisição não encontrada" });
+        res.json({ message: "Status da requisição atualizado com sucesso" });
+    } catch (err) { res.status(500).json({ error: `Erro ao atualizar status da requisição: ${err.message}` }); }
+});
+
+app.put('/api/requisicoes/:id/itens', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { items } = req.body; // Espera receber o array de itens atualizado
+
+    if (!items) {
+        return res.status(400).json({ error: "A lista de itens é obrigatória." });
+    }
+
+    try {
+        // Calcula o novo status geral da requisição
+        const totalRequisitado = items.reduce((sum, item) => sum + item.quantidade_requisitada, 0);
+        const totalEntregue = items.reduce((sum, item) => sum + item.quantidade_entregue, 0);
+
+        let novoStatus = 'pendente';
+        if (totalEntregue > 0 && totalEntregue < totalRequisitado) novoStatus = 'parcialmente_entregue';
+        else if (totalEntregue >= totalRequisitado) novoStatus = 'entregue';
+
+        await dbRun('UPDATE requisicoes SET items = ?, status = ? WHERE id = ?', [JSON.stringify(items), novoStatus, id]);
+        res.json({ message: "Itens da requisição atualizados com sucesso", novoStatus });
+
+    } catch (err) { res.status(500).json({ error: `Erro ao atualizar itens da requisição: ${err.message}` }); }
+});
+
+app.delete('/api/requisicoes/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await dbRun('DELETE FROM requisicoes WHERE id = ?', [id]);
+        if (result.changes === 0) return res.status(404).json({ message: "Requisição não encontrada" });
+        res.status(204).send();
+    } catch (err) {
+        res.status(500).json({ error: `Erro ao excluir requisição: ${err.message}` });
+    }
 });
 
 // =================================================================
@@ -285,6 +368,21 @@ async function startServer() {
             const lastID = res.rows[0]?.id || null;
             return { changes: res.rowCount, lastID: lastID };
         });
+
+        // Cria a tabela de requisições se não existir (PostgreSQL)
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS requisicoes (
+                id SERIAL PRIMARY KEY,
+                om VARCHAR(255) NOT NULL,
+                items JSONB NOT NULL,
+                status VARCHAR(50) DEFAULT 'pendente',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                created_by VARCHAR(255)
+            );
+        `);
+        console.log('Tabela "requisicoes" verificada/criada no PostgreSQL.');
+
+
     } else if (process.env.DATABASE_URL) {
         // --- AMBIENTE DE DESENVOLVIMENTO COM POSTGRESQL LOCAL ---
         console.log('Ambiente de desenvolvimento com DATABASE_URL detectado. Conectando ao PostgreSQL local SEM SSL.');
@@ -307,6 +405,20 @@ async function startServer() {
             const lastID = res.rows[0]?.id || null;
             return { changes: res.rowCount, lastID: lastID };
         });
+
+        // Cria a tabela de requisições se não existir (PostgreSQL Local)
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS requisicoes (
+                id SERIAL PRIMARY KEY,
+                om VARCHAR(255) NOT NULL,
+                items JSONB NOT NULL,
+                status VARCHAR(50) DEFAULT 'pendente',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                created_by VARCHAR(255)
+            );
+        `);
+        console.log('Tabela "requisicoes" verificada/criada no PostgreSQL local.');
+
     } else {
         // --- AMBIENTE DE DESENVOLVIMENTO PADRÃO (LOCAL COM SQLITE) ---
         console.log('Ambiente de desenvolvimento detectado. Usando SQLite.');
@@ -329,6 +441,19 @@ async function startServer() {
         dbRun = (query, params = []) => new Promise(function(resolve, reject) {
             db.run(stripReturning(query), params, function(err) { err ? reject(err) : resolve(this); });
         });
+
+        // Cria a tabela de requisições se não existir (SQLite)
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS requisicoes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                om TEXT NOT NULL,
+                items TEXT NOT NULL,
+                status TEXT DEFAULT 'pendente',
+                created_at TEXT NOT NULL,
+                created_by TEXT
+            );
+        `);
+        console.log('Tabela "requisicoes" verificada/criada no SQLite.');
     }
 
     app.listen(PORT, () => {
@@ -337,4 +462,3 @@ async function startServer() {
 }
 
 startServer();
-
