@@ -3,47 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Reparo - Controle de Falhas</title>
-    <link rel="stylesheet" href="./style.css">
-    <link rel="stylesheet" href="./reparo.css">
+    <title>Tela de Reparo - Controle de Falhas</title>
+    <link rel="stylesheet" href="./style.css?v=1.5">
 </head>
 <body>
-    <div class="app-header">
-        <div class="app-title">Painel de Reparo</div>
-        <div class="user-info">
-            <span id="userDisplay"></span>
-            <button id="btnLogout" class="btn outline">Sair</button>
-        </div>
-    </div>
 
-    <div class="container">
-        <div class="card">
-            <div class="toolbar spaced">
-                <div class="left">
-                    <div class="field">
-                        <label for="omFilter">Filtrar por OM</label>
-                        <select id="omFilter"></select>
-                    </div>
-                    <div class="field">
-                        <label for="statusFilter">Filtrar por Status</label>
-                        <select id="statusFilter">
-                            <option value="all">Todos</option>
-                            <option value="aberto" selected>Abertos</option>
-                            <option value="reparado">Reparados</option>
-                        </select>
-                    </div>
+<div class="app-header">
+    <div class="app-title">
+        <a href="index.html" class="nav-link admin-only">Controle de Falhas AOI</a>
+        <span class="nav-separator admin-only">&gt;</span>
+        <span>Reparo</span>
+    </div>
+    <div class="user-info">
+        <!-- Botão de Voltar para o Admin -->
+        <a href="index.html" class="btn outline admin-only">Voltar ao Registro</a>
+        <span id="userDisplay"></span>
+        <button id="btnLogout" class="btn outline">Sair</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-column">
+        <header>
+            <div class="title">Registros para Reparo</div>
+        </header>
+
+        <section class="card">
+            <h2 class="section-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.44 2.5C17.44 2.5 14.42 2.5 12.64 4.87C10.86 7.24 10.56 10.23 10.56 10.23M10.56 10.23L13.44 13.11M10.56 10.23L7.68 7.35M6.56 13.77C6.56 13.77 9.58 13.77 11.36 11.4C12.43 10.01 12.82 8.37 12.82 8.37M12.82 8.37L9.94 5.49M12.82 8.37L15.7 11.25M2 22L10 14" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Lista de Falhas Abertas</span>
+            </h2>
+            <div class="toolbar">
+                <div class="left field">
+                    <label for="omFilter">Filtrar por OM:</label>
+                    <select id="omFilter"></select>
+                </div>
+                <div class="left field">
+                    <label for="statusFilter">Filtrar por Status:</label>
+                    <select id="statusFilter">
+                        <option value="all">Todos</option>
+                        <option value="aberto" selected>Aberto</option>
+                        <option value="reparado">Reparado</option>
+                    </select>
                 </div>
             </div>
-
             <table id="reparoTable">
-                <thead></thead>
+                <thead>
+                    <!-- O cabeçalho da tabela é gerado pelo reparo.js -->
+                </thead>
                 <tbody id="reparoTbody"></tbody>
             </table>
-        </div>
+        </section>
     </div>
+</div>
 
-    <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
-    <div id="toastContainer"></div>
-    <script src="./reparo.js"></script>
+<div id="toastContainer"></div>
+<div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
+
+<script src="./reparo.js?v=1.5"></script>
 </body>
 </html>

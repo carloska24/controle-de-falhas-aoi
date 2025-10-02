@@ -95,19 +95,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableBody.innerHTML = dadosFiltrados.map(req => `
             <tr data-id="${req.id}">
-                <td data-label="ID">#${req.id}</td>
-                <td data-label="OM">${req.om}</td>
-                <td data-label="Data">${formatDate(req.created_at)}</td>
-                <td data-label="Solicitante">${req.created_by}</td>
-                <td data-label="Status"><span class="status-tag status-${req.status}">${statusMap[req.status] || req.status}</span></td>
-                <td data-label="Ações">
-                    <button class="btn small btn-ver-itens" data-id="${req.id}">Ver Itens</button>
+                <td data-label="ID" style="text-align: center; vertical-align: middle;">#${req.id}</td>
+                <td data-label="OM" style="text-align: center; vertical-align: middle;">${req.om}</td>
+                <td data-label="Data" style="text-align: center; vertical-align: middle;">${formatDate(req.created_at)}</td>
+                <td data-label="Solicitante" style="text-align: center; vertical-align: middle;">${req.created_by}</td>
+                <td data-label="Status" style="text-align: center; vertical-align: middle;"><span class="status-tag status-${req.status}">${statusMap[req.status] || req.status}</span></td>
+                <td data-label="Requisição" style="text-align: center; vertical-align: middle;">
+                    <button class="btn small outline btn-ver-itens" data-id="${req.id}" title="Ver Itens da Requisição"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 11V17C22 20 20 22 17 22H7C4 22 2 20 2 17V7C2 4 4 2 7 2H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.57 5.11L12.15 8.54M15.57 5.11L18.89 8.54M15.57 5.11V2M15.57 5.11L22 5.18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </td>
+                <td data-label="Ações" style="text-align: center; vertical-align: middle;">
                     ${req.status !== 'entregue' ? `
                     <button class="btn small primary btn-atender-req" data-id="${req.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 12L10.5 15L16.5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Atender</button>
                     ` : ''}
-                    ${user && user.role === 'admin' ? `
-                    <button class="btn small danger btn-excluir-req" data-id="${req.id}" style="margin-left: 4px;">Excluir</button>
-                    ` : ''}
+                </td>
+                <td data-label="Admin" style="text-align: center; vertical-align: middle;">
+                    ${user && user.role === 'admin' ? `<button class="btn small danger btn-excluir-req" data-id="${req.id}">Excluir</button>` : ''}
                 </td>
             </tr>
         `).join('');
@@ -182,21 +184,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listener para abrir o modal
     tableBody.addEventListener('click', async (e) => {
-        const target = e.target;
+        const target = e.target.closest('button'); // Otimização: foca apenas em cliques em botões
+        if (!target) return; // Se o clique não foi em um botão, ignora.
 
         // Atender requisição
         if (target.classList.contains('btn-atender-req')) {
             handleAtenderRequisicao(target.dataset.id);
+            return; // Encerra a função para evitar outras verificações
         }
 
         // Excluir requisição
         if (target.classList.contains('btn-excluir-req')) {
             handleExcluirRequisicao(target.dataset.id);
+            return; // Encerra a função
         }
         // Ver itens da requisição
-        if (e.target.classList.contains('btn-ver-itens')) {
-            const button = e.target;
-            const reqId = button.dataset.id;
+        if (target.classList.contains('btn-ver-itens')) {
+            const reqId = target.dataset.id; // Corrigido para usar 'target'
             const requisicao = allRequisicoes.find(r => r.id == reqId);
             const items = requisicao ? requisicao.items : [];
 
@@ -204,25 +208,34 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.dataset.reqId = reqId; // Armazena o ID da requisição no modal
             
             if (items && items.length > 0) {
-                tbodyItens.innerHTML = items.map(item => `
-                    <tr data-pn="${item.pn}">
-                        <td>${requisicao.om}</td>
-                        <td>${item.pn}</td>
-                        <td>${item.descricao || 'N/A'}</td>
-                        <td>${item.quantidade_requisitada}</td>
-                        <td>
-                            <input 
-                                type="number" 
-                                class="input-table" 
-                                value="${item.quantidade_entregue || 0}" 
-                                min="0" 
-                                max="${item.quantidade_requisitada}"
-                            >
-                        </td>
-                    </tr>
-                `).join('');
+                tbodyItens.innerHTML = items.map(item => {
+                    const isDelivered = (item.quantidade_entregue || 0) >= item.quantidade_requisitada;
+                    return `
+                        <tr data-pn="${item.pn}">
+                            <td>${requisicao.om}</td>
+                            <td>${item.pn}</td>
+                            <td>${item.descricao || 'N/A'}</td>
+                            <td>${item.quantidade_requisitada}</td>
+                            <td>
+                                <input 
+                                    type="number" 
+                                    class="input-table" 
+                                    value="${item.quantidade_entregue || 0}" 
+                                    min="0" 
+                                    max="${item.quantidade_requisitada}"
+                                    ${isDelivered ? 'disabled' : ''}
+                                >
+                            </td>
+                            <td style="text-align: center;">
+                                ${!isDelivered ? `
+                                <button class="btn small primary btn-entregar-item" data-pn="${item.pn}" title="Entregar quantidade total"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1H5L7.68 14.39C7.77 14.85 8.15 15.17 8.62 15.17H19.42C19.89 15.17 20.27 14.85 20.36 14.39L23 6H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="21" r="2" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="21" r="2" stroke="currentColor" stroke-width="2"/></svg> Entregar</button>
+                                ` : `<span style="color: var(--primary); font-weight: 600;">Entregue</span>`}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             } else {
-                tbodyItens.innerHTML = '<tr><td colspan="5">Nenhum item encontrado para esta requisição.</td></tr>';
+                tbodyItens.innerHTML = '<tr><td colspan="6">Nenhum item encontrado para esta requisição.</td></tr>';
             }
 
             modal.classList.remove('hidden');
@@ -253,6 +266,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listeners para fechar o modal
     closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+    // Listener para o botão "Entregar" dentro do modal
+    tbodyItens.addEventListener('click', (e) => {
+        const target = e.target.closest('.btn-entregar-item');
+        if (!target) return;
+
+        const pn = target.dataset.pn;
+        const row = tbodyItens.querySelector(`tr[data-pn="${pn}"]`);
+        if (row) {
+            const inputEntregue = row.querySelector('.input-table');
+            inputEntregue.value = inputEntregue.max; // Preenche com a quantidade máxima (requisitada)
+            target.parentElement.innerHTML = `<span style="color: var(--primary); font-weight: 600;">Entregue</span>`; // Atualiza a UI
+        }
+    });
 
     buscaInput.addEventListener('input', renderTable);
     filtroOM.addEventListener('change', renderTable);

@@ -85,18 +85,27 @@ document.addEventListener('DOMContentLoaded', () => {
             dadosFiltrados = dadosFiltrados.filter(d => d.status === statusFilter.value);
         }
 
-        tableHead.innerHTML = `<tr><th>OM</th><th>Data</th><th>Serial</th><th>Designador</th><th>Defeito</th><th>Obs.</th><th>Status</th><th>Ação</th></tr>`;
+        // Cabeçalho da tabela com a nova ordem e centralizado
+        tableHead.innerHTML = `<tr>
+            <th style="text-align: center;">OM</th><th style="text-align: center;">Cod. Alt</th><th style="text-align: center;">Serial</th><th style="text-align: center;">Descrição</th><th style="text-align: center;">Designador</th><th style="text-align: center;">Defeito</th><th style="text-align: center;">Data/Hora</th><th style="text-align: center;">Status</th><th style="text-align: center;">Ação</th>
+        </tr>`;
+
+        // Corpo da tabela com a nova ordem e centralizado
         tableBody.innerHTML = dadosFiltrados.map(item => `
             <tr data-id="${item.id}">
-                <td data-label="OM">${item.om}</td>
-                <td data-label="Data">${formatDate(item.createdat)}</td>
-                <td data-label="Serial">${item.serial || '—'}</td>
-                <td data-label="Designador">${item.designador}</td>
-                <td data-label="Defeito">${item.tipodefeito}</td>
-                <td data-label="Obs.">${item.obs || '—'}</td>
-                <td data-label="Status"><span class="status-tag status-${item.status}">${item.status}</span></td>
-                <td data-label="Ação" style="text-align: center;">
-                    ${item.status === 'aberto' ? `<button class="btn primary small btn-reparar" data-id="${item.id}">Marcar como Reparado</button>` : '—'}
+                <td data-label="OM" style="text-align: center;">${item.om}</td>
+                <td data-label="Cod. Alt" style="text-align: center;">${item.pn || '—'}</td>
+                <td data-label="Serial" style="text-align: center;">${item.serial || '—'}</td>
+                <td data-label="Descrição" style="text-align: center;">${item.descricao || '—'}</td>
+                <td data-label="Designador" style="text-align: center;">${item.designador}</td>
+                <td data-label="Defeito" style="text-align: center;">${item.tipodefeito}</td>
+                <td data-label="Data/Hora" style="text-align: center;">${formatDate(item.createdat)}</td>
+                <td data-label="Status" style="text-align: center;"><span class="status-tag status-${item.status}">${item.status}</span></td>
+                <td data-label="Ação" class="actions-cell">
+                    ${item.status === 'aberto' ? `<button class="btn primary small btn-reparar" data-id="${item.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.44 2.5C17.44 2.5 14.42 2.5 12.64 4.87C10.86 7.24 10.56 10.23 10.56 10.23M10.56 10.23L13.44 13.11M10.56 10.23L7.68 7.35M6.56 13.77C6.56 13.77 9.58 13.77 11.36 11.4C12.43 10.01 12.82 8.37 12.82 8.37M12.82 8.37L9.94 5.49M12.82 8.37L15.7 11.25M2 22L10 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Reparar</button>` : ''}
+                    ${user && user.role === 'admin' ? `
+                        <button class="btn danger small btn-excluir-reparo" data-id="${item.id}" style="margin-left: 4px;">Excluir</button>
+                    ` : ''}
                 </td>
             </tr>
         `).join('');
@@ -117,13 +126,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function handleExcluir(id) {
+        if (!confirm(`Tem certeza que deseja excluir o registro #${id}?`)) return;
+        try {
+            setLoading(true);
+            // A API espera um array de IDs, mesmo que seja para um único item.
+            await fetchAutenticado(API_URL, {
+                method: 'DELETE',
+                body: JSON.stringify({ ids: [id] })
+            });
+            showToast('Registro excluído com sucesso.');
+            await inicializar(); // Recarrega os dados
+        } catch (error) {
+            showToast(`Erro ao excluir registro: ${error.message}`, 'error');
+        } finally {
+            setLoading(false);
+        }
+    }
+
     async function inicializar() {
         setLoading(true);
         if (userDisplay) userDisplay.textContent = user.name || user.username;
 
         try {
-            allData = await fetchAutenticado(API_URL) || [];
-
+            const rawData = await fetchAutenticado(API_URL) || [];
+            allData = (user && user.role === 'admin') ? rawData : rawData.filter(d => !d.om.startsWith('DEMO-'));
+            
             const oms = ['all', ...new Set(allData.map(d => d.om))];
             omFilter.innerHTML = oms.map(om => `<option value="${om}">${om === 'all' ? 'Todas as OMs' : om}</option>`).join('');
             renderTable();
@@ -147,6 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tableBody.addEventListener('click', (e) => {
         if (e.target.classList.contains('btn-reparar')) {
             handleReparar(e.target.dataset.id);
+        }
+        if (e.target.classList.contains('btn-excluir-reparo')) {
+            handleExcluir(e.target.dataset.id);
         }
     });
 
