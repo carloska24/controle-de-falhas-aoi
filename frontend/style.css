@@ -227,3 +227,12 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 .smd-diode {
     background: linear-gradient(90deg, #333 80%, #9ca3af 80%, #9ca3af 100%);
 }
+
+/* Garante que os botões de ação em tabelas fiquem sempre na mesma linha */
+.actions-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap; /* Impede a quebra de linha dos botões */
+}

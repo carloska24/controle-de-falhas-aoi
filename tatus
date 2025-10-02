@@ -1,0 +1,95 @@
+[33m9aed919[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Completo
+[33m158a12d[m Rodando Tudo
+[33m605a523[m Sistema Quase Perfeito
+[33m1208667[m Sistema Quase Perfeito
+[33mddb7185[m Sistema Quase Perfeito
+[33m60a7f65[m Sistema Quase Perfeito
+[33m12b84cb[m Sistema Quase Perfeito
+[33mad0b000[m Quase la
+[33m1a193a0[m Checkpoint para depuracao
+[33m5e96575[m chore: Checkpoint do sistema estável e funcional
+[33m8ec9fc3[m fix: Força SSL em produção e cria rota de reset de emergência
+[33m75bf75e[m fix: Força SSL em produção e cria rota de reset de emergência
+[33m501f7e2[m fix: Força SSL em produção e cria rota de reset de emergência
+[33md4bda96[m fix: Força SSL em produção e cria rota de reset de emergência
+[33m0e06221[m fix: Força SSL em produção e cria rota de reset de emergência
+[33m8e19286[m fix: Força SSL em produção e cria rota de reset de emergência
+[33ma88ce8b[m fix: Força SSL em produção e cria rota de reset de emergência
+[33me1d262e[m fix: Altera credenciais do setup inicial para DevNaPratica
+[33m3d7bcc5[m feat: Adiciona rota segura para setup do admin inicial
+[33mebd46e4[m feat: Adiciona gráfico de tendência e filtro de data na qualidade
+[33m941e435[m feat: Adiciona gráfico de tendência e filtro de data na qualidade
+[33md9a8773[m fix: Corrige exclusão de usuário e melhora consistência da API
+[33mba6e320[m fix: Corrige exclusão de usuário e melhora consistência da API
+[33md2cdaca[m feat: Adiciona perfis de usuário e páginas de reparo/qualidade
+[33m998d014[m Merge: Resolve conflitos e integra atualizações
+[33m6f8600a[m SEC: Protege rota de criação de usuários e limpa dependências
+[33mcf1a030[m Adicionei a funcionalidade X e testei localmente
+[33mea5a56b[m Adicionei a funcionalidade X e testei localmente
+[33mbf6d79a[m Adicionei a funcionalidade X e testei localmente
+[33me2dafd5[m Adicionei a funcionalidade X e testei localmente
+[33md275616[m Adicionei a funcionalidade X e testei localmente
+[33md87bddb[m Adicionei a funcionalidade X e testei localmente
+[33ma42437d[m Restaurando a versão completa e funcional
+[33mbd491e6[m Restaurando versão funcional com logo correto
+[33mc2ce5c9[m Merge branch 'main' of https://github.com/carloska24/controle-de-falhas-aoi
+[33m32b3c62[m Restaurando versão funcional com logo correto
+[33mff4493f[m Merge branch 'versao-estavel'
+[33mb5cbb22[m[33m ([m[1;31morigin/versao-estavel[m[33m)[m minha nova alteração
+[33m27e2564[m FIX: Refazendo tudo
+[33m804f771[m FIX: Refazendo tudo
+[33m751d136[m Restaurando versão estável antes do Cod.CAD
+[33mfe1a422[m FIX: Restaurando funções de autenticação no servidor
+[33m9a4934f[m FIX: Refazendo tudo
+[33m8c604f0[m FIX: Refazendo tudo
+[33m409d7a1[m FIX: Refazendo tudo
+[33m4ba82e4[m FIX: Refazendo tudo
+[33m9f59a21[m FIX: Refazendo tudo
+[33mb894138[m FIX: Refazendo tudo
+[33ma034594[m FIX: Refazendo tudo
+[33m3d89f47[m FIX: Refazendo tudo
+[33m7bce206[m FIX: Versão final com todas as correções e funcionalidades
+[33mb582b0a[m Versao Definitiva 100% funcional 26-09-2025
+[33m844c922[m FIX: Versão final com todas as correções e funcionalidades
+[33m11e316c[m Restauração completa para a última versão estável
+[33m1c0f179[m Antes da Alteracao do PDF de Requisicao de Materiais
+[33ma31b186[m FIX: Tentativa de Restauracao
+[33m374fc89[m FIX: Versão final com todas as correções e funcionalidades
+[33m9a02486[m FIX: Versão final com todas as correções e funcionalidades
+[33m7622363[m FIX: Versão final com todas as correções e funcionalidades
+[33m383daab[m FIX: Versão final e completa do script com todas as funcionalidades
+[33m5e29e41[m FIX: Versão final e completa do script com todas as funcionalidades
+[33mc82fe7e[m FIX: Versão final e completa do script com todas as funcionalidades
+[33m6b65c95[m FIX: Versão final e completa do script com todas as funcionalidades
+[33me705ace[m FIX: Versão final e completa do script com todas as funcionalidades
+[33m7919760[m FIX: Versão final e completa do script com todas as funcionalidades
+[33m5ba7180[m FIX: Versão final e completa do script com todas as funcionalidades
+[33mae536ae[m FIX: Versão final e completa do script com todas as funcionalidades
+[33mf064581[m Versão final e consolidada do projeto
+[33mb2f193d[m Versão final e consolidada do projeto
+[33m03cc82a[m Versão final e consolidada do projeto
+[33m238ea42[m FEAT: Implementa registro e login de usuários no backend
+[33m27124aa[m FEAT: Implementa registro e login de usuários no backend
+[33m506e3af[m FEAT: Implementa registro e login de usuários no backend
+[33m75c9411[m FEAT: Implementa registro e login de usuários no backend
+[33m073d47b[m FEAT: Implementa registro e login de usuários no backend
+[33md7a1ebf[m FEAT: Implementa registro e login de usuários no backend
+[33m65fbb48[m FEAT: Implementa registro e login de usuários no backend
+[33m12898a4[m FEAT: Adiciona fundo animado na tela de login
+[33m006989e[m FEAT: Implementa registro e login de usuários no backend
+[33mc207d89[m FEAT: Implementa registro e login de usuários no backend
+[33m5e3fd48[m FEAT: Reativa todas as funcionalidades dos botões
+[33m8472cb0[m FEAT: Implementa a geração de PDF de requisição de materiais
+[33mbe13181[m FIX: Restaura a lógica da função do gráfico de qualidade
+[33me4063a3[m FIX: Restaura a lógica da função do gráfico de qualidade
+[33mafac2ac[m FIX: Restaura a lógica da função do gráfico de qualidade
+[33mb43e214[m Insere depuração definitiva no botão de exclusão
+[33m122ac5a[m Versão final com todas as correções
+[33m195ebe4[m Ajusta case dos campos entre front-end e back-end
+[33m80e1132[m Corrige nomes de colunas para o PostgreSQL
+[33m532327a[m Adiciona a dependência 'pg' ao package.json
+[33mb23f038[m Migra o banco de dados de SQLite para PostgreSQL
+[33m52ef65c[m Finaliza e organiza o código do front-end
+[33m59bdbf7[m Configura URL da API de produção
+[33m63f27bd[m Melhora o estilo da tabela de registros
+[33m97fa6e1[m Versão inicial do projeto com front-end e back-end

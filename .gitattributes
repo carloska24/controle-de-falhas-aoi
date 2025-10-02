@@ -1,0 +1,9 @@
+# Define o comportamento padrão para todos os arquivos de texto
+* text=auto
+
+# Força arquivos específicos a usarem quebras de linha LF (Unix)
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.md text eol=lf

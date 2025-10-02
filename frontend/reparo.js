@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td data-label="Defeito" style="text-align: center;">${item.tipodefeito}</td>
                 <td data-label="Data/Hora" style="text-align: center;">${formatDate(item.createdat)}</td>
                 <td data-label="Status" style="text-align: center;"><span class="status-tag status-${item.status}">${item.status}</span></td>
-                <td data-label="Ação" class="actions-cell">
+                <td data-label="Ação" class="actions-cell" style="justify-content: center;">
                     ${item.status === 'aberto' ? `<button class="btn primary small btn-reparar" data-id="${item.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.44 2.5C17.44 2.5 14.42 2.5 12.64 4.87C10.86 7.24 10.56 10.23 10.56 10.23M10.56 10.23L13.44 13.11M10.56 10.23L7.68 7.35M6.56 13.77C6.56 13.77 9.58 13.77 11.36 11.4C12.43 10.01 12.82 8.37 12.82 8.37M12.82 8.37L9.94 5.49M12.82 8.37L15.7 11.25M2 22L10 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Reparar</button>` : ''}
                     ${user && user.role === 'admin' ? `
                         <button class="btn danger small btn-excluir-reparo" data-id="${item.id}" style="margin-left: 4px;">Excluir</button>
