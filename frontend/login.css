@@ -121,3 +121,10 @@ input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px var(--bg-dark) inset !important;
     -webkit-text-fill-color: var(--text) !important;
 }
+/* Adicionado para destacar o nome da empresa */
+.company-subtitle {
+    color: var(--primary); /* Usa a cor verde principal do projeto */
+    font-weight: 600;      /* Deixa o texto um pouco mais forte */
+    margin-top: -10px;     /* Ajusta o espaçamento */
+    margin-bottom: 20px;
+}
