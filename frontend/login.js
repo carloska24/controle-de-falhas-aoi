@@ -15,23 +15,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Animação de fundo
     const numberOfComponents = 40;
-    const componentTypes = [ 'smd-resistor','smd-resistor','smd-capacitor','smd-capacitor','smd-led','smd-ic' ];
+    // Diminui a probabilidade de CIs aparecerem, tornando-os mais raros
+    const componentTypes = [ 
+        'smd-resistor', 'smd-resistor', 'smd-resistor', 
+        'smd-capacitor', 'smd-capacitor', 'smd-capacitor', 'smd-capacitor',
+        'smd-led', 'smd-diode', 'smd-ic' 
+    ];
+    const fragment = document.createDocumentFragment(); // Cria um container temporário
     for (let i = 0; i < numberOfComponents; i++) {
         const component = document.createElement('div');
         const randomType = componentTypes[Math.floor(Math.random() * componentTypes.length)];
         component.classList.add('smd-component', randomType);
+
+        // Adiciona variação de cor para capacitores
+        if (randomType === 'smd-capacitor' && Math.random() > 0.5) {
+            component.classList.add('blue');
+        }
+
         let sizeW, sizeH;
         if (randomType === 'smd-ic') { sizeW = Math.random() * 20 + 20; sizeH = sizeW; } 
+        else if (randomType === 'smd-diode') { sizeW = Math.random() * 8 + 8; sizeH = sizeW * 0.5; }
         else { sizeW = Math.random() * 10 + 6; sizeH = sizeW * 0.5; }
+
         component.style.width = `${sizeW}px`;
         component.style.height = `${sizeH}px`;
         component.style.left = `${Math.random() * 100}%`;
+        component.style.zIndex = Math.floor(Math.random() * 10); // Adiciona profundidade
+        component.style.opacity = Math.random() * 0.7 + 0.3; // Opacidade aleatória para profundidade
+
         const duration = Math.random() * 12 + 10;
         const delay = -(Math.random() * duration); 
+        component.style.setProperty('--start-rot', `${Math.random() * 360}deg`); // Rotação inicial
+        component.style.setProperty('--end-rot', `${Math.random() * 720 - 360}deg`); // Rotação final
+
         component.style.animationDuration = `${duration}s`;
         component.style.animationDelay = `${delay}s`;
-        animationContainer.appendChild(component);
+        fragment.appendChild(component); // Adiciona ao container temporário
     }
+    animationContainer.appendChild(fragment); // Adiciona todos de uma só vez ao DOM
 
     // Lógica do Formulário
     loginForm.addEventListener('submit', async (event) => {

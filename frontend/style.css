@@ -196,3 +196,34 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
     cursor: pointer;
     line-height: 1;
 }
+
+/* --- Estilos para Animação de Login --- */
+@keyframes fall {
+    from { transform: translateY(-10vh) rotate(var(--start-rot)); }
+    to { transform: translateY(110vh) rotate(var(--end-rot)); }
+}
+.smd-component {
+    position: absolute;
+    animation-name: fall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    background-color: #334155; /* Cor base */
+}
+.smd-resistor {
+    /* Abordagem mais robusta para garantir os terminais */
+    background-color: #f0e6d6; /* Corpo bege */
+    border-left: 2px solid #b0b0b0;  /* Terminal esquerdo */
+    border-right: 2px solid #b0b0b0; /* Terminal direito */
+}
+.smd-capacitor { background-color: #f59e0b; } /* Laranja/Amarelo */
+.smd-capacitor.blue { background-color: #3b82f6; } /* Variação Azul */
+.smd-led { background-color: #ef4444; box-shadow: 0 0 5px #ef4444; }
+.smd-ic {
+    background-color: #111827; /* Corpo do CI */
+    position: relative; /* Necessário para os "pinos" */
+    border: 1px solid #4b5563; /* Adiciona uma borda para definir o corpo */
+}
+
+.smd-diode {
+    background: linear-gradient(90deg, #333 80%, #9ca3af 80%, #9ca3af 100%);
+}

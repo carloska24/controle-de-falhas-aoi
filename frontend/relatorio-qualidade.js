@@ -208,7 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
         
         try {
-            allData = await fetchAutenticado(API_URL) || [];
+            const rawData = await fetchAutenticado(API_URL) || [];
+            // Filtra os dados de demonstração para que não apareçam nos relatórios
+            allData = rawData.filter(d => !d.om.startsWith('DEMO-'));
 
             // Popular filtro de OM
             const oms = [...new Set(allData.map(d => d.om))];
