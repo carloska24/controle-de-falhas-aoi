@@ -258,6 +258,17 @@ app.delete('/api/registros', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.delete('/api/registros/demo', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const result = await dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
+        console.log(`Limpeza de Demos: ${result.changes} registros de demonstração foram excluídos.`);
+        res.status(200).json({ message: `${result.changes} registros de demonstração foram excluídos.` });
+    } catch (err) {
+        console.error(`Erro ao limpar registros de demonstração: ${err.message}`);
+        res.status(500).json({ error: `Erro ao limpar registros de demonstração: ${err.message}` });
+    }
+});
+
 // =================================================================
 // ROTAS DE REQUISIÇÃO (ALMOXARIFADO)
 // =================================================================

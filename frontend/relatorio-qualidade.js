@@ -209,8 +209,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const rawData = await fetchAutenticado(API_URL) || [];
-            // Filtra os dados de demonstração para que não apareçam nos relatórios
-            allData = rawData.filter(d => !d.om.startsWith('DEMO-'));
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDemoMode = urlParams.get('demo') === 'true';
+
+            if (isDemoMode && user && user.role === 'admin') {
+                allData = rawData; // Em modo demo, mostra todos os dados
+                document.querySelector('.app-title').textContent += ' (Modo Demo)';
+            } else {
+                // Em modo normal (ou se não for admin), filtra os dados de demonstração
+                allData = rawData.filter(d => !d.om.startsWith('DEMO-'));
+            }
 
             // Popular filtro de OM
             const oms = [...new Set(allData.map(d => d.om))];
@@ -234,9 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // Event Listeners
     // =================================================================
-    btnLogout.addEventListener('click', () => {
-        localStorage.clear();
-        sessionStorage.clear();
+    btnLogout.addEventListener('click', async () => {
+        if (user && user.role === 'admin') {
+            try {
+                await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
+            } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
+        }
+        localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';
     });
 

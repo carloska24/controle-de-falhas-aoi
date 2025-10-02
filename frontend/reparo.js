@@ -127,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleExcluir(id) {
-        if (!confirm(`Tem certeza que deseja excluir o registro #${id}?`)) return;
         try {
             setLoading(true);
             // A API espera um array de IDs, mesmo que seja para um único item.
@@ -166,9 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // Event Listeners
     // =================================================================
-    btnLogout.addEventListener('click', () => {
-        localStorage.clear();
-        sessionStorage.clear();
+    btnLogout.addEventListener('click', async () => {
+        if (user && user.role === 'admin') {
+            try {
+                await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
+            } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
+        }
+        localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';
     });
     [omFilter, statusFilter].forEach(el => el.addEventListener('change', renderTable));

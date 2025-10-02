@@ -186,14 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- LÓGICA DE EXCLUSÃO ---
         } else if (deleteButton) {
             const userId = deleteButton.dataset.id;
-            if (confirm('Tem certeza que deseja excluir este usuário?')) {
-                try {
-                    await fetchAutenticado(`${USERS_API_URL}/${userId}`, { method: 'DELETE' });
-                    carregarUsuarios(); // Recarrega a lista após a exclusão
-                    showToast('Usuário excluído com sucesso.');
-                } catch (error) {
-                    showToast(`Erro ao excluir usuário: ${error.message}`, 'error');
-                }
+            try {
+                await fetchAutenticado(`${USERS_API_URL}/${userId}`, { method: 'DELETE' });
+                carregarUsuarios(); // Recarrega a lista após a exclusão
+                showToast('Usuário excluído com sucesso.');
+            } catch (error) {
+                showToast(`Erro ao excluir usuário: ${error.message}`, 'error');
             }
         }
     });

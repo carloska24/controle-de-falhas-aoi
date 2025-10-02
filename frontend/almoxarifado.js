@@ -158,8 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleExcluirRequisicao(reqId) {
-        if (!confirm(`Tem certeza que deseja excluir a requisição #${reqId}? Esta ação não pode ser desfeita.`)) return;
-
         try {
             setLoading(true);
             await fetchAutenticado(`${API_URL}/${reqId}`, { method: 'DELETE' });
@@ -176,9 +174,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // Event Listeners
     // =================================================================
-    btnLogout.addEventListener('click', () => {
-        localStorage.clear();
-        sessionStorage.clear();
+    btnLogout.addEventListener('click', async () => {
+        if (user && user.role === 'admin') {
+            try {
+                // A URL base é a de registros, não de requisições
+                await fetchAutenticado(`${API_BASE_URL}/api/registros/demo`, { method: 'DELETE' });
+            } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
+        }
+        localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';
     });
 

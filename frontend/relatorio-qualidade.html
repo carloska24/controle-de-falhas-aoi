@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatório de Qualidade - Controle de Falhas</title>
-    <link rel="stylesheet" href="./style.css">
-    <link rel="stylesheet" href="./relatorio-qualidade.css">
+    <link rel="stylesheet" href="./style.css?v=1.5">
+    <link rel="stylesheet" href="./relatorio-qualidade.css?v=1.5">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
@@ -13,7 +13,7 @@
     <div class="app-header">
         <div class="app-title">Análise de Qualidade</div>
         <div class="user-info">
-            <a href="index.html" class="btn outline">Voltar ao Registro</a>
+            <a href="index.html" class="btn outline admin-only">Voltar ao Registro</a>
             <span id="userDisplay"></span>
             <button id="btnLogout" class="btn outline">Sair</button>
         </div>
@@ -82,6 +82,6 @@
 
     </div>
     <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
-    <script src="./relatorio-qualidade.js"></script>
+    <script src="./relatorio-qualidade.js?v=1.5"></script>
 </body>
 </html>

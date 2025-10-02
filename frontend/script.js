@@ -50,8 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (userDisplay && user) { userDisplay.textContent = user.name || user.username; }
   if (btnLogout) {
-      btnLogout.addEventListener('click', () => {
-          localStorage.clear();
+      btnLogout.addEventListener('click', async () => {
+          if (user && user.role === 'admin') {
+              try {
+                  await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
+                  showToast('Dados de demonstração foram limpos.', 'info');
+              } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
+          }
+          localStorage.clear(); sessionStorage.clear();
           window.location.href = 'login.html';
       });
   }
@@ -349,7 +355,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading(true);
     try {
         const demoRecords = [];
-        for (let i = 0; i < 3; i++) { // Alterado para criar 3 registros por vez.
+        for (let i = 0; i < 15; i++) { // Aumentado para 15 registros para uma melhor simulação
+            const demoDate = new Date();
+            const daysAgo = Math.floor(Math.random() * 30) + 1; // Gera uma data de 1 a 30 dias no passado
+            demoDate.setDate(demoDate.getDate() - daysAgo);
+
             demoRecords.push({
                 id: uid(),
                 om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`, // Gera OMs mais consistentes como DEMO-OM-1, 2 ou 3
@@ -359,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)], // Seleciona um defeito aleatório.
                 pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
                 descricao: 'Componente de Demonstração',
-                createdat: new Date().toISOString(),
+                createdat: demoDate.toISOString(),
                 status: 'aberto',
                 operador: user.name || user.username,
             });
@@ -367,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newRecords = await fetchAutenticado(`${API_URL}/batch`, { method: 'POST', body: JSON.stringify(demoRecords) });
         registros.unshift(...newRecords); // Adiciona os novos registros no início do array local
         render(); // Apenas renderiza novamente, sem buscar tudo do zero
-        showToast(`3 novos registros de demonstração foram salvos no banco de dados.`, 'info');
+        showToast(`15 novos registros de demonstração foram salvos no banco de dados.`, 'info');
     } catch (error) {
         showToast(`Erro ao criar dados de demonstração: ${error.message}`, 'error');
     } finally {
