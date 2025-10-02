@@ -144,8 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleAtenderRequisicao(reqId) {
-        if (!confirm(`Tem certeza que deseja marcar a requisição #${reqId} como "Entregue"?`)) return;
-
         try {
             setLoading(true);
             await fetchAutenticado(`${API_URL}/${reqId}/status`, {

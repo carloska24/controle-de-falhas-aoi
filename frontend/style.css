@@ -221,7 +221,7 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 .smd-ic {
     background-color: #111827; /* Corpo do CI */
     position: relative; /* Necessário para os "pinos" */
-    border: 1px solid #4b5563; /* Adiciona uma borda para definir o corpo */
+    box-shadow: inset 0 0 0 1px #4b5563; /* Borda interna mais performática */
 }
 
 .smd-diode {

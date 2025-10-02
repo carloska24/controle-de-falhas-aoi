@@ -285,16 +285,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnExcluir.addEventListener('click', async () => {
     const idsParaExcluir = selectedIds();
-    if (idsParaExcluir.length === 0) { return; }
-    if (confirm(`Tem certeza que deseja excluir ${idsParaExcluir.length} registro(s)?`)) {
-        try {
-            await fetchAutenticado(API_URL, { method: 'DELETE', body: JSON.stringify({ ids: idsParaExcluir }) });
-            registros = registros.filter(r => !idsParaExcluir.includes(r.id));
-            showToast(`${idsParaExcluir.length} registro(s) excluído(s).`);
-            render();
-        } catch (error) {
-            showToast(`Erro ao excluir registros: ${error.message}`, 'error');
-        }
+    if (idsParaExcluir.length === 0) return;
+    try {
+        await fetchAutenticado(API_URL, { method: 'DELETE', body: JSON.stringify({ ids: idsParaExcluir }) });
+        registros = registros.filter(r => !idsParaExcluir.includes(r.id));
+        showToast(`${idsParaExcluir.length} registro(s) excluído(s).`);
+        render();
+    } catch (error) {
+        showToast(`Erro ao excluir registros: ${error.message}`, 'error');
     }
   });
 
@@ -312,16 +310,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    if (confirm(`Gerar requisição de componentes para ${registrosValidos.length} falha(s) elegível(is)?`)) {
-        try {
-            setLoading(true);
-            const response = await fetchAutenticado(`${API_BASE_URL}/api/requisicoes`, {
-                method: 'POST',
-                body: JSON.stringify({ registroIds: registrosValidos.map(r => r.id) })
-            });
-            showToast(`Requisição #${response.requisicaoId} gerada com sucesso!`, 'success');
-        } catch (error) { showToast(`Erro ao gerar requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
-    }
+    try {
+        setLoading(true);
+        const response = await fetchAutenticado(`${API_BASE_URL}/api/requisicoes`, {
+            method: 'POST',
+            body: JSON.stringify({ registroIds: registrosValidos.map(r => r.id) })
+        });
+        showToast(`${response.requisicaoIds.length} requisição(ões) gerada(s) com sucesso!`, 'success');
+    } catch (error) { showToast(`Erro ao gerar requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
   });
 
   tbody.addEventListener('dblclick', (e) => {
