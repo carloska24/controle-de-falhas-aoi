@@ -52,17 +52,23 @@
                     <select id="filtroOM"></select>
                 </div>
                 <div class="right">
+                    <select id="filtroStatus" class="search-input" style="min-width: 180px;">
+                        <option value="todos">Todos os status</option>
+                        <option value="pendente">Aberto</option>
+                        <option value="parcialmente_entregue">Separando</option>
+                        <option value="entregue">Entregue</option>
+                    </select>
                     <input class="search-input" id="buscaRequisicao" placeholder="🔎 Buscar por OM...">
                 </div>
             </div>
             <table id="tabelaRequisicoes">
                 <thead>
                     <tr>
-                        <th style="text-align: center;">ID</th>
-                        <th style="text-align: center;">OM</th>
-                        <th style="text-align: center;">Data</th>
-                        <th style="text-align: center;">Solicitante</th>
-                        <th style="text-align: center;">Status</th>
+                        <th class="sortable" data-key="id" style="text-align: center;">ID</th>
+                        <th class="sortable" data-key="om" style="text-align: center;">OM</th>
+                        <th class="sortable" data-key="created_at" style="text-align: center;">Data</th>
+                        <th class="sortable" data-key="created_by" style="text-align: center;">Solicitante</th>
+                        <th class="sortable" data-key="status" style="text-align: center;">Status</th>
                         <th style="text-align: center;">Requisição</th>
                         <th style="text-align: center;">Ações</th>
                         <th style="text-align: center;"></th> <!-- Coluna vazia para o botão de excluir do admin -->
@@ -70,6 +76,7 @@
                 </thead>
                 <tbody id="tbodyRequisicoes"></tbody>
             </table>
+            <div id="emptyStateAlmox" class="note" style="display:none; text-align:center; margin-top:8px;">Nenhuma requisição encontrada.</div>
         </section>
     </div>
 </div>

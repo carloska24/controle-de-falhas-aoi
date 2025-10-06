@@ -9,10 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Lógica de Controle de Acesso: mostra elementos apenas para admins
-  if (user && user.role === 'admin') {
-    document.querySelectorAll('.admin-only').forEach(el => {
-      el.classList.remove('admin-only');
-    });
+  const isAdmin = !!(user && user.role === 'admin');
+  if (isAdmin) {
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('admin-only'));
+  } else {
+    // Esconde botões/áreas de admin, incluindo botão de demo
+    const btnDemo = document.querySelector('#btnDemo');
+    if (btnDemo) btnDemo.style.display = 'none';
   }
 
   // Detecta se estamos em ambiente local ou de produção para definir a URL da API
@@ -20,13 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
   const API_URL = `${API_BASE_URL}/api/registros`;
   let registros = [];
+  let sortState = { key: 'createdat', dir: 'desc' }; // padrão: mais recentes primeiro
+  let searchTimer;
   
   const form = document.querySelector('#formRegistro');
   const btnGravar = form.querySelector('button[type="submit"]');
   const btnLimpar = document.querySelector('#btnLimpar');
   const btnExcluir = document.querySelector('#btnExcluir');
   const btnDemo = document.querySelector('#btnDemo');
-  const btnGerarRequisicao = document.querySelector('#btnGerarRequisicao'); // Novo botão
+  const btnGerarRequisicao = document.querySelector('#btnGerarRequisicao');
   const btnPDF = document.querySelector('#btnPDF');
   const btnReqCSV = document.querySelector('#btnReqCSV');
   const selAll = document.querySelector('#selAll');
@@ -102,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
   async function carregarRegistros() {
     setLoading(true);
     try {
-      // Simplificado: Sempre busca os dados mais recentes do backend.
       registros = await fetchAutenticado(API_URL) || [];
       render();
     } catch (error) {
@@ -122,23 +126,55 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function render() {
-      const f = busca.value.toLowerCase();
+      const f = (busca?.value || '').toLowerCase();
       let rowsToRender = registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
-      tbody.innerHTML = rowsToRender.map(r => `
-        <tr data-id="${r.id}">
-          <td data-label="Selecionar"><input type="checkbox" class="checkbox rowSel" /></td>
-          <td data-label="OM">${escapeHTML(r.om ?? '')}</td>
-          <td data-label="Cod. Alt">${escapeHTML(r.pn ?? '')}</td>
-          <td data-label="Serial">${escapeHTML(r.serial ?? '')}</td>
-          <td data-label="Designador">${escapeHTML(r.designador ?? '')}</td>
-          <td data-label="Defeito">${escapeHTML(r.tipodefeito ?? '')}</td>
-          <td data-label="Descrição">${escapeHTML(r.descricao ?? '')}</td>
-          <td data-label="Data/Hora">${formatDate(r.createdat)}</td>
-        </tr>
-      `).join('');
+
+      // Ordenação
+      const key = sortState.key;
+      const dir = sortState.dir === 'asc' ? 1 : -1;
+      rowsToRender.sort((a,b) => {
+        let va = a[key] ?? '';
+        let vb = b[key] ?? '';
+        if (key === 'createdat') { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
+        else { va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase(); }
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return 0;
+      });
+
+      if (rowsToRender.length === 0) {
+        tbody.innerHTML = '';
+        const empty = document.getElementById('emptyState');
+        if (empty) empty.style.display = 'block';
+      } else {
+        const empty = document.getElementById('emptyState');
+        if (empty) empty.style.display = 'none';
+        tbody.innerHTML = rowsToRender.map(r => `
+          <tr data-id="${r.id}">
+            <td data-label="Selecionar"><input type="checkbox" class="checkbox rowSel" /></td>
+            <td data-label="OM">${escapeHTML(r.om ?? '')}</td>
+            <td data-label="Cod. Alt">${escapeHTML(r.pn ?? '')}</td>
+            <td data-label="Serial">${escapeHTML(r.serial ?? '')}</td>
+            <td data-label="Designador">${escapeHTML(r.designador ?? '')}</td>
+            <td data-label="Defeito">${escapeHTML(r.tipodefeito ?? '')}</td>
+            <td data-label="Descrição">${escapeHTML(r.descricao ?? '')}</td>
+            <td data-label="Data/Hora">${formatDate(r.createdat)}</td>
+          </tr>
+        `).join('');
+      }
       updateMetrics(rowsToRender);
       updateSelectionState();
       updateQuality();
+      updateSortIndicators();
+  }
+
+  function updateSortIndicators() {
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.classList.remove('sort-asc','sort-desc');
+      if (th.dataset.key === sortState.key) {
+        th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
   }
   
   function updateMetrics(visibleRows) {
@@ -159,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ids = selectedIds();
         return registros.filter(r => ids.includes(r.id));
     }
-    return registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(busca.value.toLowerCase()));
+    return registros.filter(r => Object.values(r).join(' ').toLowerCase().includes((busca?.value || '').toLowerCase()));
   }
 
   function updateQuality() {
@@ -238,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSelectionState() {
     const checkedCount = selectedIds().length;
     btnExcluir.disabled = checkedCount === 0;
-    btnGerarRequisicao.disabled = checkedCount === 0; // Ativa/desativa o novo botão
+    btnGerarRequisicao.disabled = checkedCount === 0;
     const totalCheckboxes = document.querySelectorAll('.rowSel').length;
     if (totalCheckboxes > 0 && checkedCount === totalCheckboxes) {
         selAll.checked = true;
@@ -286,6 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
   btnExcluir.addEventListener('click', async () => {
     const idsParaExcluir = selectedIds();
     if (idsParaExcluir.length === 0) return;
+    const conf = confirm(`Excluir ${idsParaExcluir.length} registro(s)? Esta ação não pode ser desfeita.`);
+    if (!conf) return;
     try {
         await fetchAutenticado(API_URL, { method: 'DELETE', body: JSON.stringify({ ids: idsParaExcluir }) });
         registros = registros.filter(r => !idsParaExcluir.includes(r.id));
@@ -300,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const todosIdsSelecionados = selectedIds();
     if (todosIdsSelecionados.length === 0) return;
 
-    // Nova Lógica: Filtra automaticamente apenas os registros com defeitos válidos para requisição.
     const defeitosPermitidos = ['Componente Ausente', 'Componente Danificado', 'Componente Incorreto'];
     const registrosSelecionados = registros.filter(r => todosIdsSelecionados.includes(r.id));
     const registrosValidos = registrosSelecionados.filter(r => defeitosPermitidos.includes(r.tipodefeito));
@@ -341,8 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  btnDemo.addEventListener('click', async () => {
-    // Lista completa de defeitos para gerar dados de demonstração mais realistas.
+  if (btnDemo) btnDemo.addEventListener('click', async () => {
+    if (!isAdmin) { showToast('Apenas administradores podem lançar dados de demonstração.', 'error'); return; }
     const allDefectTypes = [
         'Curto-circuito', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball',
         'Componente Ausente', 'Componente Danificado', 'Componente Deslocado', 'Componente Incorreto', 'Componente Invertido', 'Polaridade Incorreta'
@@ -351,18 +388,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading(true);
     try {
         const demoRecords = [];
-        for (let i = 0; i < 15; i++) { // Aumentado para 15 registros para uma melhor simulação
+        for (let i = 0; i < 15; i++) {
             const demoDate = new Date();
-            const daysAgo = Math.floor(Math.random() * 30) + 1; // Gera uma data de 1 a 30 dias no passado
+            const daysAgo = Math.floor(Math.random() * 30) + 1;
             demoDate.setDate(demoDate.getDate() - daysAgo);
 
             demoRecords.push({
                 id: uid(),
-                om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`, // Gera OMs mais consistentes como DEMO-OM-1, 2 ou 3
+                om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`,
                 qtdlote: 150,
                 serial: `SN-DEMO-${Date.now() + i}`,
                 designador: `C${Math.floor(Math.random() * 500)}`,
-                tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)], // Seleciona um defeito aleatório.
+                tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
                 pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
                 descricao: 'Componente de Demonstração',
                 createdat: demoDate.toISOString(),
@@ -371,8 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         const newRecords = await fetchAutenticado(`${API_URL}/batch`, { method: 'POST', body: JSON.stringify(demoRecords) });
-        registros.unshift(...newRecords); // Adiciona os novos registros no início do array local
-        render(); // Apenas renderiza novamente, sem buscar tudo do zero
+        registros.unshift(...newRecords);
+        render();
         showToast(`15 novos registros de demonstração foram salvos no banco de dados.`, 'info');
     } catch (error) {
         showToast(`Erro ao criar dados de demonstração: ${error.message}`, 'error');
@@ -382,7 +419,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   [totalInspec, escopoQualidade].forEach(el => { if(el) el.addEventListener('input', updateQuality); });
-  busca.addEventListener('input', () => { render(); });
+  
+  // Busca com debounce
+  busca.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(render, 200);
+  });
+  
+  // Ordenação por cabeçalho
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortState.key === key) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.key = key;
+        sortState.dir = key === 'createdat' ? 'desc' : 'asc';
+      }
+      render();
+    });
+  });
   
   tbody.addEventListener('change', (e) => { 
     if (e.target.classList.contains('rowSel')) { 

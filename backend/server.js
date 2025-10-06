@@ -1,5 +1,6 @@
 require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -36,6 +37,22 @@ app.use(express.json());
 // Healthcheck simples
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Servir frontend estatico: permite abrir a aplicação diretamente em /
+// Mapeia a pasta ../frontend como conteúdo estático
+const frontendDir = path.join(__dirname, '..', 'frontend');
+console.log(`[static] Servindo frontend de: ${frontendDir}`);
+app.use(express.static(frontendDir));
+// Redireciona raiz para login.html por conveniência
+app.get('/', (_req, res) => {
+    res.sendFile(path.join(frontendDir, 'login.html'));
+});
+
+// Fallback: qualquer GET que não seja /api/* retorna o login.html (evita "Cannot GET /")
+app.get(/^(?!\/api\/).+/, (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    res.sendFile(path.join(frontendDir, 'login.html'));
 });
 
 // Utilitário de debug para redefinir senha (somente DEV, via GET com chave)
@@ -265,6 +282,77 @@ if (!isProduction) {
                 res.status(500).json({ error: e.message });
             }
         });
+
+        // Rotas de SEED (DEV ONLY) para popular rapidamente
+        app.get('/api/debug/seed-registros', async (req, res) => {
+            const key = req.query.key;
+            const n = Math.max(1, Math.min(parseInt(req.query.n || '8', 10), 50));
+            if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+            try {
+                const now = Date.now();
+                const exemplos = ['DEFEITO X','FALHA Y','QUEBRA Z','ERGONOMIA','CALIBRAÇÃO'];
+                const oms = ['DEMO-OM-01','DEMO-OM-02','DEMO-OM-03'];
+                const registros = [];
+                for (let i=0; i<n; i++) {
+                    const id = 'DEMO-' + (now + i);
+                    registros.push({
+                        id,
+                        om: oms[i % oms.length],
+                        qtdlote: 1 + (i % 5),
+                        serial: 'S' + (1000 + i),
+                        designador: 'U' + (i % 10),
+                        tipodefeito: exemplos[i % exemplos.length],
+                        pn: 'PN-' + (2000 + i),
+                        descricao: 'Peça de demonstração ' + i,
+                        obs: null,
+                        createdat: new Date(now - i*60000).toISOString(),
+                        status: 'pendente',
+                        operador: 'DevAdmin'
+                    });
+                }
+                // Inserir em lote com transação se disponível
+                const doInserts = async (runner) => {
+                    for (const r of registros) {
+                        await runner('INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador]);
+                    }
+                };
+                if (typeof dbTransaction === 'function') {
+                    await dbTransaction(async (run) => { await doInserts(run); });
+                } else {
+                    await dbRun('BEGIN');
+                    await doInserts(dbRun);
+                    await dbRun('COMMIT');
+                }
+                res.status(201).json({ message: `Inseridos ${registros.length} registros demo.` });
+            } catch (e) {
+                try { await dbRun('ROLLBACK'); } catch (_) {}
+                res.status(500).json({ error: e.message });
+            }
+        });
+
+        app.get('/api/debug/seed-requisicoes', async (req, res) => {
+            const key = req.query.key;
+            if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+            try {
+                const regs = await dbAll("SELECT om, pn, descricao FROM registros WHERE om LIKE 'DEMO-%' LIMIT 30");
+                if (regs.length === 0) return res.status(404).json({ error: 'Sem registros DEMO para criar requisições' });
+                const porOM = regs.reduce((acc, r) => { (acc[r.om] ||= []).push(r); return acc; }, {});
+                const ids = [];
+                for (const [om, list] of Object.entries(porOM)) {
+                    const items = list.slice(0, 5).map((r, idx) => ({
+                        pn: r.pn,
+                        descricao: r.descricao || 'Sem descrição',
+                        quantidade_requisitada: 1 + (idx % 2),
+                        quantidade_entregue: 0
+                    }));
+                    const result = await dbRun('INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)', [om, JSON.stringify(items), new Date().toISOString(), 'DevAdmin']);
+                    ids.push(result.lastID);
+                }
+                res.status(201).json({ message: `Criadas ${ids.length} requisições DEMO.`, ids });
+            } catch (e) {
+                res.status(500).json({ error: e.message });
+            }
+        });
 }
 
 // ROTAS DE AUTENTICAÇÃO
@@ -354,14 +442,23 @@ app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
 
 // ROTAS DE REGISTROS (PROTEGIDAS)
 app.get('/api/registros', authenticateToken, async (req, res) => {
-  try {
-    const registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
-    res.json(registros);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    try {
+        let registros;
+        if (req.user && req.user.role === 'admin') {
+                registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
+        } else {
+                registros = await dbAll("SELECT * FROM registros WHERE om NOT LIKE 'DEMO-%' ORDER BY createdat DESC");
+        }
+        res.json(registros);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/registros', authenticateToken, validate(registroCreateSchema), async (req, res) => {
     const r = req.body;
+    // Somente admin pode criar registros DEMO (OM iniciando com 'DEMO-')
+    if (typeof r.om === 'string' && r.om.startsWith('DEMO-') && req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Apenas administradores podem criar registros de demonstração.' });
+    }
     const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
     try {
@@ -374,6 +471,12 @@ app.post('/api/registros/batch', authenticateToken, validate(registrosBatchSchem
     const records = req.body;
     if (!Array.isArray(records) || records.length === 0) {
         return res.status(400).json({ error: "O corpo da requisição deve ser um array de registros." });
+    }
+
+    // Somente admin pode criar registros DEMO (OM iniciando com 'DEMO-')
+    const hasDemo = records.some(r => typeof r.om === 'string' && r.om.startsWith('DEMO-'));
+    if (hasDemo && req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Apenas administradores podem criar registros de demonstração (DEMO-).' });
     }
 
     try {
@@ -443,6 +546,16 @@ app.delete('/api/registros/demo', authenticateToken, isAdmin, async (req, res) =
     } catch (err) {
         console.error(`Erro ao limpar registros de demonstração: ${err.message}`);
         res.status(500).json({ error: `Erro ao limpar registros de demonstração: ${err.message}` });
+    }
+});
+
+// Opcional: endpoint de logout admin que limpa demos (se desejar acionar via frontend com uma chamada explícita)
+app.post('/api/admin/logout', authenticateToken, isAdmin, async (_req, res) => {
+    try {
+        const result = await dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
+        res.json({ message: `Logout admin: ${result.changes} registros DEMO removidos.` });
+    } catch (err) {
+        res.status(500).json({ error: `Erro no logout admin: ${err.message}` });
     }
 });
 

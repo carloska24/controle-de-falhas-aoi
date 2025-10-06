@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.querySelector('#tbodyRequisicoes');
     const toastContainer = document.querySelector('#toastContainer');
     const filtroOM = document.querySelector('#filtroOM');
+    const filtroStatus = document.querySelector('#filtroStatus');
+    const emptyState = document.querySelector('#emptyStateAlmox');
+    let sortState = { key: 'created_at', dir: 'desc' };
+    let searchTimer;
     // Seletores do Modal
     const modal = document.querySelector('#itensModal');
     const modalTitle = document.querySelector('#modalTitle');
@@ -82,15 +86,40 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function renderTable() {
-        const filtroTexto = buscaInput.value.toLowerCase();
+        const filtroTexto = (buscaInput?.value || '').toLowerCase();
         const omSelecionada = filtroOM.value;
+        const statusSel = filtroStatus.value;
 
-        const dadosFiltrados = allRequisicoes.filter(r => 
-            (omSelecionada === 'todos' || r.om === omSelecionada) && r.om.toLowerCase().includes(filtroTexto));
+        let dadosFiltrados = allRequisicoes.filter(r =>
+            (omSelecionada === 'todos' || r.om === omSelecionada) &&
+            (statusSel === 'todos' || r.status === statusSel) &&
+            r.om.toLowerCase().includes(filtroTexto)
+        );
+
+        // Ordenação
+        const key = sortState.key;
+        const dir = sortState.dir === 'asc' ? 1 : -1;
+        dadosFiltrados.sort((a,b) => {
+            let va = a[key] ?? '';
+            let vb = b[key] ?? '';
+            if (key === 'created_at' || key === 'id') {
+                if (key === 'created_at') { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
+                else { va = Number(va) || 0; vb = Number(vb) || 0; }
+            } else {
+                va = va.toString().toLowerCase();
+                vb = vb.toString().toLowerCase();
+            }
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+        });
 
         if (dadosFiltrados.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Nenhuma requisição encontrada.</td></tr>`;
+            tableBody.innerHTML = '';
+            if (emptyState) emptyState.style.display = 'block';
             return;
+        } else {
+            if (emptyState) emptyState.style.display = 'none';
         }
 
         tableBody.innerHTML = dadosFiltrados.map(req => `
@@ -144,6 +173,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleAtenderRequisicao(reqId) {
+        const conf = confirm(`Marcar a requisição #${reqId} como Entregue?`);
+        if (!conf) return;
         try {
             setLoading(true);
             await fetchAutenticado(`${API_URL}/${reqId}/status`, {
@@ -156,6 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleExcluirRequisicao(reqId) {
+        const conf = confirm(`Excluir requisição #${reqId}? Esta ação não pode ser desfeita.`);
+        if (!conf) return;
         try {
             setLoading(true);
             await fetchAutenticado(`${API_URL}/${reqId}`, { method: 'DELETE' });
@@ -282,8 +315,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    buscaInput.addEventListener('input', renderTable);
+    // Busca com debounce
+    buscaInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(renderTable, 200);
+    });
     filtroOM.addEventListener('change', renderTable);
+    filtroStatus.addEventListener('change', renderTable);
+
+    // Ordenação por cabeçalho
+    document.querySelectorAll('#tabelaRequisicoes th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.key;
+            if (sortState.key === key) {
+                sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.key = key;
+                sortState.dir = key === 'created_at' || key === 'id' ? 'desc' : 'asc';
+            }
+            // Atualiza indicadores visuais
+            document.querySelectorAll('#tabelaRequisicoes th.sortable').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+            th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+            renderTable();
+        });
+    });
 
     // Inicializar a página
     inicializar();

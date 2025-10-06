@@ -70,7 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Preenche informações do usuário e configura o botão de logout
     if (userDisplay) userDisplay.textContent = user.name || user.email;
     if (btnLogout) {
-        btnLogout.addEventListener('click', () => {
+        btnLogout.addEventListener('click', async () => {
+            try {
+                if (user && user.role === 'admin') {
+                    const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+                    const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+                    await fetch(`${API_BASE_URL}/api/registros/demo`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                }
+            } catch (e) { /* ignora erros de limpeza */ }
             localStorage.clear();
             sessionStorage.clear();
             window.location.href = 'login.html';
@@ -190,6 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- LÓGICA DE EXCLUSÃO ---
         } else if (deleteButton) {
             const userId = deleteButton.dataset.id;
+            const alvo = (window.appUsers || []).find(u => String(u.id) === String(userId));
+            const nome = alvo ? (alvo.name || alvo.username) : `ID ${userId}`;
+            const conf = confirm(`Excluir o usuário ${nome}? Esta ação não pode ser desfeita.`);
+            if (!conf) return;
             try {
                 await fetchAutenticado(`${USERS_API_URL}/${userId}`, { method: 'DELETE' });
                 carregarUsuarios(); // Recarrega a lista após a exclusão
