@@ -3,16 +3,131 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const { z } = require('zod');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
 
-// --- Lógica de Banco de Dados Dinâmico ---
-let db, dbAll, dbGet, dbRun;
+// Segurança: exigir um JWT_SECRET válido em produção
+if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'seu-segredo-super-secreto-padrao')) {
+    // Falha logo no startup se estiver mal configurado
+    throw new Error('Configuração inválida: defina JWT_SECRET no ambiente de produção.');
+}
 
-app.use(cors());
+// --- Lógica de Banco de Dados Dinâmico ---
+let db, dbAll, dbGet, dbRun, dbTransaction;
+
+// CORS configurável: em desenvolvimento (sem CORS_ORIGIN) libera geral; em produção, exige CORS_ORIGIN
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!isProduction && !corsOrigin) {
+    app.use(cors());
+} else if (corsOrigin) {
+    const allowed = corsOrigin.split(',').map(s => s.trim());
+    app.use(cors({ origin: allowed }));
+} else {
+    // produção sem CORS_ORIGIN definido
+    app.use((_req, res, _next) => res.status(500).json({ error: 'CORS_ORIGIN não configurado no ambiente de produção.' }));
+}
 app.use(express.json());
+
+// Healthcheck simples
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Utilitário de debug para redefinir senha (somente DEV, via GET com chave)
+if (!isProduction) {
+    app.get('/api/debug/reset-password', async (req, res) => {
+        const { u, p, key } = req.query;
+        if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+        if (!u || !p) return res.status(400).json({ error: 'Parâmetros u (username) e p (password) são obrigatórios' });
+        try {
+            const user = await dbGet('SELECT id FROM users WHERE username = ?', [u]);
+            if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash(String(p), salt);
+            await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, user.id]);
+            res.json({ message: `Senha redefinida para ${u}.` });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+}
+
+// =================================================================
+// VALIDATION HELPERS (Zod)
+// =================================================================
+function validate(schema, source = 'body') {
+    return (req, res, next) => {
+        const data = req[source];
+        const result = schema.safeParse(data);
+        if (!result.success) {
+            const issues = result.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }));
+            return res.status(400).json({ error: 'Dados inválidos', details: issues });
+        }
+        // substitui pelo objeto validado/coercido
+        req[source] = result.data;
+        next();
+    };
+}
+
+// Schemas
+const loginSchema = z.object({ username: z.string().min(1), password: z.string().min(1) });
+const userCreateSchema = z.object({
+    name: z.string().min(1),
+    username: z.string().min(1),
+    password: z.string().min(1),
+    role: z.enum(['admin', 'operator', 'reparo', 'qualidade', 'almoxarifado']).default('operator')
+});
+const userUpdateSchema = z.object({
+    name: z.string().min(1),
+    username: z.string().min(1),
+    role: z.enum(['admin', 'operator', 'reparo', 'qualidade', 'almoxarifado']),
+    password: z.string().min(1).optional()
+});
+
+const registroBase = {
+    id: z.string().min(1),
+    om: z.string().min(1),
+    qtdlote: z.coerce.number().int().min(1),
+    serial: z.string().optional().nullable(),
+    designador: z.string().min(1),
+    tipodefeito: z.string().min(1),
+    pn: z.string().optional().nullable(),
+    descricao: z.string().optional().nullable(),
+    obs: z.string().optional().nullable(),
+    createdat: z.string().min(1),
+    status: z.string().min(1),
+    operador: z.string().min(1)
+};
+const registroCreateSchema = z.object(registroBase);
+const registroUpdateSchema = z.object({
+    om: z.string().min(1),
+    qtdlote: z.coerce.number().int().min(1),
+    serial: z.string().optional().nullable(),
+    designador: z.string().min(1),
+    tipodefeito: z.string().min(1),
+    pn: z.string().optional().nullable(),
+    descricao: z.string().optional().nullable(),
+    obs: z.string().optional().nullable(),
+});
+const registrosBatchSchema = z.array(registroCreateSchema).min(1);
+
+const idsArraySchema = z.object({ ids: z.array(z.string().min(1)).min(1) });
+const registroStatusSchema = z.object({ status: z.string().min(1) });
+const requisicoesCreateSchema = z.object({ registroIds: z.array(z.string().min(1)).min(1) });
+const requisicaoStatusSchema = z.object({ status: z.enum(['pendente','parcialmente_entregue','entregue']) });
+const requisicaoItensSchema = z.object({
+    items: z.array(z.object({
+        pn: z.string().min(1),
+        descricao: z.string().optional().nullable(),
+        quantidade_requisitada: z.coerce.number().int().min(0),
+        quantidade_entregue: z.coerce.number().int().min(0)
+    })).min(1)
+});
 
 // =================================================================
 // MIDDLEWARES
@@ -41,9 +156,8 @@ function isAdmin(req, res, next) {
 // ROTAS
 // =================================================================
 
-// ROTA DE SETUP INICIAL (EMERGÊNCIA)
-// Esta rota cria o primeiro admin se NENHUM admin existir no banco de dados.
-// Ela se torna inoperante após o primeiro admin ser criado.
+// ROTA DE SETUP INICIAL (EMERGÊNCIA) — desabilitada por padrão e sempre bloqueada em produção
+if (process.env.ENABLE_EMERGENCY_ROUTES === 'true' && !isProduction) {
 app.get('/api/setup/initial-admin', async (req, res) => {
     // Rota de emergência para resetar todos os usuários e criar um admin.
     // Requer uma chave secreta para ser executada.
@@ -92,9 +206,70 @@ app.get('/api/setup/clear-requisicoes', async (req, res) => {
         `);
     } catch (err) { res.status(500).json({ error: `Erro durante a limpeza: ${err.message}` }); }
 });
+}
+
+// ROTA DE DEBUG (apenas dev): lista usuários sem dados sensíveis
+if (!isProduction) {
+    app.get('/api/debug/users', async (_req, res) => {
+        try {
+            const users = await dbAll('SELECT id, name, username, role FROM users ORDER BY id');
+            res.json(users);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.post('/api/debug/seed-admin', async (req, res) => {
+        const key = req.query.key;
+        if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+        try {
+            const existing = await dbGet('SELECT id FROM users WHERE username = ?', ['DevAdmin']);
+            if (existing) return res.json({ message: 'Usuário DevAdmin já existe.' });
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash('123456', salt);
+            await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Admin Principal', 'DevAdmin', password_hash, 'admin']);
+            res.status(201).json({ message: 'Usuário admin semeado: DevAdmin/123456' });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+        // Aceita também GET para facilitar em ambientes sem ferramenta de POST
+        app.get('/api/debug/seed-admin', async (req, res) => {
+            const key = req.query.key;
+            if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+            try {
+                const existing = await dbGet('SELECT id FROM users WHERE username = ?', ['DevAdmin']);
+                if (existing) return res.json({ message: 'Usuário DevAdmin já existe.' });
+                const salt = await bcrypt.genSalt(10);
+                const password_hash = await bcrypt.hash('123456', salt);
+                await dbRun('INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)', ['Admin Principal', 'DevAdmin', password_hash, 'admin']);
+                res.status(201).json({ message: 'Usuário admin semeado: DevAdmin/123456' });
+            } catch (e) {
+                res.status(500).json({ error: e.message });
+            }
+        });
+
+        // Rota para redefinir senha de um usuário específico (DEV ONLY)
+        app.post('/api/debug/set-password', async (req, res) => {
+            const { username, password } = req.body || {};
+            if (!username || !password) return res.status(400).json({ error: 'username e password são obrigatórios' });
+            try {
+                const user = await dbGet('SELECT id FROM users WHERE username = ?', [username]);
+                if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+                const salt = await bcrypt.genSalt(10);
+                const password_hash = await bcrypt.hash(password, salt);
+                await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, user.id]);
+                res.json({ message: `Senha redefinida para ${username}.` });
+            } catch (e) {
+                res.status(500).json({ error: e.message });
+            }
+        });
+}
 
 // ROTAS DE AUTENTICAÇÃO
-app.post('/api/auth/login', async (req, res) => {
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
+app.post('/api/auth/login', loginLimiter, validate(loginSchema), async (req, res) => {
     const { username, password } = req.body;
     try {
         const user = await dbGet("SELECT * FROM users WHERE username = ?", [username]);
@@ -121,9 +296,8 @@ app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // Rota para criar um novo usuário (protegida, apenas para admins)
-app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
+app.post('/api/users', authenticateToken, isAdmin, validate(userCreateSchema), async (req, res) => {
     const { name, username, password, role = 'operator' } = req.body;
-    if (!name || !username || !password) return res.status(400).json({ error: "Nome, nome de usuário e senha são obrigatórios." });
     try {
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
@@ -137,13 +311,9 @@ app.post('/api/users', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-app.put('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
+app.put('/api/users/:id', authenticateToken, isAdmin, validate(userUpdateSchema), async (req, res) => {
     const { id } = req.params;
     const { name, username, role, password } = req.body; // Adiciona 'password'
-
-    if (!name || !username || !role) {
-        return res.status(400).json({ error: "Nome, nome de usuário e função são obrigatórios." });
-    }
 
     try {
         let result;
@@ -190,7 +360,7 @@ app.get('/api/registros', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/registros', authenticateToken, async (req, res) => {
+app.post('/api/registros', authenticateToken, validate(registroCreateSchema), async (req, res) => {
     const r = req.body;
     const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
@@ -200,30 +370,39 @@ app.post('/api/registros', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/registros/batch', authenticateToken, async (req, res) => {
+app.post('/api/registros/batch', authenticateToken, validate(registrosBatchSchema), async (req, res) => {
     const records = req.body;
     if (!Array.isArray(records) || records.length === 0) {
         return res.status(400).json({ error: "O corpo da requisição deve ser um array de registros." });
     }
 
     try {
-        // Usando uma transação para garantir a atomicidade
-        await dbRun('BEGIN');
-        const insertPromises = records.map(r => {
-            const queryText = `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-            const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
-            return dbRun(queryText, values);
-        });
-        await Promise.all(insertPromises);
-        await dbRun('COMMIT');
+                const doInserts = async (runner) => {
+                    for (const r of records) {
+                        const queryText = 'INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                        const values = [r.id, r.om, r.qtdlote, r.serial, r.designador, r.tipodefeito, r.pn, r.descricao, r.obs, r.createdat, r.status, r.operador];
+                        await runner(queryText, values);
+                    }
+                };
+
+                if (typeof dbTransaction === 'function') {
+                    await dbTransaction(async (run) => {
+                        await doInserts(run);
+                    });
+                } else {
+                    // Fallback simples (SQLite antigo): BEGIN/COMMIT no mesmo handle
+                    await dbRun('BEGIN');
+                    await doInserts(dbRun);
+                    await dbRun('COMMIT');
+                }
         res.status(201).json(records); // Retorna os registros criados
     } catch (err) {
-        await dbRun('ROLLBACK');
+                try { await dbRun('ROLLBACK'); } catch (_) {}
         res.status(500).json({ error: `Erro ao inserir registros em lote: ${err.message}` });
     }
 });
 
-app.put('/api/registros/:id', authenticateToken, async (req, res) => {
+app.put('/api/registros/:id', authenticateToken, validate(registroUpdateSchema), async (req, res) => {
     const { id } = req.params;
     const r = req.body;
     const queryText = `UPDATE registros SET om = ?, qtdlote = ?, serial = ?, designador = ?, tipodefeito = ?, pn = ?, descricao = ?, obs = ? WHERE id = ?`;
@@ -235,10 +414,9 @@ app.put('/api/registros/:id', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/registros/:id/status', authenticateToken, async (req, res) => {
+app.put('/api/registros/:id/status', authenticateToken, validate(registroStatusSchema), async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-    if (!status) return res.status(400).json({ error: "Status é obrigatório." });
 
     try {
         const result = await dbRun(`UPDATE registros SET status = ? WHERE id = ?`, [status, id]);
@@ -247,9 +425,8 @@ app.put('/api/registros/:id/status', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/registros', authenticateToken, async (req, res) => {
+app.delete('/api/registros', authenticateToken, validate(idsArraySchema), async (req, res) => {
     const { ids } = req.body;
-    if (!ids || ids.length === 0) return res.status(400).json({ "error": "Nenhum ID fornecido" });
     const placeholders = ids.map(() => '?').join(',');
     const queryText = `DELETE FROM registros WHERE id IN (${placeholders})`;
     try {
@@ -272,13 +449,11 @@ app.delete('/api/registros/demo', authenticateToken, isAdmin, async (req, res) =
 // =================================================================
 // ROTAS DE REQUISIÇÃO (ALMOXARIFADO)
 // =================================================================
-app.post('/api/requisicoes', authenticateToken, async (req, res) => {
+app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema), async (req, res) => {
     const { registroIds } = req.body;
     const created_by = req.user.name || req.user.username;
 
-    if (!registroIds || registroIds.length === 0) {
-        return res.status(400).json({ error: "Nenhum ID de registro fornecido." });
-    }
+    // registroIds já validado pelo schema
 
     try {
         const placeholders = registroIds.map(() => '?').join(','); // Cria placeholders como ?,?,?
@@ -334,7 +509,7 @@ app.get('/api/requisicoes', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: `Erro ao buscar requisições: ${err.message}` }); }
 });
 
-app.put('/api/requisicoes/:id/status', authenticateToken, async (req, res) => {
+app.put('/api/requisicoes/:id/status', authenticateToken, validate(requisicaoStatusSchema), async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
@@ -344,13 +519,9 @@ app.put('/api/requisicoes/:id/status', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: `Erro ao atualizar status da requisição: ${err.message}` }); }
 });
 
-app.put('/api/requisicoes/:id/itens', authenticateToken, async (req, res) => {
+app.put('/api/requisicoes/:id/itens', authenticateToken, validate(requisicaoItensSchema), async (req, res) => {
     const { id } = req.params;
     const { items } = req.body; // Espera receber o array de itens atualizado
-
-    if (!items) {
-        return res.status(400).json({ error: "A lista de itens é obrigatória." });
-    }
 
     try {
         // Calcula o novo status geral da requisição
@@ -382,8 +553,7 @@ app.delete('/api/requisicoes/:id', authenticateToken, isAdmin, async (req, res) 
 // INICIALIZAÇÃO DO SERVIDOR
 // =================================================================
 async function startServer() {
-    // A variável NODE_ENV é o padrão para diferenciar ambientes. Render a define como 'production'.
-    const isProduction = process.env.NODE_ENV === 'production';
+    // isProduction já foi calculado acima; aqui só referencia
 
     if (isProduction && process.env.DATABASE_URL) {
         // --- AMBIENTE DE PRODUÇÃO (RENDER) ---
@@ -402,15 +572,31 @@ async function startServer() {
             let i = 0;
             return query.replace(/\?/g, () => `$${++i}`);
         };
-        dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
-        dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
-        dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
+                dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
+                dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
+                dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
             // Garante que lastID funcione para INSERT ... RETURNING id
             const lastID = res.rows[0]?.id || null;
             return { changes: res.rowCount, lastID: lastID };
         });
 
-        // Cria a tabela de requisições se não existir (PostgreSQL)
+                // Transação segura usando o mesmo client do pool
+                dbTransaction = async (fn) => {
+                    const client = await pool.connect();
+                    try {
+                        await client.query('BEGIN');
+                        const run = (q, p = []) => client.query(convertToPg(q), p);
+                        await fn(run);
+                        await client.query('COMMIT');
+                    } catch (e) {
+                        await client.query('ROLLBACK');
+                        throw e;
+                    } finally {
+                        client.release();
+                    }
+                };
+
+        // Cria as tabelas necessárias se não existirem (PostgreSQL)
         await dbRun(`
             CREATE TABLE IF NOT EXISTS requisicoes (
                 id SERIAL PRIMARY KEY,
@@ -421,7 +607,32 @@ async function startServer() {
                 created_by VARCHAR(255)
             );
         `);
-        console.log('Tabela "requisicoes" verificada/criada no PostgreSQL.');
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                username VARCHAR(255) NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role VARCHAR(50) NOT NULL DEFAULT 'operator'
+            );
+        `);
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS registros (
+                id VARCHAR(64) PRIMARY KEY,
+                om VARCHAR(255) NOT NULL,
+                qtdlote INTEGER,
+                serial VARCHAR(255),
+                designador VARCHAR(255),
+                tipodefeito VARCHAR(255),
+                pn VARCHAR(255),
+                descricao TEXT,
+                obs TEXT,
+                createdat TIMESTAMP WITH TIME ZONE NOT NULL,
+                status VARCHAR(50),
+                operador VARCHAR(255)
+            );
+        `);
+        console.log('Tabelas requisicoes, users e registros verificadas/criadas no PostgreSQL.');
 
 
     } else if (process.env.DATABASE_URL) {
@@ -440,14 +651,29 @@ async function startServer() {
             let i = 0;
             return query.replace(/\?/g, () => `$${++i}`);
         };
-        dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
-        dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
-        dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
+                dbAll = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows);
+                dbGet = (query, params = []) => pool.query(convertToPg(query), params).then(res => res.rows[0]);
+                dbRun = (query, params = []) => pool.query(convertToPg(query), params).then(res => {
             const lastID = res.rows[0]?.id || null;
             return { changes: res.rowCount, lastID: lastID };
         });
 
-        // Cria a tabela de requisições se não existir (PostgreSQL Local)
+                dbTransaction = async (fn) => {
+                    const client = await pool.connect();
+                    try {
+                        await client.query('BEGIN');
+                        const run = (q, p = []) => client.query(convertToPg(q), p);
+                        await fn(run);
+                        await client.query('COMMIT');
+                    } catch (e) {
+                        await client.query('ROLLBACK');
+                        throw e;
+                    } finally {
+                        client.release();
+                    }
+                };
+
+        // Cria as tabelas necessárias se não existirem (PostgreSQL Local)
         await dbRun(`
             CREATE TABLE IF NOT EXISTS requisicoes (
                 id SERIAL PRIMARY KEY,
@@ -458,7 +684,44 @@ async function startServer() {
                 created_by VARCHAR(255)
             );
         `);
-        console.log('Tabela "requisicoes" verificada/criada no PostgreSQL local.');
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                username VARCHAR(255) NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role VARCHAR(50) NOT NULL DEFAULT 'operator'
+            );
+        `);
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS registros (
+                id VARCHAR(64) PRIMARY KEY,
+                om VARCHAR(255) NOT NULL,
+                qtdlote INTEGER,
+                serial VARCHAR(255),
+                designador VARCHAR(255),
+                tipodefeito VARCHAR(255),
+                pn VARCHAR(255),
+                descricao TEXT,
+                obs TEXT,
+                createdat TIMESTAMP WITH TIME ZONE NOT NULL,
+                status VARCHAR(50),
+                operador VARCHAR(255)
+            );
+        `);
+        console.log('Tabelas requisicoes, users e registros verificadas/criadas no PostgreSQL local.');
+
+        // Seed de desenvolvimento: cria admin padrão se não existir nenhum usuário
+        const userCount = await dbGet('SELECT COUNT(*)::int AS c FROM users');
+        if (!userCount || userCount.c === 0) {
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash('123456', salt);
+            await dbRun(
+                'INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)',
+                ['Admin Principal', 'DevAdmin', password_hash, 'admin']
+            );
+            console.log("Usuário admin inicial criado em PostgreSQL local: DevAdmin / 123456");
+        }
 
     } else {
         // --- AMBIENTE DE DESENVOLVIMENTO PADRÃO (LOCAL COM SQLITE) ---
@@ -472,7 +735,7 @@ async function startServer() {
         // Wrapper para remover "RETURNING" que não é suportado pelo SQLite
         const stripReturning = (query) => query.replace(/RETURNING\s+\w+/i, '');
 
-        // Só então define as funções de acesso
+                // Só então define as funções de acesso
         dbAll = (query, params = []) => new Promise((resolve, reject) => {
             db.all(stripReturning(query), params, (err, rows) => err ? reject(err) : resolve(rows));
         });
@@ -482,6 +745,21 @@ async function startServer() {
         dbRun = (query, params = []) => new Promise(function(resolve, reject) {
             db.run(stripReturning(query), params, function(err) { err ? reject(err) : resolve(this); });
         });
+
+                // Transação simples com o mesmo handle do SQLite
+                dbTransaction = async (fn) => {
+                    await dbRun('BEGIN');
+                    try {
+                        const run = (q, p = []) => new Promise((resolve, reject) => {
+                            db.run(stripReturning(q), p, function(err){ err ? reject(err) : resolve(this); });
+                        });
+                        await fn(run);
+                        await dbRun('COMMIT');
+                    } catch(e) {
+                        await dbRun('ROLLBACK');
+                        throw e;
+                    }
+                };
 
         // Cria a tabela de requisições se não existir (SQLite)
         await dbRun(`

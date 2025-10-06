@@ -91,6 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn-icon edit-btn" data-id="${u.id}" aria-label="Editar usuário">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </button>
+                        <button class="btn-icon btn-reset-pw" data-id="${u.id}" title="Resetar senha" aria-label="Resetar senha">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V3M12 21V19M5 12H3M21 12H19M5.64 5.64L4.22 4.22M19.78 19.78L18.36 18.36M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
                         ${u.role !== 'admin' ? `
                         <button class="btn-icon btn-delete" data-id="${u.id}" aria-label="Excluir usuário">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -127,8 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listener para os botões de exclusão (delegação de evento)
     usersTbody.addEventListener('click', async (e) => {
-        const editButton = e.target.closest('.edit-btn');
+    const editButton = e.target.closest('.edit-btn');
         const deleteButton = e.target.closest('.btn-delete');
+    const resetPwButton = e.target.closest('.btn-reset-pw');
 
         // --- LÓGICA DE EDIÇÃO IN-LINE ---
         if (editButton) {
@@ -192,6 +196,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Usuário excluído com sucesso.');
             } catch (error) {
                 showToast(`Erro ao excluir usuário: ${error.message}`, 'error');
+            }
+        // --- LÓGICA DE RESET DE SENHA ---
+        } else if (resetPwButton) {
+            const userId = resetPwButton.dataset.id;
+            const target = window.appUsers.find(u => String(u.id) === String(userId));
+            if (!target) { showToast('Usuário não encontrado na lista atual.', 'error'); return; }
+            const novaSenha = prompt(`Definir nova senha para '${target.username}':`);
+            if (novaSenha === null) return; // cancelado
+            const confirmacao = prompt('Confirme a nova senha:');
+            if (confirmacao === null) return;
+            if (novaSenha !== confirmacao) { showToast('As senhas não coincidem.', 'error'); return; }
+            if (novaSenha.length < 4) { showToast('A senha deve ter pelo menos 4 caracteres.', 'error'); return; }
+            try {
+                await fetchAutenticado(`${USERS_API_URL}/${userId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ name: target.name, username: target.username, role: target.role, password: novaSenha })
+                });
+                showToast('Senha atualizada com sucesso.');
+            } catch (error) {
+                showToast(`Erro ao resetar senha: ${error.message}`, 'error');
             }
         }
     });
