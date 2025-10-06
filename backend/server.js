@@ -11,6 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
+const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
 
 // Segurança: exigir um JWT_SECRET válido em produção
 if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'seu-segredo-super-secreto-padrao')) {
@@ -169,6 +170,13 @@ function isAdmin(req, res, next) {
     }
 }
 
+function hasRole(...roles) {
+    return (req, res, next) => {
+        if (req.user && roles.includes(req.user.role)) return next();
+        return res.status(403).json({ error: 'Acesso negado para o seu perfil.' });
+    };
+}
+
 // =================================================================
 // ROTAS
 // =================================================================
@@ -236,9 +244,10 @@ if (!isProduction) {
         }
     });
 
-    app.post('/api/debug/seed-admin', async (req, res) => {
+    const seedLimiter = rateLimit({ windowMs: 60 * 1000, max: 5 });
+    app.post('/api/debug/seed-admin', seedLimiter, async (req, res) => {
         const key = req.query.key;
-        if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+        if (key !== DEV_SEED_KEY) return res.status(403).json({ error: 'Chave inválida' });
         try {
             const existing = await dbGet('SELECT id FROM users WHERE username = ?', ['DevAdmin']);
             if (existing) return res.json({ message: 'Usuário DevAdmin já existe.' });
@@ -252,9 +261,9 @@ if (!isProduction) {
     });
 
         // Aceita também GET para facilitar em ambientes sem ferramenta de POST
-        app.get('/api/debug/seed-admin', async (req, res) => {
+        app.get('/api/debug/seed-admin', seedLimiter, async (req, res) => {
             const key = req.query.key;
-            if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+            if (key !== DEV_SEED_KEY) return res.status(403).json({ error: 'Chave inválida' });
             try {
                 const existing = await dbGet('SELECT id FROM users WHERE username = ?', ['DevAdmin']);
                 if (existing) return res.json({ message: 'Usuário DevAdmin já existe.' });
@@ -284,10 +293,10 @@ if (!isProduction) {
         });
 
         // Rotas de SEED (DEV ONLY) para popular rapidamente
-        app.get('/api/debug/seed-registros', async (req, res) => {
+        app.get('/api/debug/seed-registros', seedLimiter, async (req, res) => {
             const key = req.query.key;
             const n = Math.max(1, Math.min(parseInt(req.query.n || '8', 10), 50));
-            if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+            if (key !== DEV_SEED_KEY) return res.status(403).json({ error: 'Chave inválida' });
             try {
                 const now = Date.now();
                 const exemplos = ['DEFEITO X','FALHA Y','QUEBRA Z','ERGONOMIA','CALIBRAÇÃO'];
@@ -323,6 +332,7 @@ if (!isProduction) {
                     await doInserts(dbRun);
                     await dbRun('COMMIT');
                 }
+                console.log(`[seed] Inseridos ${registros.length} registros DEMO por rota de debug.`);
                 res.status(201).json({ message: `Inseridos ${registros.length} registros demo.` });
             } catch (e) {
                 try { await dbRun('ROLLBACK'); } catch (_) {}
@@ -330,9 +340,9 @@ if (!isProduction) {
             }
         });
 
-        app.get('/api/debug/seed-requisicoes', async (req, res) => {
+        app.get('/api/debug/seed-requisicoes', seedLimiter, async (req, res) => {
             const key = req.query.key;
-            if (key !== 'local-dev-2024') return res.status(403).json({ error: 'Chave inválida' });
+            if (key !== DEV_SEED_KEY) return res.status(403).json({ error: 'Chave inválida' });
             try {
                 const regs = await dbAll("SELECT om, pn, descricao FROM registros WHERE om LIKE 'DEMO-%' LIMIT 30");
                 if (regs.length === 0) return res.status(404).json({ error: 'Sem registros DEMO para criar requisições' });
@@ -348,6 +358,7 @@ if (!isProduction) {
                     const result = await dbRun('INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)', [om, JSON.stringify(items), new Date().toISOString(), 'DevAdmin']);
                     ids.push(result.lastID);
                 }
+                console.log(`[seed] Criadas ${ids.length} requisições DEMO por rota de debug.`);
                 res.status(201).json({ message: `Criadas ${ids.length} requisições DEMO.`, ids });
             } catch (e) {
                 res.status(500).json({ error: e.message });
@@ -563,6 +574,10 @@ app.post('/api/admin/logout', authenticateToken, isAdmin, async (_req, res) => {
 // ROTAS DE REQUISIÇÃO (ALMOXARIFADO)
 // =================================================================
 app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema), async (req, res) => {
+    // Apenas admin e almoxarifado podem criar requisições
+    if (!['admin','almoxarifado'].includes(req.user?.role)) {
+        return res.status(403).json({ error: 'Apenas administradores e almoxarifado podem criar requisições.' });
+    }
     const { registroIds } = req.body;
     const created_by = req.user.name || req.user.username;
 
@@ -622,7 +637,7 @@ app.get('/api/requisicoes', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: `Erro ao buscar requisições: ${err.message}` }); }
 });
 
-app.put('/api/requisicoes/:id/status', authenticateToken, validate(requisicaoStatusSchema), async (req, res) => {
+app.put('/api/requisicoes/:id/status', authenticateToken, hasRole('admin','almoxarifado'), validate(requisicaoStatusSchema), async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
@@ -632,7 +647,7 @@ app.put('/api/requisicoes/:id/status', authenticateToken, validate(requisicaoSta
     } catch (err) { res.status(500).json({ error: `Erro ao atualizar status da requisição: ${err.message}` }); }
 });
 
-app.put('/api/requisicoes/:id/itens', authenticateToken, validate(requisicaoItensSchema), async (req, res) => {
+app.put('/api/requisicoes/:id/itens', authenticateToken, hasRole('admin','almoxarifado'), validate(requisicaoItensSchema), async (req, res) => {
     const { id } = req.params;
     const { items } = req.body; // Espera receber o array de itens atualizado
 
@@ -659,6 +674,17 @@ app.delete('/api/requisicoes/:id', authenticateToken, isAdmin, async (req, res) 
         res.status(204).send();
     } catch (err) {
         res.status(500).json({ error: `Erro ao excluir requisição: ${err.message}` });
+    }
+});
+
+// Limpeza de requisições DEMO (admin)
+app.delete('/api/requisicoes/demo', authenticateToken, isAdmin, async (_req, res) => {
+    try {
+        const result = await dbRun("DELETE FROM requisicoes WHERE om LIKE 'DEMO-%'");
+        console.log(`Limpeza de Demos (requisicoes): ${result.changes} removidas.`);
+        res.status(200).json({ message: `${result.changes} requisições DEMO foram excluídas.` });
+    } catch (err) {
+        res.status(500).json({ error: `Erro ao limpar requisições DEMO: ${err.message}` });
     }
 });
 
@@ -746,6 +772,18 @@ async function startServer() {
             );
         `);
         console.log('Tabelas requisicoes, users e registros verificadas/criadas no PostgreSQL.');
+        // Purga automática de DEMO antigos (se configurado)
+        const purgeDays = parseInt(process.env.DEMO_AUTO_PURGE_DAYS || '0', 10);
+        if (!isNaN(purgeDays) && purgeDays > 0) {
+            const cutoff = new Date(Date.now() - purgeDays * 24 * 60 * 60 * 1000).toISOString();
+            try {
+                const r1 = await dbRun('DELETE FROM registros WHERE om LIKE \"DEMO-%\" AND createdat < ?', [cutoff]);
+                const r2 = await dbRun('DELETE FROM requisicoes WHERE om LIKE \"DEMO-%\" AND created_at < ?', [cutoff]);
+                console.log(`[purge] Registros DEMO removidos: ${r1.changes || 0}; Requisições DEMO removidas: ${r2.changes || 0}.`);
+            } catch (e) {
+                console.warn(`[purge] Falha ao purgar DEMO antigos: ${e.message}`);
+            }
+        }
 
 
     } else if (process.env.DATABASE_URL) {
@@ -823,6 +861,18 @@ async function startServer() {
             );
         `);
         console.log('Tabelas requisicoes, users e registros verificadas/criadas no PostgreSQL local.');
+        // Purga automática de DEMO antigos (se configurado)
+        const purgeDaysDevPg = parseInt(process.env.DEMO_AUTO_PURGE_DAYS || '0', 10);
+        if (!isNaN(purgeDaysDevPg) && purgeDaysDevPg > 0) {
+            const cutoff = new Date(Date.now() - purgeDaysDevPg * 24 * 60 * 60 * 1000).toISOString();
+            try {
+                const r1 = await dbRun('DELETE FROM registros WHERE om LIKE \"DEMO-%\" AND createdat < ?', [cutoff]);
+                const r2 = await dbRun('DELETE FROM requisicoes WHERE om LIKE \"DEMO-%\" AND created_at < ?', [cutoff]);
+                console.log(`[purge] (PG dev) Registros DEMO removidos: ${r1.changes || 0}; Requisições DEMO removidas: ${r2.changes || 0}.`);
+            } catch (e) {
+                console.warn(`[purge] (PG dev) Falha ao purgar DEMO antigos: ${e.message}`);
+            }
+        }
 
         // Seed de desenvolvimento: cria admin padrão se não existir nenhum usuário
         const userCount = await dbGet('SELECT COUNT(*)::int AS c FROM users');
@@ -886,6 +936,18 @@ async function startServer() {
             );
         `);
         console.log('Tabela "requisicoes" verificada/criada no SQLite.');
+        // Purga automática de DEMO antigos (se configurado)
+        const purgeDaysSqlite = parseInt(process.env.DEMO_AUTO_PURGE_DAYS || '0', 10);
+        if (!isNaN(purgeDaysSqlite) && purgeDaysSqlite > 0) {
+            const cutoff = new Date(Date.now() - purgeDaysSqlite * 24 * 60 * 60 * 1000).toISOString();
+            try {
+                const r1 = await dbRun('DELETE FROM registros WHERE om LIKE \"DEMO-%\" AND createdat < ?', [cutoff]);
+                const r2 = await dbRun('DELETE FROM requisicoes WHERE om LIKE \"DEMO-%\" AND created_at < ?', [cutoff]);
+                console.log(`[purge] (SQLite) Registros DEMO removidos: ${r1.changes || 0}; Requisições DEMO removidas: ${r2.changes || 0}.`);
+            } catch (e) {
+                console.warn(`[purge] (SQLite) Falha ao purgar DEMO antigos: ${e.message}`);
+            }
+        }
     }
 
     app.listen(PORT, () => {

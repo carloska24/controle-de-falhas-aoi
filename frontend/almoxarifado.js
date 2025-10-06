@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(localStorage.getItem('user'));
 
     if (!token) { window.location.href = 'login.html'; return; }
+    // Guarda de rota: apenas admin e almoxarifado têm acesso
+    if (!user || !['admin','almoxarifado'].includes(user.role)) {
+        window.location.href = 'index.html';
+        return;
+    }
 
     // Lógica de Controle de Acesso: mostra elementos apenas para admins
     if (user && user.role === 'admin') {
@@ -208,8 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', async () => {
         if (user && user.role === 'admin') {
             try {
-                // A URL base é a de registros, não de requisições
                 await fetchAutenticado(`${API_BASE_URL}/api/registros/demo`, { method: 'DELETE' });
+                await fetchAutenticado(`${API_BASE_URL}/api/requisicoes/demo`, { method: 'DELETE' });
             } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         }
         localStorage.clear(); sessionStorage.clear();

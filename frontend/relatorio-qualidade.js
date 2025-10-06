@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'login.html';
         return;
     }
+    // Guarda de rota: apenas administradores podem acessar esta página
+    if (!user || user.role !== 'admin') {
+        window.location.href = 'index.html';
+        return;
+    }
 
     // Lógica de Controle de Acesso: mostra elementos apenas para admins
     if (user && user.role === 'admin') {
@@ -243,11 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     // =================================================================
     btnLogout.addEventListener('click', async () => {
-        if (user && user.role === 'admin') {
-            try {
-                await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
-            } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
-        }
+        try {
+            await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
+            await fetchAutenticado(`${API_BASE_URL}/api/requisicoes/demo`, { method: 'DELETE' });
+        } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';
     });
