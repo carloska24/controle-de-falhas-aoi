@@ -629,7 +629,11 @@ app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema
 
 app.get('/api/requisicoes', authenticateToken, async (req, res) => {
     try {
-        const requisicoes = await dbAll('SELECT * FROM requisicoes ORDER BY created_at DESC');
+        const isAdminUser = req.user && req.user.role === 'admin';
+        const sql = isAdminUser
+            ? 'SELECT * FROM requisicoes ORDER BY created_at DESC'
+            : "SELECT * FROM requisicoes WHERE om NOT LIKE 'DEMO-%' ORDER BY created_at DESC";
+        const requisicoes = await dbAll(sql);
         // O campo 'items' é armazenado como TEXT/JSON, então precisamos fazer o parse.
         const requisicoesComItems = requisicoes.map(r => ({
             ...r,

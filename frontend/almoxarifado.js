@@ -165,7 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
 
         try {
-            allRequisicoes = await fetchAutenticado(API_URL) || [];
+            const raw = await fetchAutenticado(API_URL) || [];
+            // Filtro defensivo no frontend: oculta DEMO para não-admin
+            allRequisicoes = (user && user.role === 'admin') ? raw : raw.filter(r => !(r.om || '').startsWith('DEMO-'));
             popularFiltroOM();
             renderTable();
         } catch (error) {
