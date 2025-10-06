@@ -299,7 +299,11 @@ if (!isProduction) {
             if (key !== DEV_SEED_KEY) return res.status(403).json({ error: 'Chave inválida' });
             try {
                 const now = Date.now();
-                const exemplos = ['DEFEITO X','FALHA Y','QUEBRA Z','ERGONOMIA','CALIBRAÇÃO'];
+                // Tipos de defeito válidos (alinhados ao frontend)
+                const exemplos = [
+                    'Curto-circuito','Solda Fria','Excesso de Solda','Insuficiência de Solda','Tombstone','Bilboard','Solder Ball',
+                    'Componente Ausente','Componente Danificado','Componente Deslocado','Componente Incorreto','Componente Invertido','Polaridade Incorreta'
+                ];
                 const oms = ['DEMO-OM-01','DEMO-OM-02','DEMO-OM-03'];
                 const registros = [];
                 for (let i=0; i<n; i++) {

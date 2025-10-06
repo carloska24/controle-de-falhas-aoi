@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEFEITOS_SOLDAGEM = ['Curto-circuito', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball'];
     const DEFEITOS_POSICIONAMENTO = ['Componente Ausente', 'Componente Danificado', 'Componente Deslocado', 'Componente Incorreto', 'Componente Invertido', 'Polaridade Incorreta'];
+    const DEFEITOS_VALIDOS = new Set([...DEFEITOS_SOLDAGEM, ...DEFEITOS_POSICIONAMENTO]);
 
     let allData = [];
     let charts = {};
@@ -100,7 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('kpiTotalFalhas').textContent = dadosFiltrados.length;
         
         const contagemDefeitos = dadosFiltrados.reduce((acc, item) => {
-            acc[item.tipodefeito] = (acc[item.tipodefeito] || 0) + 1;
+            const tipo = item.tipodefeito || '';
+            if (!DEFEITOS_VALIDOS.has(tipo)) return acc; // ignora tipos desconhecidos
+            acc[tipo] = (acc[tipo] || 0) + 1;
             return acc;
         }, {});
 
@@ -120,7 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderizarGraficoDefeitos(contagem) {
         const ctx = document.getElementById('defeitosPorTipoChart').getContext('2d');
-        const sortedData = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+        // Garante apenas defeitos válidos e remove rótulos vazios
+        const sortedData = Object.entries(contagem)
+            .filter(([label, count]) => label && DEFEITOS_VALIDOS.has(label) && count > 0)
+            .sort((a, b) => b[1] - a[1]);
         
         if (charts.defeitos) charts.defeitos.destroy();
         charts.defeitos = new Chart(ctx, {
@@ -138,8 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false }, title: { display: true, text: 'Distribuição de Falhas por Tipo', color: '#e5e7eb', font: { size: 16 } } },
-                scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } }
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'Distribuição de Falhas por Tipo', color: '#e5e7eb', font: { size: 16 } }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: '#94a3b8' } },
+                    x: {
+                        ticks: { color: '#94a3b8', autoSkip: false, maxRotation: 45, minRotation: 0 },
+                        grid: { display: false }
+                    }
+                }
             }
         });
     }

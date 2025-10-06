@@ -36,6 +36,15 @@
 				"$eslint-stylish"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Reiniciar backend (aplicar mudanças)",
+			"type": "shell",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; node server.js",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
 		}
 	]
 }
