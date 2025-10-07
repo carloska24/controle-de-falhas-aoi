@@ -32,20 +32,6 @@ app.post('/api/debug/reset-password', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const rateLimit = require('express-rate-limit');
-const { z } = require('zod');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-const isProduction = process.env.NODE_ENV === 'production';
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
-const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
 
 // Segurança: exigir um JWT_SECRET válido em produção
 if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'seu-segredo-super-secreto-padrao')) {
