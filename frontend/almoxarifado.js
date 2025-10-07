@@ -215,8 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', async () => {
         if (user && user.role === 'admin') {
             try {
-                await fetchAutenticado(`${API_BASE_URL}/api/registros/demo`, { method: 'DELETE' });
-                await fetchAutenticado(`${API_BASE_URL}/api/requisicoes/demo`, { method: 'DELETE' });
+                // Chama o endpoint unificado de logout admin que limpa DEMOs em ambos os domínios
+                await fetchAutenticado(`${API_BASE_URL}/api/admin/logout`, { method: 'POST' });
             } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         }
         localStorage.clear(); sessionStorage.clear();

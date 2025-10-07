@@ -1,0 +1,10 @@
+[build]
+  # Site é puramente estático; publicamos a pasta 'frontend'
+  publish = "frontend"
+  command = ""
+
+# Cabeçalhos básicos (opcional): controle de cache curto
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=60"

@@ -264,8 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     btnLogout.addEventListener('click', async () => {
         try {
-            await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
-            await fetchAutenticado(`${API_BASE_URL}/api/requisicoes/demo`, { method: 'DELETE' });
+            // Endpoint de logout admin no backend limpa registros e requisições de DEMO
+            await fetchAutenticado(`${API_BASE_URL}/api/admin/logout`, { method: 'POST' });
         } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         localStorage.clear(); sessionStorage.clear();
         window.location.href = 'login.html';

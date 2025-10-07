@@ -73,9 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnLogout.addEventListener('click', async () => {
             try {
                 if (user && user.role === 'admin') {
-                    const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-                    const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
-                    await fetch(`${API_BASE_URL}/api/registros/demo`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                    // Aciona o logout admin no backend que também remove DEMOs de registros e requisições
+                    await fetch(`${API_BASE_URL}/api/admin/logout`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
                 }
             } catch (e) { /* ignora erros de limpeza */ }
             localStorage.clear();

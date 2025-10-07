@@ -18,20 +18,76 @@ body {
     font-family: 'Roboto', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text);
-    min-height: 100vh;
-    padding: 2rem 1rem; /* Espaçamento para telas maiores e menores */
+    min-height: 100dvh; /* viewport dinâmica */
+    padding: clamp(8px, 4vh, 40px) clamp(12px, 4vw, 24px); /* mais respiro em telas grandes e ajusta em telas pequenas */
     display: flex;      /* Centraliza o card verticalmente e horizontalmente */
     justify-content: center;
     align-items: center;
+    overflow: hidden; /* evita scroll da página */
 }
 
-#animation-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
-.smd-component { position: absolute; top: -50px; opacity: .6; animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite; }
-.smd-resistor { background: linear-gradient(to right, var(--metal-contact) 15%, #1a1a1a 15%, #1a1a1a 85%, var(--metal-contact) 85%); }
-.smd-capacitor { background: linear-gradient(to right, var(--metal-contact) 15%, #6d4c41 15%, #6d4c41 85%, var(--metal-contact) 85%); }
-.smd-led{background:linear-gradient(to right,var(--metal-contact) 20%,#f5f5dc 20%,#f5f5dc 80%,var(--metal-contact) 80%)}
+#animation-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.smd-component { position: absolute; top: -50px; opacity: .55; animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite; border-radius: 2px; will-change: transform; pointer-events: none; }
+
+/*
+    Ajuste de pads: em telas pequenas, os gradientes percentuais ficavam com 1px e sumiam.
+    Agora usamos pseudo-elementos com largura fixa (clamp) para garantir pads visíveis nas duas extremidades.
+*/
+.smd-resistor,
+.smd-capacitor,
+.smd-led,
+.smd-diode { position: relative; }
+
+/* Corpo dos componentes */
+.smd-resistor { background-color: #1a1a1a; }
+.smd-capacitor { background-color: #6d4c41; }
+.smd-capacitor.blue { background-color: #3a5ba0; }
+.smd-led { background-color: #f5f5dc; }
+.smd-diode { background-color: #222; }
+
+/* Pads (terminações metálicas) — sempre em ambas as extremidades */
+.smd-resistor::before, .smd-resistor::after,
+.smd-capacitor::before, .smd-capacitor::after,
+.smd-led::before, .smd-led::after,
+.smd-diode::before, .smd-diode::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: clamp(2px, 15%, 6px);
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.9) 0%,
+        #c7cbce 25%,
+        #aeb2b5 55%,
+        #8f9396 85%,
+        rgba(255,255,255,0.7) 100%
+    );
+    box-shadow: inset 0 0 0.5px rgba(0,0,0,0.35), 0 0 0.75px rgba(255,255,255,0.25);
+    border-radius: 1px;
+}
+.smd-resistor::before,
+.smd-capacitor::before,
+.smd-led::before,
+.smd-diode::before { left: 0; }
+.smd-resistor::after,
+.smd-capacitor::after,
+.smd-led::after,
+.smd-diode::after { right: 0; }
+
+/* Detalhe do diodo: faixa de marcação do catodo */
+.smd-diode { 
+    background-image: linear-gradient(to right, transparent 70%, rgba(255,255,255,0.3) 70%, rgba(255,255,255,0.3) 75%, transparent 75%);
+    background-size: 100% 100%;
+}
+
+/* CI com pinos nas bordas */
 .smd-ic{position:relative;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,var(--metal-contact) 2px,var(--metal-contact) 4px),repeating-linear-gradient(to bottom,transparent 0,transparent 2px,var(--metal-contact) 2px,var(--metal-contact) 4px),repeating-linear-gradient(to right,transparent 0,transparent 2px,var(--metal-contact) 2px,var(--metal-contact) 4px),repeating-linear-gradient(to right,transparent 0,transparent 2px,var(--metal-contact) 2px,var(--metal-contact) 4px),linear-gradient(#37474f,#37474f);background-size:3px 100%,3px 100%,100% 3px,100% 3px,100% 100%;background-repeat:no-repeat;background-position:right top,left top,left bottom,left top,center}
 .smd-ic::before{content:'';position:absolute;top:2px;left:2px;width:20%;height:20%;max-width:4px;max-height:4px;background-color:#546e7a;border-radius:50%;z-index:2}
+
+/* Acessibilidade/performance: reduz movimento se o usuário preferir */
+@media (prefers-reduced-motion: reduce) {
+    .smd-component { animation: none !important; }
+}
 
 @keyframes fall {
     from { transform: translateY(0) rotate(0deg); }
@@ -39,8 +95,8 @@ body {
 }
 
 .logo-svg-container {
-    margin: 0 auto 10px auto;
-    width: 200px; /* Aumentado para evitar corte */
+    margin: 0 auto 8px auto;
+    width: clamp(140px, 35vw, 200px); /* escala conforme viewport */
     text-align: center;
 }
 .logo-svg-container .icon-shape { fill: var(--panel); stroke: var(--primary); stroke-width: 8; }
@@ -55,17 +111,17 @@ body {
 .logo-svg-container .logo-text .dev-part { font-weight: 700; fill: var(--text); }
 .logo-svg-container .logo-text .pratica-part { font-weight: 400; fill: var(--primary); }
 
-.login-container { z-index: 1; width: 100%; max-width: 400px; }
-.login-card { background-color: rgba(30, 41, 59, .8); backdrop-filter: blur(5px); border-radius: 12px; border: 1px solid var(--border-color); padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
-.card-header { text-align: center; margin-bottom: 24px; }
-.card-header h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 0; }
+.login-container { z-index: 1; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: center; }
+.login-card { background-color: rgba(30, 41, 59, .85); backdrop-filter: blur(5px); border-radius: 12px; border: 1px solid var(--border-color); padding: clamp(18px, 3vh, 28px); box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+.card-header { text-align: center; margin-bottom: 20px; }
+.card-header h2 { font-size: clamp(18px, 3.2vh, 24px); font-weight: 700; color: var(--text); margin-top: 0; }
 .card-header .company-subtitle {
     color: var(--primary);
     font-size: 14px;
     margin-top: 4px;
 }
 
-.form-group { margin-bottom: 20px; }
+.form-group { margin-bottom: clamp(12px, 2.2vh, 20px); }
 .form-group label { display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px; }
 .form-group input {
     width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);
@@ -110,7 +166,8 @@ body {
 
 /* ================= Media Query para Responsividade ================= */
 @media (max-width: 480px) {
-    .login-card { padding: 24px; }
+    body { padding: clamp(8px, 3vh, 20px) clamp(8px, 4vw, 16px); }
+    .login-card { padding: clamp(14px, 3vh, 22px); }
 }
 
 /* Corrige a cor do texto em campos com preenchimento automático do navegador */
@@ -125,6 +182,16 @@ input:-webkit-autofill:active {
 .company-subtitle {
     color: var(--primary); /* Usa a cor verde principal do projeto */
     font-weight: 600;      /* Deixa o texto um pouco mais forte */
-    margin-top: -10px;     /* Ajusta o espaçamento */
-    margin-bottom: 20px;
+        margin-top: -6px;      /* Ajusta o espaçamento */
+        margin-bottom: clamp(12px, 2vh, 18px);
+}
+
+/* Ajustes quando a altura da viewport é pequena */
+@media (max-height: 700px) {
+    body { padding-top: clamp(6px, 3vh, 16px); padding-bottom: clamp(6px, 3vh, 16px); }
+    .logo-svg-container { width: clamp(120px, 32vw, 180px); }
+}
+@media (max-height: 580px) {
+    .card-header { margin-bottom: 12px; }
+    .login-footer { display: none; }
 }

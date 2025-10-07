@@ -14,12 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const animationContainer = document.querySelector('#animation-container');
 
     // Animação de fundo
-    const numberOfComponents = 40;
-    // Diminui a probabilidade de CIs aparecerem, tornando-os mais raros
+    // Densidade ajustada: menos itens em telas pequenas, mais em telas grandes
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const numberOfComponents = vw < 480 ? 24 : vw < 1024 ? 36 : 48;
+    // Mix favorece R/C, reduzindo ICs para evitar poluição visual
     const componentTypes = [ 
-        'smd-resistor', 'smd-resistor', 'smd-resistor', 
-        'smd-capacitor', 'smd-capacitor', 'smd-capacitor', 'smd-capacitor',
-        'smd-led', 'smd-diode', 'smd-ic' 
+        'smd-resistor','smd-resistor','smd-resistor','smd-resistor',
+        'smd-capacitor','smd-capacitor','smd-capacitor','smd-capacitor','smd-capacitor',
+        'smd-led','smd-diode',
+        'smd-ic' // raro
     ];
     const fragment = document.createDocumentFragment(); // Cria um container temporário
     for (let i = 0; i < numberOfComponents; i++) {
@@ -33,9 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let sizeW, sizeH;
-        if (randomType === 'smd-ic') { sizeW = Math.random() * 20 + 20; sizeH = sizeW; } 
-        else if (randomType === 'smd-diode') { sizeW = Math.random() * 8 + 8; sizeH = sizeW * 0.5; }
-        else { sizeW = Math.random() * 10 + 6; sizeH = sizeW * 0.5; }
+    if (randomType === 'smd-ic') { sizeW = Math.random() * 18 + 18; sizeH = sizeW; } 
+    else if (randomType === 'smd-diode') { sizeW = Math.random() * 8 + 8; sizeH = sizeW * 0.5; }
+    else { sizeW = Math.random() * 10 + 7; sizeH = sizeW * 0.5; }
 
         component.style.width = `${sizeW}px`;
         component.style.height = `${sizeH}px`;
@@ -43,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         component.style.zIndex = Math.floor(Math.random() * 10); // Adiciona profundidade
         component.style.opacity = Math.random() * 0.7 + 0.3; // Opacidade aleatória para profundidade
 
-        const duration = Math.random() * 12 + 10;
+    const duration = Math.random() * 10 + 10; // levemente mais rápido
         const delay = -(Math.random() * duration); 
         component.style.setProperty('--start-rot', `${Math.random() * 360}deg`); // Rotação inicial
         component.style.setProperty('--end-rot', `${Math.random() * 720 - 360}deg`); // Rotação final
@@ -53,6 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fragment.appendChild(component); // Adiciona ao container temporário
     }
     animationContainer.appendChild(fragment); // Adiciona todos de uma só vez ao DOM
+
+    // Layout agora é centrado apenas com CSS responsivo (sem escala JS)
 
     // Lógica do Formulário
     loginForm.addEventListener('submit', async (event) => {

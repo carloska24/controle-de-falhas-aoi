@@ -567,8 +567,9 @@ app.delete('/api/registros/demo', authenticateToken, isAdmin, async (req, res) =
 // Opcional: endpoint de logout admin que limpa demos (se desejar acionar via frontend com uma chamada explícita)
 app.post('/api/admin/logout', authenticateToken, isAdmin, async (_req, res) => {
     try {
-        const result = await dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
-        res.json({ message: `Logout admin: ${result.changes} registros DEMO removidos.` });
+        const r1 = await dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
+        const r2 = await dbRun("DELETE FROM requisicoes WHERE om LIKE 'DEMO-%'");
+        res.json({ message: `Logout admin: ${r1.changes || 0} registros DEMO e ${r2.changes || 0} requisições DEMO removidos.` });
     } catch (err) {
         res.status(500).json({ error: `Erro no logout admin: ${err.message}` });
     }

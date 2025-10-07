@@ -58,9 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
       btnLogout.addEventListener('click', async () => {
           if (user && user.role === 'admin') {
               try {
-          await fetchAutenticado(`${API_URL}/demo`, { method: 'DELETE' });
-          // Também limpa requisições DEMO ao sair (apenas admin)
-          await fetchAutenticado(`${API_BASE_URL}/api/requisicoes/demo`, { method: 'DELETE' });
+          // Usa o endpoint unificado no backend para limpar DEMOs e efetivar logout admin
+          await fetchAutenticado(`${API_BASE_URL}/api/admin/logout`, { method: 'POST' });
                   showToast('Dados de demonstração foram limpos.', 'info');
               } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
           }
