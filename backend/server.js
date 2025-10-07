@@ -1,3 +1,4 @@
+// trigger redeploy - 2025-10-07
 // Endpoint de manutenção: redefinir senha de um usuário específico (DISPONÍVEL EM PRODUÇÃO)
 app.post('/api/debug/reset-password', async (req, res) => {
     const { username, password } = req.body || {};
