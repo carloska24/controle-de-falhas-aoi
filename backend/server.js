@@ -17,6 +17,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
 const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
 
+// Middleware para interpretar JSON deve vir antes de todas as rotas
+app.use(express.json());
+
 // Endpoint de manutenção: redefinir senha de um usuário específico (DISPONÍVEL EM PRODUÇÃO)
 app.post('/api/debug/reset-password', async (req, res) => {
     const { username, password } = req.body || {};
