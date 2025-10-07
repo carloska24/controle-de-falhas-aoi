@@ -204,8 +204,8 @@ function hasRole(...roles) {
 // ROTAS
 // =================================================================
 
-// ROTA DE SETUP INICIAL (EMERGÊNCIA) — liberada temporariamente em produção para criar admin
-if (process.env.ENABLE_EMERGENCY_ROUTES === 'true' || isProduction) {
+// ROTA DE SETUP INICIAL (EMERGÊNCIA) — desabilitada por padrão e sempre bloqueada em produção
+if (process.env.ENABLE_EMERGENCY_ROUTES === 'true' && !isProduction) {
 app.get('/api/setup/initial-admin', async (req, res) => {
     // Rota de emergência para resetar todos os usuários e criar um admin.
     // Requer uma chave secreta para ser executada.
