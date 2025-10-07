@@ -3,8 +3,8 @@
 	"tasks": [
 		{
 			"label": "Iniciar servidor backend",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; npm run start",
 			"type": "shell",
-			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; npm run start",
 			"problemMatcher": [
 				"$eslint-stylish"
 			],
@@ -12,8 +12,8 @@
 		},
 		{
 			"label": "Testar login via PowerShell",
+			"command": "powershell -NoLogo -NoProfile -Command \"$base='http://127.0.0.1:3001'; $payload='{\\\"\\\"username\\\"\\\": \\\"\\\"DevAdmin\\\"\\\", \\\"\\\"password\\\"\\\": \\\"\\\"123456\\\"\\\"}'; $resp=Invoke-RestMethod -Method Post -Uri ($base + '/api/auth/login') -ContentType 'application/json' -Body $payload; if(-not $resp.token){ throw 'Login falhou' }; 'TOKEN_OK ' + ($resp.token.Substring(0,16) + '...')\"",
 			"type": "shell",
-			"command": "powershell -NoLogo -NoProfile -Command \"$base='http://127.0.0.1:3000'; $payload='{\"\"username\"\": \"\"DevAdmin\"\", \"\"password\"\": \"\"123456\"\"}'; $resp=Invoke-RestMethod -Method Post -Uri ($base + '/api/auth/login') -ContentType 'application/json' -Body $payload; if(-not $resp.token){ throw 'Login falhou' }; 'TOKEN_OK ' + ($resp.token.Substring(0,16) + '...')\"",
 			"problemMatcher": [
 				"$eslint-stylish"
 			],
@@ -21,8 +21,8 @@
 		},
 		{
 			"label": "Testar login via curl (Windows)",
+			"command": "curl -s -H \"Content-Type: application/json\" -X POST -d \"{\\\\\\\"username\\\\\\\":\\\\\\\"DevAdmin\\\\\\\",\\\\\\\"password\\\\\\\":\\\\\\\"123456\\\\\\\"}\" http://127.0.0.1:3001/api/auth/login | powershell -NoLogo -NoProfile -Command \"$input | ConvertFrom-Json | ForEach-Object { if(-not $_.token){ throw 'Login falhou' } else { 'TOKEN_OK ' + ($_.token.Substring(0,16) + '...') } }\"",
 			"type": "shell",
-			"command": "curl -s -H \"Content-Type: application/json\" -X POST -d \"{\\\"username\\\":\\\"DevAdmin\\\",\\\"password\\\":\\\"123456\\\"}\" http://127.0.0.1:3000/api/auth/login | powershell -NoLogo -NoProfile -Command \"$input | ConvertFrom-Json | ForEach-Object { if(-not $_.token){ throw 'Login falhou' } else { 'TOKEN_OK ' + ($_.token.Substring(0,16) + '...') } }\"",
 			"problemMatcher": [
 				"$eslint-stylish"
 			],
@@ -30,8 +30,8 @@
 		},
 		{
 			"label": "Login via Node one-liner",
+			"command": "node -e \"(async()=>{const res=await fetch('http://127.0.0.1:3001/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'DevAdmin',password:'123456'})}); const j=await res.json(); if(!res.ok) throw new Error(j.error||res.statusText); console.log('TOKEN_OK', j.token.slice(0,16)+'...');})();\"",
 			"type": "shell",
-			"command": "node -e \"(async()=>{const res=await fetch('http://127.0.0.1:3000/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'DevAdmin',password:'123456'})}); const j=await res.json(); if(!res.ok) throw new Error(j.error||res.statusText); console.log('TOKEN_OK', j.token.slice(0,16)+'...');})();\"",
 			"problemMatcher": [
 				"$eslint-stylish"
 			],
@@ -39,8 +39,8 @@
 		},
 		{
 			"label": "Reiniciar backend (aplicar mudanças)",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; node server.js",
 			"type": "shell",
-			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; node server.js",
 			"problemMatcher": [
 				"$eslint-stylish"
 			],
@@ -48,8 +48,8 @@
 		},
 		{
 			"label": "Recarregar backend (para filtro DEMO)",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; node server.js",
 			"type": "shell",
-			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; node server.js",
 			"problemMatcher": [
 				"$eslint-stylish"
 			],
