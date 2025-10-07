@@ -1,3 +1,4 @@
+console.log('Deploy forçado em 2025-10-07 para Render.');
 // redeploy: estrutura backend limpa em 2025-10-07
 // trigger redeploy - 2025-10-07
 // Endpoint de manutenção: redefinir senha de um usuário específico (DISPONÍVEL EM PRODUÇÃO)
