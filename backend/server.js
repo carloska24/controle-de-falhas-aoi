@@ -1,6 +1,22 @@
-console.log('Deploy forçado em 2025-10-07 para Render.');
 // redeploy: estrutura backend limpa em 2025-10-07
 // trigger redeploy - 2025-10-07
+require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const { z } = require('zod');
+
+console.log('Deploy forçado em 2025-10-07 para Render.');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
+const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
+
 // Endpoint de manutenção: redefinir senha de um usuário específico (DISPONÍVEL EM PRODUÇÃO)
 app.post('/api/debug/reset-password', async (req, res) => {
     const { username, password } = req.body || {};
