@@ -1,3 +1,18 @@
+// Endpoint de manutenção: redefinir senha de um usuário específico (DISPONÍVEL EM PRODUÇÃO)
+app.post('/api/debug/reset-password', async (req, res) => {
+    const { username, password } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'username e password são obrigatórios' });
+    try {
+        const user = await dbGet('SELECT id FROM users WHERE username = ?', [username]);
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(password, salt);
+        await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, user.id]);
+        res.json({ message: `Senha redefinida para ${username}.` });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
 const express = require('express');
 const path = require('path');
