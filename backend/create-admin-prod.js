@@ -1,7 +1,7 @@
 // Script para criar o usuário admin em produção via API
 // Basta rodar: node create-admin-prod.js
 
-const https = require('https');
+const http = require('http');
 
 const data = JSON.stringify({
   name: 'Admin Principal',
@@ -11,8 +11,8 @@ const data = JSON.stringify({
 });
 
 const options = {
-  hostname: 'controle-de-falhas-aoi.onrender.com',
-  port: 443,
+  hostname: 'localhost',
+  port: 3001,
   path: '/api/users',
   method: 'POST',
   headers: {
@@ -21,7 +21,7 @@ const options = {
   }
 };
 
-const req = https.request(options, res => {
+const req = http.request(options, res => {
   let body = '';
   res.on('data', d => { body += d; });
   res.on('end', () => {

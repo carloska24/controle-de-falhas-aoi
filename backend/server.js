@@ -602,9 +602,9 @@ app.post('/api/admin/logout', authenticateToken, isAdmin, async (_req, res) => {
 // ROTAS DE REQUISIÇÃO (ALMOXARIFADO)
 // =================================================================
 app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema), async (req, res) => {
-    // Apenas admin e almoxarifado podem criar requisições
-    if (!['admin','almoxarifado'].includes(req.user?.role)) {
-        return res.status(403).json({ error: 'Apenas administradores e almoxarifado podem criar requisições.' });
+    // Agora admin, almoxarifado e operator podem criar requisições
+    if (!['admin','almoxarifado','operator'].includes(req.user?.role)) {
+        return res.status(403).json({ error: 'Apenas administradores, almoxarifado e operadores podem criar requisições.' });
     }
     const { registroIds } = req.body;
     const created_by = req.user.name || req.user.username;
@@ -698,7 +698,8 @@ app.put('/api/requisicoes/:id/itens', authenticateToken, hasRole('admin','almoxa
     } catch (err) { res.status(500).json({ error: `Erro ao atualizar itens da requisição: ${err.message}` }); }
 });
 
-app.delete('/api/requisicoes/:id', authenticateToken, isAdmin, async (req, res) => {
+app.delete('/api/requisicoes/:id', authenticateToken, hasRole('admin','almoxarifado','operator'), async (req, res) => {
+    console.log(`[DELETE /api/requisicoes/${req.params.id}] Usuário:`, req.user && req.user.username, '| Papel:', req.user && req.user.role);
     const { id } = req.params;
     try {
         const result = await dbRun('DELETE FROM requisicoes WHERE id = ?', [id]);
@@ -982,8 +983,8 @@ async function startServer() {
         }
     }
 
-    app.listen(PORT, () => {
-        console.log(`Servidor rodando na porta ${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Servidor rodando na porta ${PORT} (acessível na rede local)`);
     });
 }
 
