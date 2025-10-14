@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Detecta se estamos em ambiente local ou de produção para definir a URL da API
   const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-  const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+  const API_BASE_URL = 'http://192.168.0.67:3001';
   const API_URL = `${API_BASE_URL}/api/registros`;
   let registros = [];
   let sortState = { key: 'createdat', dir: 'desc' }; // padrão: mais recentes primeiro
@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading(true);
     try {
       registros = await fetchAutenticado(API_URL) || [];
+      console.log('[DEBUG] Registros recebidos do backend:', registros);
       render();
     } catch (error) {
       console.error('Falha ao carregar registros:', error);
@@ -163,32 +164,48 @@ document.addEventListener('DOMContentLoaded', () => {
           </tr>
         `).join('');
       }
-      updateMetrics(rowsToRender);
       updateSelectionState();
       updateQuality();
-      updateSortIndicators();
   }
 
-  function updateSortIndicators() {
-    document.querySelectorAll('th.sortable').forEach(th => {
-      th.classList.remove('sort-asc','sort-desc');
-      if (th.dataset.key === sortState.key) {
-        th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+      if (tbody) tbody.addEventListener('change', (e) => { 
+        if (e.target.classList.contains('rowSel')) { 
+          updateSelectionState();
+          if(escopoQualidade && escopoQualidade.value === 'selecionados') updateQuality();
+        }
+      });
+      if (selAll) selAll.addEventListener('change', () => {
+          const isChecked = selAll.checked;
+          document.querySelectorAll('.rowSel').forEach(checkbox => { checkbox.checked = isChecked; });
+          updateSelectionState();
+          if(escopoQualidade && escopoQualidade.value === 'selecionados') updateQuality();
+      });
+      if (btnReqCSV) {
+        btnReqCSV.addEventListener('click', () => {
+          const idsSelecionados = selectedIds();
+          if (idsSelecionados.length === 0) {
+            showToast('Selecione os registros para exportar.', 'info');
+            return;
+          }
+          const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+          const header = ['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'PN', 'Descricao', 'Observacoes'];
+          let csvContent = header.join(',') + '\n';
+          dadosParaExportar.forEach(r => {
+            const row = [r.om, formatDate(r.createdat), r.serial || '', r.designador, r.tipodefeito, r.pn || '', r.descricao || '', (r.obs || '').replace(/,/g, ';')];
+            csvContent += row.join(',') + '\n';
+          });
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', `relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
       }
-    });
-  }
-  
-  function updateMetrics(visibleRows) {
-    if(!mTotal) return;
-    mTotal.textContent = visibleRows.length;
-    mOMs.textContent = new Set(visibleRows.map(r => r.om)).size;
-    const counts = visibleRows.reduce((acc, r) => {
-      acc[r.tipodefeito] = (acc[r.tipodefeito] || 0) + 1;
-      return acc;
-    }, {});
-    const top3 = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0,3);
-    if(mDistrib) mDistrib.innerHTML = top3.map(([k,v]) => `<div>${escapeHTML(k)}: <strong>${v}</strong></div>`).join('') || '—';
-  }
+
+      // Removido: não existe botão PDF no sistema
   
   function getRowsForScope() {
     const scope = escopoQualidade.value;
@@ -298,23 +315,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     try {
-        if (editingId) {
-            const updateData = { om: data.om, qtdlote: data.qtdlote, serial: data.serial, designador: data.designador, tipodefeito: data.tipodefeito, pn: data.pn, descricao: data.descricao, obs: data.obs };
-            await fetchAutenticado(`${API_URL}/${editingId}`, { method: 'PUT', body: JSON.stringify(updateData) });
-            const index = registros.findIndex(r => r.id === editingId);
-            if (index !== -1) { registros[index] = { ...registros[index], ...updateData }; }
-            showToast('Registro atualizado com sucesso!');
-        } else {
-            data.id = uid();
-            data.createdat = new Date().toISOString();
-            data.status = 'aberto';
-            data.operador = user.name || user.username;
-            await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(data) });
-            registros.unshift(data);
-            showToast('Registro gravado com sucesso!');
-        }
-        resetForm();
-        render();
+    if (editingId) {
+      const updateData = { om: data.om, qtdlote: data.qtdlote, serial: data.serial, designador: data.designador, tipodefeito: data.tipodefeito, pn: data.pn, descricao: data.descricao, obs: data.obs };
+      await fetchAutenticado(`${API_URL}/${editingId}`, { method: 'PUT', body: JSON.stringify(updateData) });
+      const index = registros.findIndex(r => r.id === editingId);
+      if (index !== -1) { registros[index] = { ...registros[index], ...updateData }; }
+      showToast('Registro atualizado com sucesso!');
+      resetForm();
+      render();
+    } else {
+      data.id = uid();
+      data.createdat = new Date().toISOString();
+      data.status = 'aberto';
+      data.operador = user.name || user.username;
+      await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(data) });
+      showToast('Registro gravado com sucesso!');
+      resetForm();
+      await carregarRegistros();
+    }
     } catch (error) {
         showToast(`Erro ao salvar o registro: ${error.message}`, 'error');
     }
@@ -447,37 +465,41 @@ document.addEventListener('DOMContentLoaded', () => {
       if(escopoQualidade.value === 'selecionados') updateQuality();
     }
   });
-  selAll.addEventListener('change', () => {
+  if (selAll) {
+    selAll.addEventListener('change', () => {
       const isChecked = selAll.checked;
       document.querySelectorAll('.rowSel').forEach(checkbox => { checkbox.checked = isChecked; });
       updateSelectionState();
-      if(escopoQualidade.value === 'selecionados') updateQuality();
-  });
-  
-  btnReqCSV.addEventListener('click', () => {
-    const idsSelecionados = selectedIds();
-    if (idsSelecionados.length === 0) {
-      showToast('Selecione os registros para exportar.', 'info');
-      return;
-    }
-    const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
-    const header = ['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'PN', 'Descricao', 'Observacoes'];
-    let csvContent = header.join(',') + '\n';
-    dadosParaExportar.forEach(r => {
-      const row = [r.om, formatDate(r.createdat), r.serial || '', r.designador, r.tipodefeito, r.pn || '', r.descricao || '', (r.obs || '').replace(/,/g, ';')];
-      csvContent += row.join(',') + '\n';
+      if(escopoQualidade && escopoQualidade.value === 'selecionados') updateQuality();
     });
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
+  }
 
-  btnPDF.addEventListener('click', () => {
+  if (btnReqCSV) {
+    btnReqCSV.addEventListener('click', () => {
+      const idsSelecionados = selectedIds();
+      if (idsSelecionados.length === 0) {
+        showToast('Selecione os registros para exportar.', 'info');
+        return;
+      }
+      const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+      const header = ['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'PN', 'Descricao', 'Observacoes'];
+      let csvContent = header.join(',') + '\n';
+      dadosParaExportar.forEach(r => {
+        const row = [r.om, formatDate(r.createdat), r.serial || '', r.designador, r.tipodefeito, r.pn || '', r.descricao || '', (r.obs || '').replace(/,/g, ';')];
+        csvContent += row.join(',') + '\n';
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+
+  if (btnPDF) btnPDF.addEventListener('click', () => {
     const idsSelecionados = selectedIds();
     if (idsSelecionados.length === 0) {
       showToast('Selecione os registros para exportar.', 'info');
