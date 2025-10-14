@@ -1,3 +1,17 @@
+
+// Endpoint temporário para listar todos os registros do banco (para análise)
+setTimeout(() => {
+    if (typeof app !== 'undefined' && typeof dbAll !== 'undefined') {
+        app.get('/api/debug/listar-todos-registros', async (req, res) => {
+            try {
+                const registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
+                res.json(registros);
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            }
+        });
+    }
+}, 1000);
 // redeploy: estrutura backend limpa em 2025-10-07
 // trigger redeploy - 2025-10-07
 require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
@@ -483,10 +497,25 @@ app.get('/api/registros', authenticateToken, async (req, res) => {
     try {
         let registros;
         if (req.user && req.user.role === 'admin') {
-                registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
+            registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
         } else {
-                registros = await dbAll("SELECT * FROM registros WHERE om NOT LIKE 'DEMO-%' ORDER BY createdat DESC");
+            registros = await dbAll("SELECT * FROM registros WHERE om NOT LIKE 'DEMO-%' ORDER BY createdat DESC");
         }
+        // Mapeia campos camelCase para minúsculo, compatível com o frontend
+        registros = registros.map(r => ({
+            id: r.id,
+            om: r.om,
+            qtdlote: r.qtdlote,
+            serial: r.serial,
+            designador: r.designador,
+            tipodefeito: r.tipodefeito ?? r.tipoDefeito ?? '',
+            pn: r.pn,
+            descricao: r.descricao,
+            obs: r.obs,
+            createdat: r.createdat ?? r.createdAt ?? '',
+            status: r.status,
+            operador: r.operador
+        }));
         res.json(registros);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
