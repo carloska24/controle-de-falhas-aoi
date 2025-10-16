@@ -42,43 +42,92 @@ document.addEventListener('DOMContentLoaded', () => {
     if (omDisplay) omDisplay.textContent = formatTimer(elapsed);
   }
 
-  function startOM() {
-    omStart = Date.now();
-    omTotalPaused = 0;
-    omPausedAt = null;
-    omRunning = true;
-    ensureOMDisplay();
-    if (omDisplay) omDisplay.textContent = '00:00:00';
-    if (omFinalTime) omFinalTime.style.display = 'none';
-    btnIniciarOM.style.display = 'none';
-    btnPausarOM.style.display = '';
-    btnFinalizarOM.style.display = '';
-    btnPausarOM.textContent = 'Pausar';
-    omTimer = setInterval(updateOMTimer, 1000);
+  async function startOM() {
+    const omValue = document.getElementById('om').value;
+    if (!omValue) {
+      showToast('Informe o número da OM antes de iniciar.', 'error');
+      return;
+    }
+    localStorage.setItem('omEmAndamento', omValue);
+    try {
+      const resp = await fetch(`/api/om/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ omNumber: omValue })
+      });
+      if (!resp.ok) throw new Error((await resp.json()).error || 'Erro ao iniciar OM');
+      const data = await resp.json();
+      omStart = data.startTime;
+      omTotalPaused = data.pausedTime || 0;
+      omPausedAt = null;
+      omRunning = true;
+      ensureOMDisplay();
+      if (omDisplay) omDisplay.textContent = '00:00:00';
+      if (omFinalTime) omFinalTime.style.display = 'none';
+      btnIniciarOM.style.display = 'none';
+      btnPausarOM.style.display = '';
+      btnFinalizarOM.style.display = '';
+      btnPausarOM.textContent = 'Pausar';
+      if (omTimer) clearInterval(omTimer);
+      omTimer = setInterval(updateOMTimer, 1000);
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
   }
 
-  function pauseOM() {
+  async function pauseOM() {
     if (!omRunning || omPausedAt) return;
     omPausedAt = Date.now();
     omRunning = false;
     btnPausarOM.textContent = 'Retomar';
     if (omTimer) clearInterval(omTimer);
+    const omValue = localStorage.getItem('omEmAndamento') || document.getElementById('om').value;
+    if (omValue) {
+      await fetch(`/api/om/pause`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ omNumber: omValue })
+      });
+    }
   }
 
-  function resumeOM() {
+  async function resumeOM() {
     if (!omPausedAt) return;
     omTotalPaused += Date.now() - omPausedAt;
     omPausedAt = null;
     omRunning = true;
     btnPausarOM.textContent = 'Pausar';
     omTimer = setInterval(updateOMTimer, 1000);
+    const omValue = localStorage.getItem('omEmAndamento') || document.getElementById('om').value;
+    if (omValue) {
+      await fetch(`/api/om/resume`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ omNumber: omValue })
+      });
+    }
   }
 
-  function finalizarOM() {
+  async function finalizarOM() {
     if (omTimer) clearInterval(omTimer);
-    const now = Date.now();
-    let elapsed = (omPausedAt ? omPausedAt : now) - omStart - omTotalPaused;
-    if (elapsed < 0) elapsed = 0;
+    let elapsed = 0;
+    const omValue = localStorage.getItem('omEmAndamento') || document.getElementById('om').value;
+    if (omValue) {
+      const resp = await fetch(`/api/om/finalizar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ omNumber: omValue })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        elapsed = data.elapsed || 0;
+      }
+    }
+    if (!elapsed) {
+      const now = Date.now();
+      elapsed = (omPausedAt ? omPausedAt : now) - omStart - omTotalPaused;
+      if (elapsed < 0) elapsed = 0;
+    }
     if (omDisplay) omDisplay.textContent = formatTimer(elapsed);
     btnIniciarOM.style.display = '';
     btnPausarOM.style.display = 'none';
@@ -87,14 +136,73 @@ document.addEventListener('DOMContentLoaded', () => {
     omStart = null;
     omPausedAt = null;
     omTotalPaused = 0;
-    // Exibe tempo final do lote em destaque abaixo da tabela
     if (omFinalTime) {
       omFinalTime.textContent = `Tempo total do lote: ${formatTimer(elapsed)}`;
       omFinalTime.style.display = '';
     }
     showToast(`Tempo total de inspeção: ${formatTimer(elapsed)}`,'info');
-    // Aqui pode ser salvo no backend, se desejar:
-    // fetch('/api/om-tempo', { method: 'POST', body: JSON.stringify({ om, tempo: elapsed }) })
+    localStorage.removeItem('omEmAndamento');
+  }
+  // Restaurar timer da OM ao carregar a página
+  async function restaurarOM() {
+    const omValue = localStorage.getItem('omEmAndamento');
+    console.log('[OM] [restaurarOM] Valor em localStorage:', omValue);
+    if (!omValue) {
+      console.warn('[OM] [restaurarOM] Nenhuma OM em andamento encontrada no localStorage.');
+      return;
+    }
+    document.getElementById('om').value = omValue;
+    try {
+      const resp = await fetch(`/api/om/${encodeURIComponent(omValue)}`);
+      console.log('[OM] [restaurarOM] Resposta da API:', resp);
+      if (!resp.ok) {
+        console.warn('[OM] [restaurarOM] Resposta da API não OK:', resp.status);
+        return;
+      }
+      const data = await resp.json();
+      console.log('[OM] [restaurarOM] Dados recebidos:', data);
+      omStart = Date.now() - (data.elapsed || 0);
+      omTotalPaused = data.pausedTime || 0;
+      omRunning = data.status === 'em_andamento';
+      if (omRunning) {
+        console.log('[OM] [restaurarOM] OM em andamento, restaurando timer.');
+        ensureOMDisplay();
+        btnIniciarOM.style.display = 'none';
+        btnPausarOM.style.display = '';
+        btnFinalizarOM.style.display = '';
+        btnPausarOM.textContent = 'Pausar';
+        if (omTimer) clearInterval(omTimer);
+        omTimer = setInterval(updateOMTimer, 1000);
+        updateOMTimer();
+      } else if (data.status === 'pausada') {
+        console.log('[OM] [restaurarOM] OM pausada, restaurando estado.');
+        omRunning = false;
+        omPausedAt = Date.now();
+        ensureOMDisplay();
+        btnIniciarOM.style.display = 'none';
+        btnPausarOM.style.display = '';
+        btnFinalizarOM.style.display = '';
+        btnPausarOM.textContent = 'Retomar';
+        if (omTimer) clearInterval(omTimer);
+        omTimer = setInterval(updateOMTimer, 1000);
+        updateOMTimer();
+      } else if (data.status === 'finalizada') {
+        console.log('[OM] [restaurarOM] OM finalizada, exibindo tempo final.');
+        omRunning = false;
+        omPausedAt = null;
+        if (omTimer) clearInterval(omTimer);
+        btnIniciarOM.style.display = '';
+        btnPausarOM.style.display = 'none';
+        btnFinalizarOM.style.display = 'none';
+        if (omDisplay) omDisplay.textContent = formatTimer(data.elapsed);
+        if (omFinalTime) {
+          omFinalTime.textContent = `Tempo total do lote: ${formatTimer(data.elapsed)}`;
+          omFinalTime.style.display = '';
+        }
+      }
+    } catch (e) {
+      console.error('[OM] [restaurarOM] Erro ao restaurar OM:', e);
+    }
   }
 
   if (btnIniciarOM) btnIniciarOM.addEventListener('click', () => {
@@ -108,6 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnFinalizarOM) btnFinalizarOM.addEventListener('click', () => {
     finalizarOM();
   });
+  // Restaurar timer ao carregar
+  setTimeout(restaurarOM, 0);
   const { jsPDF } = window.jspdf;
   const token = localStorage.getItem('authToken');
   const user = JSON.parse(localStorage.getItem('user'));
