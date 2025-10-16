@@ -1,4 +1,113 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Controle de Inspeção OM ---
+  let omTimer = null;
+  let omStart = null;
+  let omPausedAt = null;
+  let omTotalPaused = 0;
+  let omRunning = false;
+  let omDisplay = document.getElementById('omTimerDisplay');
+  const omTimerBox = document.getElementById('omTimerBox');
+  const omFinalTime = document.getElementById('omFinalTime');
+
+  const btnIniciarOM = document.getElementById('btnIniciarOM');
+  const btnPausarOM = document.getElementById('btnPausarOM');
+  const btnFinalizarOM = document.getElementById('btnFinalizarOM');
+  // Diagnóstico: logar se os botões foram encontrados
+  if (!btnIniciarOM || !btnPausarOM || !btnFinalizarOM) {
+    alert('Erro: Botões OM não encontrados no DOM! Verifique se o script está sendo carregado após o HTML.');
+    console.error('[OM] Botões não encontrados:', { btnIniciarOM, btnPausarOM, btnFinalizarOM });
+  } else {
+    console.log('[OM] Botões encontrados:', { btnIniciarOM, btnPausarOM, btnFinalizarOM });
+  }
+
+  // Adiciona display de tempo ao lado dos botões OM
+  function ensureOMDisplay() {
+    if (omTimerBox) omTimerBox.style.display = '';
+    if (omDisplay) omDisplay.style.display = '';
+  }
+
+  function formatTimer(ms) {
+    if (!ms || ms < 0) ms = 0;
+    const totalSec = Math.floor(ms/1000);
+    const h = Math.floor(totalSec/3600).toString().padStart(2,'0');
+    const m = Math.floor((totalSec%3600)/60).toString().padStart(2,'0');
+    const s = (totalSec%60).toString().padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function updateOMTimer() {
+    if (!omRunning || !omStart) return;
+    const now = Date.now();
+    const elapsed = now - omStart - omTotalPaused;
+    if (omDisplay) omDisplay.textContent = formatTimer(elapsed);
+  }
+
+  function startOM() {
+    omStart = Date.now();
+    omTotalPaused = 0;
+    omPausedAt = null;
+    omRunning = true;
+    ensureOMDisplay();
+    if (omDisplay) omDisplay.textContent = '00:00:00';
+    if (omFinalTime) omFinalTime.style.display = 'none';
+    btnIniciarOM.style.display = 'none';
+    btnPausarOM.style.display = '';
+    btnFinalizarOM.style.display = '';
+    btnPausarOM.textContent = 'Pausar';
+    omTimer = setInterval(updateOMTimer, 1000);
+  }
+
+  function pauseOM() {
+    if (!omRunning || omPausedAt) return;
+    omPausedAt = Date.now();
+    omRunning = false;
+    btnPausarOM.textContent = 'Retomar';
+    if (omTimer) clearInterval(omTimer);
+  }
+
+  function resumeOM() {
+    if (!omPausedAt) return;
+    omTotalPaused += Date.now() - omPausedAt;
+    omPausedAt = null;
+    omRunning = true;
+    btnPausarOM.textContent = 'Pausar';
+    omTimer = setInterval(updateOMTimer, 1000);
+  }
+
+  function finalizarOM() {
+    if (omTimer) clearInterval(omTimer);
+    const now = Date.now();
+    let elapsed = (omPausedAt ? omPausedAt : now) - omStart - omTotalPaused;
+    if (elapsed < 0) elapsed = 0;
+    if (omDisplay) omDisplay.textContent = formatTimer(elapsed);
+    btnIniciarOM.style.display = '';
+    btnPausarOM.style.display = 'none';
+    btnFinalizarOM.style.display = 'none';
+    omRunning = false;
+    omStart = null;
+    omPausedAt = null;
+    omTotalPaused = 0;
+    // Exibe tempo final do lote em destaque abaixo da tabela
+    if (omFinalTime) {
+      omFinalTime.textContent = `Tempo total do lote: ${formatTimer(elapsed)}`;
+      omFinalTime.style.display = '';
+    }
+    showToast(`Tempo total de inspeção: ${formatTimer(elapsed)}`,'info');
+    // Aqui pode ser salvo no backend, se desejar:
+    // fetch('/api/om-tempo', { method: 'POST', body: JSON.stringify({ om, tempo: elapsed }) })
+  }
+
+  if (btnIniciarOM) btnIniciarOM.addEventListener('click', () => {
+    console.log('[OM] Clique em Iniciar OM');
+    startOM();
+  });
+  if (btnPausarOM) btnPausarOM.addEventListener('click', () => {
+    if (omRunning && !omPausedAt) pauseOM();
+    else resumeOM();
+  });
+  if (btnFinalizarOM) btnFinalizarOM.addEventListener('click', () => {
+    finalizarOM();
+  });
   const { jsPDF } = window.jspdf;
   const token = localStorage.getItem('authToken');
   const user = JSON.parse(localStorage.getItem('user'));
@@ -166,6 +275,32 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       updateSelectionState();
       updateQuality();
+      // Filtro aplicado: usa rowsToRender para métricas
+      if (typeof mTotal !== 'undefined' && mTotal) {
+        mTotal.textContent = rowsToRender.length;
+      }
+      if (typeof mOMs !== 'undefined' && mOMs) {
+        const omSet = new Set(rowsToRender.map(r => r.om));
+        mOMs.textContent = omSet.size;
+      }
+      // Top 3 defeitos
+      if (typeof mDistrib !== 'undefined' && mDistrib) {
+        if (rowsToRender.length === 0) {
+          mDistrib.textContent = '—';
+        } else {
+          const counts = {};
+          rowsToRender.forEach(r => {
+            if (!r.tipodefeito) return;
+            counts[r.tipodefeito] = (counts[r.tipodefeito] || 0) + 1;
+          });
+          const top = Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([defeito, qtd]) => `${defeito} (${qtd})`)
+            .join(', ');
+          mDistrib.textContent = top || '—';
+        }
+      }
   }
 
       if (tbody) tbody.addEventListener('change', (e) => { 
@@ -440,11 +575,13 @@ document.addEventListener('DOMContentLoaded', () => {
   [totalInspec, escopoQualidade].forEach(el => { if(el) el.addEventListener('input', updateQuality); });
   
   // Busca com debounce
-  busca.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(render, 200);
-  });
-  
+  if (busca) {
+    busca.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(render, 200);
+    });
+  }
+
   // Ordenação por cabeçalho
   document.querySelectorAll('th.sortable').forEach(th => {
     th.addEventListener('click', () => {
@@ -458,13 +595,15 @@ document.addEventListener('DOMContentLoaded', () => {
       render();
     });
   });
-  
-  tbody.addEventListener('change', (e) => { 
-    if (e.target.classList.contains('rowSel')) { 
-      updateSelectionState();
-      if(escopoQualidade.value === 'selecionados') updateQuality();
-    }
-  });
+
+  if (tbody) {
+    tbody.addEventListener('change', (e) => { 
+      if (e.target.classList.contains('rowSel')) { 
+        updateSelectionState();
+        if(escopoQualidade && escopoQualidade.value === 'selecionados') updateQuality();
+      }
+    });
+  }
   if (selAll) {
     selAll.addEventListener('change', () => {
       const isChecked = selAll.checked;
@@ -499,22 +638,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (btnPDF) btnPDF.addEventListener('click', () => {
-    const idsSelecionados = selectedIds();
-    if (idsSelecionados.length === 0) {
-      showToast('Selecione os registros para exportar.', 'info');
-      return;
-    }
-    const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
-    const doc = new jsPDF();
-    doc.text('Relatório de Falhas para Reparo', 14, 16);
-    doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
-    const head = [['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'Obs']];
-    const body = dadosParaExportar.map(r => [r.om, formatDate(r.createdat), r.serial || '-', r.designador, r.tipodefeito, r.obs || '-']);
-    doc.autoTable({ startY: 30, head: head, body: body, theme: 'grid', headStyles: { fillColor: [41, 128, 185] }, });
-    doc.save(`relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.pdf`);
-  });
-  
-  carregarRegistros();
+  if (btnPDF) {
+    btnPDF.addEventListener('click', () => {
+      const idsSelecionados = selectedIds();
+      if (idsSelecionados.length === 0) {
+        showToast('Selecione os registros para exportar.', 'info');
+        return;
+      }
+      const dadosParaExportar = registros.filter(r => idsSelecionados.includes(r.id));
+      const doc = new jsPDF();
+      doc.text('Relatório de Falhas para Reparo', 14, 16);
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
+      const head = [['OM', 'Data', 'Serial', 'Designador', 'Defeito', 'Obs']];
+      const body = dadosParaExportar.map(r => [r.om, formatDate(r.createdat), r.serial || '-', r.designador, r.tipodefeito, r.obs || '-']);
+      doc.autoTable({ startY: 30, head: head, body: body, theme: 'grid', headStyles: { fillColor: [41, 128, 185] }, });
+      doc.save(`relatorio_reparo_${new Date().toLocaleDateString('pt-BR')}.pdf`);
+    });
+  }
+
+  if (typeof carregarRegistros === 'function') carregarRegistros();
 });
