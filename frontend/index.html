@@ -98,7 +98,10 @@
                   <span>Iniciar OM</span>
                 </button>
 
-                <button id="btnPausarOM" data-action="pause-om" class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30" title="Pausar/Retomar Inspeção" style="display:none;">Pausar</button>
+                <button id="btnPausarOM" data-action="pause-om" class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30" title="Pausar/Retomar Inspeção" style="display:none;">
+                  <svg id="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 5H10V19H6V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 5H18V19H14V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span class="btn-label">Pausar</span>
+                </button>
 
                 <button id="btnFinalizarOM" data-action="finish-om" class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm font-medium bg-rose-700 hover:bg-rose-600 text-white" title="Finalizar Inspeção da OM" style="display:none;">Finalizar OM</button>
 
@@ -171,10 +174,22 @@
           <span>Relatórios</span>
         </h2>
         <div class="grid cols-1">
-          <a href="relatorio-controle-falhas.html" class="btn info full-width admin-only">Relatório de Registro de Falhas</a>
-          <a href="relatorio-qualidade.html" class="btn primary full-width admin-only">Análise de Qualidade</a>
-          <a href="relatorio-qualidade.html?demo=true" class="btn warn full-width admin-only">Qualidade (c/ Demo)</a>
-          <a href="relatorio-reparo.html" class="btn info full-width admin-only">Relatório de Reparo</a>
+          <a href="relatorio-controle-falhas.html" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-slate-800 hover:bg-slate-700 text-white full-width admin-only">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2V8H20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Relatório de Registro de Falhas</span>
+          </a>
+          <a href="relatorio-qualidade.html" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white full-width admin-only">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8 2 4 4 4 8C4 12 8 14 12 14C16 14 20 12 20 8C20 4 16 2 12 2Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Análise de Qualidade</span>
+          </a>
+          <a href="relatorio-qualidade.html?demo=true" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-amber-500 hover:bg-amber-400 text-white full-width admin-only">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8 2 4 4 4 8C4 12 8 14 12 14C16 14 20 12 20 8C20 4 16 2 12 2Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Qualidade (c/ Demo)</span>
+          </a>
+          <a href="relatorio-reparo.html" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-sky-700 hover:bg-sky-600 text-white full-width admin-only">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 21V19C3 17.8954 3.89543 17 5 17H19C20.1046 17 21 17.8954 21 19V21" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11V7C8 5.89543 8.89543 5 10 5H14C15.1046 5 16 5.89543 16 7V11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Relatório de Reparo</span>
+          </a>
         </div>
       </section>
 
@@ -184,8 +199,14 @@
           <span>Acessos Rápidos</span>
         </h2>
         <div class="grid cols-1">
-          <a href="almoxarifado.html" class="btn primary full-width">Almoxarifado</a>
-          <a href="reparo.html" class="btn primary full-width">Tela de Reparo</a>
+          <a href="almoxarifado.html" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-sky-700 hover:bg-sky-600 text-white full-width">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7H21V17H3V7Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 7V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Almoxarifado</span>
+          </a>
+          <a href="reparo.html" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white full-width">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 8V20C21 21.1046 20.1046 22 19 22H5C3.89543 22 3 21.1046 3 20V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8V6C7 4.89543 7.89543 4 9 4H15C16.1046 4 17 4.89543 17 6V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Tela de Reparo</span>
+          </a>
         </div>
       </section>
     </div>

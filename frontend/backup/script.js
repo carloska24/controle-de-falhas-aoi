@@ -80,7 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnIniciarOM.style.display = 'none';
     btnPausarOM.style.display = '';
     btnFinalizarOM.style.display = '';
-    btnPausarOM.textContent = 'Pausar';
+    if (btnPausarOM) {
+      btnPausarOM.innerHTML = '<svg id="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 5H10V19H6V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 5H18V19H14V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="btn-label">Pausar</span>';
+      btnPausarOM.setAttribute('title','Pausar Inspeção');
+    }
     omTimer = setInterval(updateOMTimer, 1000);
   }
 
@@ -88,7 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!omRunning || omPausedAt) return;
     omPausedAt = Date.now();
     omRunning = false;
-    btnPausarOM.textContent = 'Retomar';
+    if (btnPausarOM) {
+      btnPausarOM.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 19L18 12L6 5V19Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="btn-label">Retomar</span>';
+      btnPausarOM.setAttribute('title','Retomar Inspeção');
+    }
     if (omTimer) clearInterval(omTimer);
   }
 
@@ -97,7 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
     omTotalPaused += Date.now() - omPausedAt;
     omPausedAt = null;
     omRunning = true;
-    btnPausarOM.textContent = 'Pausar';
+    if (btnPausarOM) {
+      btnPausarOM.innerHTML = '<svg id="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 5H10V19H6V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 5H18V19H14V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="btn-label">Pausar</span>';
+      btnPausarOM.setAttribute('title','Pausar Inspeção');
+    }
     omTimer = setInterval(updateOMTimer, 1000);
   }
 
