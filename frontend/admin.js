@@ -14,14 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+    const API_BASE_URL = 'http://192.168.0.67:3001';
     const USERS_API_URL = `${API_BASE_URL}/api/users`;
 
     // =================================================================
     // SELETORES DO DOM
     // =================================================================
     const userDisplay = document.querySelector('#userDisplay');
-    const btnLogout = document.querySelector('#btnLogout');
+    const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
     const registerForm = document.querySelector('#registerForm');
     const usersTbody = document.querySelector('#usersTbody');
     const toastContainer = document.querySelector('#toastContainer');

@@ -23,11 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+    const API_BASE_URL = 'http://192.168.0.67:3001';
     const API_URL = `${API_BASE_URL}/api/registros`;
 
-    const DEFEITOS_SOLDAGEM = ['Curto-circuito', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball'];
-    const DEFEITOS_POSICIONAMENTO = ['Componente Ausente', 'Componente Danificado', 'Componente Deslocado', 'Componente Incorreto', 'Componente Invertido', 'Polaridade Incorreta'];
+    const DEFEITOS_SOLDAGEM = ['Curto-circuito', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball', 'Terminal Levantado'];
+    const DEFEITOS_POSICIONAMENTO = ['Componente Ausente', 'Componente Danificado', 'Componente Deslocado', 'Componente Incorreto', 'Componente Invertido', 'Polaridade Incorreta', 'Componente Levantado'];
     const DEFEITOS_VALIDOS = new Set([...DEFEITOS_SOLDAGEM, ...DEFEITOS_POSICIONAMENTO]);
 
     let allData = [];
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Seletores do DOM
     // =================================================================
     const userDisplay = document.querySelector('#userDisplay');
-    const btnLogout = document.querySelector('#btnLogout');
+    const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
     const loadingOverlay = document.querySelector('#loadingOverlay');
     const dateRangeSelect = document.querySelector('#dateRange');
     const omFilterSelect = document.querySelector('#omFilter');

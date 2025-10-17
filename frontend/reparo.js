@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(localStorage.getItem('user'));
 
     if (!token) { window.location.href = 'login.html'; return; }
-    // Guarda de rota: apenas admin e reparo têm acesso
-    if (!user || !['admin','reparo'].includes(user.role)) {
+    // Guarda de rota: admin, reparo e operador têm acesso
+    if (!user || !['admin','reparo','operator'].includes(user.role)) {
         window.location.href = 'index.html';
         return;
     }
@@ -19,8 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Exibe botão de voltar para operadores
+    if (user && user.role === 'operator') {
+        const voltarBtn = document.createElement('a');
+        voltarBtn.href = 'index.html';
+        voltarBtn.className = 'btn outline';
+        voltarBtn.textContent = 'Voltar para Registros';
+        const userInfo = document.querySelector('.user-info');
+        if (userInfo) userInfo.insertBefore(voltarBtn, userInfo.firstChild);
+    }
+
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+    const API_BASE_URL = 'http://192.168.0.67:3001';
     const API_URL = `${API_BASE_URL}/api/registros`;
 
     let allData = [];
@@ -29,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Seletores do DOM
     // =================================================================
     const userDisplay = document.querySelector('#userDisplay');
-    const btnLogout = document.querySelector('#btnLogout');
+    const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
     const loadingOverlay = document.querySelector('#loadingOverlay');
     const omFilter = document.querySelector('#omFilter');
     const statusFilter = document.querySelector('#statusFilter');
@@ -61,7 +71,17 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingOverlay.classList.toggle('hidden', !isLoading);
     }
 
-    function formatDate(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
+    function formatDate(d) {
+        if (!d) return '';
+        const date = new Date(d);
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const ano = date.getFullYear();
+        const hora = String(date.getHours()).padStart(2, '0');
+        const min = String(date.getMinutes()).padStart(2, '0');
+        const seg = String(date.getSeconds()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+    }
 
     // Adicionando a função de Toast para feedback visual
     function showToast(message, type = 'success') {
@@ -98,19 +118,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Corpo da tabela com a nova ordem e centralizado
         tableBody.innerHTML = dadosFiltrados.map(item => `
             <tr data-id="${item.id}">
-                <td data-label="OM" style="text-align: center;">${item.om}</td>
-                <td data-label="Cod. Alt" style="text-align: center;">${item.pn || '—'}</td>
-                <td data-label="Serial" style="text-align: center;">${item.serial || '—'}</td>
-                <td data-label="Descrição" style="text-align: center;">${item.descricao || '—'}</td>
-                <td data-label="Designador" style="text-align: center;">${item.designador}</td>
-                <td data-label="Defeito" style="text-align: center;">${item.tipodefeito}</td>
-                <td data-label="Data/Hora" style="text-align: center;">${formatDate(item.createdat)}</td>
-                <td data-label="Status" style="text-align: center;"><span class="status-tag status-${item.status}">${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span></td>
+                <td data-label="OM" style="text-align: center;">${item.om ?? ''}</td>
+                <td data-label="Cod. Alt" style="text-align: center;">${item.pn ?? ''}</td>
+                <td data-label="Serial" style="text-align: center;">${item.serial ?? ''}</td>
+                <td data-label="Descrição" style="text-align: center;">${item.descricao ?? ''}</td>
+                <td data-label="Designador" style="text-align: center;">${item.designador ?? ''}</td>
+                <td data-label="Defeito" style="text-align: center;">${item.tipodefeito ?? ''}</td>
+                <td data-label="Data/Hora" style="text-align: center;">${formatDate(item.createdat ?? '')}</td>
+                <td data-label="Status" style="text-align: center;"><span class="status-tag status-${item.status}">${item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : ''}</span></td>
                 <td data-label="Ação" class="actions-cell" style="justify-content: center;">
                     ${item.status === 'aberto' ? `<button class="btn primary small btn-reparar" data-id="${item.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.44 2.5C17.44 2.5 14.42 2.5 12.64 4.87C10.86 7.24 10.56 10.23 10.56 10.23M10.56 10.23L13.44 13.11M10.56 10.23L7.68 7.35M6.56 13.77C6.56 13.77 9.58 13.77 11.36 11.4C12.43 10.01 12.82 8.37 12.82 8.37M12.82 8.37L9.94 5.49M12.82 8.37L15.7 11.25M2 22L10 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Reparar</button>` : ''}
-                    ${user && user.role === 'admin' ? `
-                        <button class="btn danger small btn-excluir-reparo" data-id="${item.id}" style="margin-left: 4px;">Excluir</button>
-                    ` : ''}
+                    <button class="btn danger small btn-excluir-reparo" data-id="${item.id}" style="margin-left: 4px;">Excluir</button>
                 </td>
             </tr>
         `).join('');

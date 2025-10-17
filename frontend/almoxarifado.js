@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(localStorage.getItem('user'));
 
     if (!token) { window.location.href = 'login.html'; return; }
-    // Guarda de rota: apenas admin e almoxarifado têm acesso
-    if (!user || !['admin','almoxarifado'].includes(user.role)) {
+    // Guarda de rota: admin, almoxarifado e operador têm acesso
+    if (!user || !['admin','almoxarifado','operator'].includes(user.role)) {
         window.location.href = 'index.html';
         return;
     }
@@ -19,8 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Exibe botão de voltar para operadores
+    if (user && user.role === 'operator') {
+        const voltarBtn = document.createElement('a');
+        voltarBtn.href = 'index.html';
+        voltarBtn.className = 'btn outline';
+        voltarBtn.textContent = 'Voltar para Registros';
+        const userInfo = document.querySelector('.user-info');
+        if (userInfo) userInfo.insertBefore(voltarBtn, userInfo.firstChild);
+    }
+
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://controle-de-falhas-aoi.onrender.com';
+    const API_BASE_URL = 'http://192.168.0.67:3001';
     const API_URL = `${API_BASE_URL}/api/requisicoes`;
 
     let allRequisicoes = [];
@@ -29,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Seletores do DOM
     // =================================================================
     const userDisplay = document.querySelector('#userDisplay');
-    const btnLogout = document.querySelector('#btnLogout');
+    const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
     const loadingOverlay = document.querySelector('#loadingOverlay');
     const buscaInput = document.querySelector('#buscaRequisicao');
     const tableBody = document.querySelector('#tbodyRequisicoes');
@@ -44,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.querySelector('#modalTitle');
     const closeModalBtn = document.querySelector('#closeModal');
     const tbodyItens = document.querySelector('#tbodyItens');
-    const btnSalvarItens = document.querySelector('#btnSalvarItens');
+    const btnSalvarItens = document.querySelector('[data-action="save-items"]') || document.querySelector('#btnSalvarItens');
 
     // =================================================================
     // Funções Utilitárias
@@ -142,8 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn small primary btn-atender-req" data-id="${req.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 12L10.5 15L16.5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Atender</button>
                     ` : ''}
                 </td>
-                <td data-label="Admin" style="text-align: center; vertical-align: middle;">
-                    ${user && user.role === 'admin' ? `<button class="btn small danger btn-excluir-req" data-id="${req.id}">Excluir</button>` : ''}
+                <td data-label="Ações" style="text-align: center; vertical-align: middle;">
+                    <button class="btn small danger btn-excluir-req" data-id="${req.id}">Excluir</button>
                 </td>
             </tr>
         `).join('');
@@ -194,8 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleExcluirRequisicao(reqId) {
-        const conf = confirm(`Excluir requisição #${reqId}? Esta ação não pode ser desfeita.`);
-        if (!conf) return;
         try {
             setLoading(true);
             await fetchAutenticado(`${API_URL}/${reqId}`, { method: 'DELETE' });

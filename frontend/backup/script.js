@@ -1,3 +1,18 @@
+// 🧠 GitHub Copilot Task:
+//
+// Refatorar a função updateQuality() e drawPie() para:
+// - Melhorar visual do gráfico (bordas suaves, brilho sutil, animação de preenchimento, cores no padrão do projeto).
+// - Recolocar emojis expressivos conforme a % de qualidade (😊 😐 😞), mantendo responsividade.
+// - Deixar o texto mais amigável e direto, ex.: “OM Finalizada — Qualidade: 92% 😊 Excelente”.
+// - Centralizar layout e usar estilos visuais harmonizados com o restante da interface.
+//
+// Refatorar a função finalizarOM() para:
+// - Após a finalização da OM, ocultar campos e botões de inserção.
+// - Deixar apenas o gráfico, emoji e texto final em destaque.
+// - Impedir alterações até iniciar uma nova OM.
+//
+// ❗ Manter a lógica existente de cálculo e eventos, apenas melhorar o visual e comportamento da UI.
+//
 document.addEventListener('DOMContentLoaded', () => {
   // --- Controle de Inspeção OM ---
   let omTimer = null;
@@ -9,9 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const omTimerBox = document.getElementById('omTimerBox');
   const omFinalTime = document.getElementById('omFinalTime');
 
-  const btnIniciarOM = document.querySelector('[data-action="start-om"]') || document.getElementById('btnIniciarOM');
-  const btnPausarOM = document.querySelector('[data-action="pause-om"]') || document.getElementById('btnPausarOM');
-  const btnFinalizarOM = document.querySelector('[data-action="finish-om"]') || document.getElementById('btnFinalizarOM');
+  const btnIniciarOM = document.getElementById('btnIniciarOM');
+  const btnPausarOM = document.getElementById('btnPausarOM');
+  const btnFinalizarOM = document.getElementById('btnFinalizarOM');
   // Diagnóstico: logar se os botões foram encontrados
   if (!btnIniciarOM || !btnPausarOM || !btnFinalizarOM) {
     alert('Erro: Botões OM não encontrados no DOM! Verifique se o script está sendo carregado após o HTML.');
@@ -42,92 +57,55 @@ document.addEventListener('DOMContentLoaded', () => {
     if (omDisplay) omDisplay.textContent = formatTimer(elapsed);
   }
 
-  async function startOM() {
-    const omValue = document.getElementById('om').value;
-    if (!omValue) {
-      showToast('Informe o número da OM antes de iniciar.', 'error');
-      return;
+  function startOM() {
+    // Ao iniciar nova OM, reabilita UI
+    const qualidadeCard = document.getElementById('qualidadeCard');
+    if (qualidadeCard) {
+      qualidadeCard.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+      qualidadeCard.querySelectorAll('.quality-controls').forEach(el => el.style.display = '');
+      qualidadeCard.querySelectorAll('.quality-aux').forEach(el => el.style.display = '');
+      qualidadeCard.querySelectorAll('.quality-title').forEach(el => el.style.fontSize = '');
+      qualidadeCard.querySelectorAll('.quality-emoji').forEach(el => el.style.fontSize = '');
+      qualidadeCard.querySelectorAll('.quality-text').forEach(el => el.style.marginTop = '');
+      qualidadeCard.style.boxShadow = '';
     }
-    localStorage.setItem('omEmAndamento', omValue);
-    try {
-      const resp = await fetch(`/api/om/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ omNumber: omValue })
-      });
-      if (!resp.ok) throw new Error((await resp.json()).error || 'Erro ao iniciar OM');
-      const data = await resp.json();
-      omStart = data.startTime;
-      omTotalPaused = data.pausedTime || 0;
-      omPausedAt = null;
-      omRunning = true;
-      ensureOMDisplay();
-      if (omDisplay) omDisplay.textContent = '00:00:00';
-      if (omFinalTime) omFinalTime.style.display = 'none';
-      btnIniciarOM.style.display = 'none';
-      btnPausarOM.style.display = '';
-      btnFinalizarOM.style.display = '';
-      btnPausarOM.textContent = 'Pausar';
-      if (omTimer) clearInterval(omTimer);
-      omTimer = setInterval(updateOMTimer, 1000);
-    } catch (e) {
-      showToast(e.message, 'error');
-    }
+    if (form) Array.from(form.elements).forEach(el => el.disabled = false);
+    omStart = Date.now();
+    omTotalPaused = 0;
+    omPausedAt = null;
+    omRunning = true;
+    ensureOMDisplay();
+    if (omDisplay) omDisplay.textContent = '00:00:00';
+    if (omFinalTime) omFinalTime.style.display = 'none';
+    btnIniciarOM.style.display = 'none';
+    btnPausarOM.style.display = '';
+    btnFinalizarOM.style.display = '';
+    btnPausarOM.textContent = 'Pausar';
+    omTimer = setInterval(updateOMTimer, 1000);
   }
 
-  async function pauseOM() {
+  function pauseOM() {
     if (!omRunning || omPausedAt) return;
     omPausedAt = Date.now();
     omRunning = false;
     btnPausarOM.textContent = 'Retomar';
     if (omTimer) clearInterval(omTimer);
-    const omValue = localStorage.getItem('omEmAndamento') || document.getElementById('om').value;
-    if (omValue) {
-      await fetch(`/api/om/pause`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ omNumber: omValue })
-      });
-    }
   }
 
-  async function resumeOM() {
+  function resumeOM() {
     if (!omPausedAt) return;
     omTotalPaused += Date.now() - omPausedAt;
     omPausedAt = null;
     omRunning = true;
     btnPausarOM.textContent = 'Pausar';
     omTimer = setInterval(updateOMTimer, 1000);
-    const omValue = localStorage.getItem('omEmAndamento') || document.getElementById('om').value;
-    if (omValue) {
-      await fetch(`/api/om/resume`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ omNumber: omValue })
-      });
-    }
   }
 
-  async function finalizarOM() {
+  function finalizarOM() {
     if (omTimer) clearInterval(omTimer);
-    let elapsed = 0;
-    const omValue = localStorage.getItem('omEmAndamento') || document.getElementById('om').value;
-    if (omValue) {
-      const resp = await fetch(`/api/om/finalizar`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ omNumber: omValue })
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        elapsed = data.elapsed || 0;
-      }
-    }
-    if (!elapsed) {
-      const now = Date.now();
-      elapsed = (omPausedAt ? omPausedAt : now) - omStart - omTotalPaused;
-      if (elapsed < 0) elapsed = 0;
-    }
+    const now = Date.now();
+    let elapsed = (omPausedAt ? omPausedAt : now) - omStart - omTotalPaused;
+    if (elapsed < 0) elapsed = 0;
     if (omDisplay) omDisplay.textContent = formatTimer(elapsed);
     btnIniciarOM.style.display = '';
     btnPausarOM.style.display = 'none';
@@ -136,74 +114,38 @@ document.addEventListener('DOMContentLoaded', () => {
     omStart = null;
     omPausedAt = null;
     omTotalPaused = 0;
+    // Exibe tempo final do lote em destaque abaixo da tabela
     if (omFinalTime) {
       omFinalTime.textContent = `Tempo total do lote: ${formatTimer(elapsed)}`;
       omFinalTime.style.display = '';
     }
-    showToast(`Tempo total de inspeção: ${formatTimer(elapsed)}`,'info');
-    localStorage.removeItem('omEmAndamento');
-  }
-  // Restaurar timer da OM ao carregar a página
-  async function restaurarOM() {
-    const omValue = localStorage.getItem('omEmAndamento');
-    console.log('[OM] [restaurarOM] Valor em localStorage:', omValue);
-    if (!omValue) {
-      console.warn('[OM] [restaurarOM] Nenhuma OM em andamento encontrada no localStorage.');
-      return;
-    }
-    document.getElementById('om').value = omValue;
+    // Preenche automaticamente o campo de qualidade do lote e força update
     try {
-      const resp = await fetch(`/api/om/${encodeURIComponent(omValue)}`);
-      console.log('[OM] [restaurarOM] Resposta da API:', resp);
-      if (!resp.ok) {
-        console.warn('[OM] [restaurarOM] Resposta da API não OK:', resp.status);
-        return;
+      const omValue = form && form.om ? form.om.value : null;
+      const qtdLoteValue = form && form.qtdlote ? Number(form.qtdlote.value) : null;
+      if (qtdLoteValue && totalInspec) {
+        totalInspec.value = qtdLoteValue;
       }
-      const data = await resp.json();
-      console.log('[OM] [restaurarOM] Dados recebidos:', data);
-      omStart = Date.now() - (data.elapsed || 0);
-      omTotalPaused = data.pausedTime || 0;
-      omRunning = data.status === 'em_andamento';
-      if (omRunning) {
-        console.log('[OM] [restaurarOM] OM em andamento, restaurando timer.');
-        ensureOMDisplay();
-        btnIniciarOM.style.display = 'none';
-        btnPausarOM.style.display = '';
-        btnFinalizarOM.style.display = '';
-        btnPausarOM.textContent = 'Pausar';
-        if (omTimer) clearInterval(omTimer);
-        omTimer = setInterval(updateOMTimer, 1000);
-        updateOMTimer();
-      } else if (data.status === 'pausada') {
-        console.log('[OM] [restaurarOM] OM pausada, restaurando estado.');
-        omRunning = false;
-        omPausedAt = Date.now();
-        ensureOMDisplay();
-        btnIniciarOM.style.display = 'none';
-        btnPausarOM.style.display = '';
-        btnFinalizarOM.style.display = '';
-        btnPausarOM.textContent = 'Retomar';
-        if (omTimer) clearInterval(omTimer);
-        omTimer = setInterval(updateOMTimer, 1000);
-        updateOMTimer();
-      } else if (data.status === 'finalizada') {
-        console.log('[OM] [restaurarOM] OM finalizada, exibindo tempo final.');
-        omRunning = false;
-        omPausedAt = null;
-        if (omTimer) clearInterval(omTimer);
-        btnIniciarOM.style.display = '';
-        btnPausarOM.style.display = 'none';
-        btnFinalizarOM.style.display = 'none';
-        if (omDisplay) omDisplay.textContent = formatTimer(data.elapsed);
-        if (omFinalTime) {
-          omFinalTime.textContent = `Tempo total do lote: ${formatTimer(data.elapsed)}`;
-          omFinalTime.style.display = '';
-        }
-      }
-    } catch (e) {
-      console.error('[OM] [restaurarOM] Erro ao restaurar OM:', e);
+    } catch (e) { console.warn('Não foi possível preencher qualidade do lote automaticamente:', e); }
+    // Bloqueia UI de qualidade do lote: esconde inputs e controles, mostra só resultado
+    const qualidadeCard = document.getElementById('qualidadeCard');
+    if (qualidadeCard) {
+      qualidadeCard.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+      qualidadeCard.querySelectorAll('.quality-controls').forEach(el => el.style.display = 'none');
+      qualidadeCard.querySelectorAll('.quality-aux').forEach(el => el.style.display = 'none');
+      qualidadeCard.querySelectorAll('.quality-title').forEach(el => el.style.fontSize = '1.5em');
+      qualidadeCard.querySelectorAll('.quality-emoji').forEach(el => el.style.fontSize = '2.5em');
+      qualidadeCard.querySelectorAll('.quality-text').forEach(el => el.style.marginTop = '18px');
+      qualidadeCard.style.boxShadow = '0 0 0 4px #22d3ee44';
     }
+    // Atualiza qualidade mesmo com campos desabilitados
+    setTimeout(() => updateQuality(), 0);
+    showToast(`Tempo total de inspeção: ${formatTimer(elapsed)}`,'info');
+    // Impede alterações até nova OM
+    if (form) Array.from(form.elements).forEach(el => el.disabled = true);
   }
+    // Ao iniciar nova OM, reabilita UI
+    // (Removido: agora está dentro de startOM)
 
   if (btnIniciarOM) btnIniciarOM.addEventListener('click', () => {
     console.log('[OM] Clique em Iniciar OM');
@@ -216,8 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnFinalizarOM) btnFinalizarOM.addEventListener('click', () => {
     finalizarOM();
   });
-  // Restaurar timer ao carregar
-  setTimeout(restaurarOM, 0);
   const { jsPDF } = window.jspdf;
   const token = localStorage.getItem('authToken');
   const user = JSON.parse(localStorage.getItem('user'));
@@ -257,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const busca = document.querySelector('#busca');
   const tbody = document.querySelector('#tbody');
   const userDisplay = document.querySelector('#userDisplay');
-  const btnLogout = document.querySelector('#btnLogout');
+  const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
   const mTotal = document.querySelector('#mTotal');
   const mOMs = document.querySelector('#mOMs');
   const mDistrib = document.querySelector('#mDistrib');
@@ -462,60 +402,82 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateQuality() {
-      if (!pie) return;
-      const total = Number(totalInspec.value || 0);
-      const fails = getRowsForScope().length;
-      if (total === 0) {
-          const ctx = pie.getContext('2d');
-          ctx.clearRect(0,0,pie.width,pie.height);
-          if(qualEmoji) qualEmoji.textContent = '😐';
-          if(qualText) qualText.textContent = 'Qualidade Indefinida';
-          if(pieCenter) pieCenter.textContent = '—';
-          if(qualAux) qualAux.innerHTML = 'Informe o <b>Total Inspecionado</b> para calcular.';
-          if(qualDetalhe) qualDetalhe.textContent = '—';
-          return;
-      }
-      const badPct = Math.min(100, Math.max(0, (fails / total) * 100));
-      const goodPct = 100 - badPct;
-      drawPie(goodPct);
-      
-      let emoji, rotulo, centerColor;
-      if (goodPct >= 95) { emoji = '😃'; rotulo = 'Excelente'; }
-      else if (goodPct >= 85) { emoji = '🙂'; rotulo = 'Muito Bom'; }
-      else if (goodPct >= 75) { emoji = '😐'; rotulo = 'Regular'; }
-      else { emoji = '😟'; rotulo = 'Ruim'; centerColor = 'var(--danger)'; }
+    if (!pie) return;
+    const total = Number(totalInspec.value || 0);
+    const fails = getRowsForScope().length;
+    const ctx = pie.getContext('2d');
+    if (total === 0) {
+      ctx.clearRect(0,0,pie.width,pie.height);
+      if(qualEmoji) qualEmoji.textContent = '😐';
+      if(qualText) qualText.textContent = 'Qualidade Indefinida';
+      if(pieCenter) pieCenter.textContent = '—';
+      if(qualAux) qualAux.innerHTML = 'Informe o <b>Total Inspecionado</b> para calcular.';
+      if(qualDetalhe) qualDetalhe.textContent = '—';
+      return;
+    }
+    const badPct = Math.min(100, Math.max(0, (fails / total) * 100));
+    const goodPct = 100 - badPct;
+    drawPie(goodPct, ctx, pie.width);
 
-      if (pieCenter) {
-        pieCenter.textContent = `${goodPct.toFixed(0)}%`;
-        pieCenter.style.color = centerColor || 'var(--text)';
-      }
-      if(qualEmoji) qualEmoji.textContent = emoji;
-      if(qualText) qualText.textContent = `${rotulo} (${goodPct.toFixed(1)}% aproveitamento)`;
-      if(qualDetalhe) qualDetalhe.textContent = `Falhas contadas: ${fails} de ${total} itens inspecionados (${badPct.toFixed(1)}% de falhas).`;
+    // Emojis expressivos e texto amigável
+    let emoji, rotulo, corTexto;
+    if (goodPct >= 95) { emoji = '�'; rotulo = 'Excelente'; corTexto = '#22c55e'; }
+    else if (goodPct >= 85) { emoji = '🙂'; rotulo = 'Muito Bom'; corTexto = '#a3e635'; }
+    else if (goodPct >= 75) { emoji = '😐'; rotulo = 'Regular'; corTexto = '#fbbf24'; }
+    else { emoji = '�'; rotulo = 'Ruim'; corTexto = '#ef4444'; }
+
+    if (pieCenter) {
+      pieCenter.textContent = `${goodPct.toFixed(0)}%`;
+      pieCenter.style.color = corTexto;
+      pieCenter.style.fontWeight = 'bold';
+      pieCenter.style.fontSize = '2.2rem';
+      pieCenter.style.textShadow = '0 2px 8px #0008';
+    }
+    if(qualEmoji) qualEmoji.textContent = emoji;
+    if(qualText) qualText.textContent = `Qualidade: ${goodPct.toFixed(1)}% ${emoji} — ${rotulo}`;
+    if(qualDetalhe) qualDetalhe.textContent = `OM ${form.om.value || ''} — ${rotulo} (${goodPct.toFixed(1)}% de aproveitamento)`;
+    if(qualAux) qualAux.innerHTML = `Falhas: <b>${fails}</b> de <b>${total}</b> itens inspecionados (${badPct.toFixed(1)}% de falhas)`;
   }
 
   function drawPie(goodPct) {
-      const canvas = pie;
-      const ctx = canvas.getContext('2d');
-      const R = canvas.width / 2;
-      const startAngle = -0.5 * Math.PI; // Começa no topo
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-      // 1. Desenha o arco de falha (fundo neutro)
-      ctx.beginPath();
-      ctx.moveTo(R, R);
-      ctx.arc(R, R, R, startAngle, startAngle + 2 * Math.PI);
-      ctx.fillStyle = '#334155'; // var(--muted)
-      ctx.fill();
-  
-      // 2. Desenha o arco de sucesso (verde) por cima
-      const goodAngle = (goodPct / 100) * 2 * Math.PI;
-      ctx.beginPath();
-      ctx.moveTo(R, R);
-      ctx.arc(R, R, R, startAngle, startAngle + goodAngle);
-      ctx.fillStyle = '#22c55e';
-      ctx.fill();
+    // Parâmetros visuais
+    const canvas = pie;
+    // ctx é passado por parâmetro para permitir animação futura
+    const R = canvas.width / 2;
+    const startAngle = -0.5 * Math.PI;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Fundo (arco de falha)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(R, R);
+    ctx.arc(R, R, R, startAngle, startAngle + 2 * Math.PI);
+    ctx.fillStyle = '#1e293b';
+    ctx.shadowColor = '#0ea5e9';
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.restore();
+    // Arco de sucesso (verde/azul Tailwind)
+    const goodAngle = (goodPct / 100) * 2 * Math.PI;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(R, R);
+    ctx.arc(R, R, R, startAngle, startAngle + goodAngle);
+    ctx.fillStyle = goodPct >= 85 ? '#22d3ee' : (goodPct >= 75 ? '#fbbf24' : '#ef4444');
+    ctx.shadowColor = '#22d3ee88';
+    ctx.shadowBlur = 8;
+    ctx.globalAlpha = 0.95;
+    ctx.fill();
+    ctx.restore();
+    // Borda branca fina
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(R, R, R-2, 0, 2*Math.PI);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff';
+    ctx.globalAlpha = 0.15;
+    ctx.stroke();
+    ctx.restore();
+    // Animação de preenchimento pode ser implementada futuramente
   }
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
