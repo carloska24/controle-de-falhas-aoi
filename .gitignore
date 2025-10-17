@@ -8,6 +8,24 @@ Thumbs.db
 # Ignore local database files
 *.db
 
+# Ignore SQLite temporary files
+*.db-shm
+*.db-wal
+
+# Ignore log files
+log_backend.txt
+backend/log_backend.txt
+
+# Ignore utilitários e scripts removidos
+backend/auth.test.js
+backend/create-admin-prod.js
+backend/create-admin-sqlite.js
+backend/reset-admin-prod.js
+
+# Ignore arquivos de status e outros
+tatus
+leia-me.txt
+
 # Ignore dependency directories
 /node_modules
 /backend/node_modules

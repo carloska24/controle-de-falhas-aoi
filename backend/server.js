@@ -642,7 +642,10 @@ app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema
 
     try {
         const placeholders = registroIds.map(() => '?').join(','); // Cria placeholders como ?,?,?
-        const registros = await dbAll(`SELECT om, pn, descricao FROM registros WHERE id IN (${placeholders})`, registroIds);
+    // NOTE: include `designador` so the later splitting logic can create one item per designador
+    const registros = await dbAll(`SELECT om, pn, descricao, designador FROM registros WHERE id IN (${placeholders})`, registroIds);
+    console.log('[debug:/api/requisicoes] registros fetched count=', (registros && registros.length) || 0);
+    try { console.log('[debug:/api/requisicoes] registros sample:', JSON.stringify(registros.slice(0,5), null, 2)); } catch(e) { console.log('[debug:/api/requisicoes] failed to stringify registros', e && e.message); }
 
         if (registros.length === 0) {
             return res.status(404).json({ error: "Nenhum registro válido encontrado para os IDs fornecidos." });
@@ -662,13 +665,43 @@ app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema
         for (const om in registrosPorOM) {
             const registrosDaOM = registrosPorOM[om];
 
-            const items = registrosDaOM.map(registro => ({
-                pn: registro.pn,
-                descricao: registro.descricao || 'Sem descrição',
-                quantidade_requisitada: 1,
-                quantidade_entregue: 0
-            }));
+            // Construir lista de itens com agregação por PN + descricao base.
+            // Se houver múltiplos designadores para o mesmo PN, somamos a quantidade_requisitada
+            // e agregamos os designadores na descrição entre parênteses.
+            const agg = new Map();
+            for (const registro of registrosDaOM) {
+                const pn = registro.pn || '';
+                const baseDesc = registro.descricao || '';
+                const raw = registro.designador || '';
+                const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+                console.log('[debug:/api/requisicoes] registro.id?', registro.id || '(no id field)', 'pn=', pn, 'designador raw=', raw, 'parts=', parts);
 
+                const key = `${pn}||${baseDesc}`;
+                const entry = agg.get(key) || { pn, descricaoBase: baseDesc, designadores: [], quantidade: 0 };
+
+                if (parts.length > 0) {
+                    entry.designadores.push(...parts);
+                    entry.quantidade += parts.length;
+                } else {
+                    // Sem designador (ou string vazia) -> conta como 1 unidade do PN
+                    entry.quantidade += 1;
+                }
+                agg.set(key, entry);
+            }
+
+            // Constrói o array final de items agregados
+            const items = Array.from(agg.values()).map(e => {
+                const descr = e.descricaoBase ? (e.designadores.length ? `${e.descricaoBase} (${e.designadores.join(',')})` : e.descricaoBase) : (e.designadores.length ? e.designadores.join(',') : 'Sem descrição');
+                return {
+                    pn: e.pn,
+                    descricao: descr,
+                    quantidade_requisitada: e.quantidade,
+                    quantidade_entregue: 0
+                };
+            });
+
+            console.log('[debug:/api/requisicoes] about to insert items count=', items.length);
+            try { console.log('[debug:/api/requisicoes] items:', JSON.stringify(items.slice(0,10), null, 2)); } catch(e) { console.log('[debug:/api/requisicoes] failed to stringify items', e && e.message); }
             const result = await dbRun(
                 "INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)",
                 [om, JSON.stringify(items), new Date().toISOString(), created_by]
@@ -747,6 +780,187 @@ app.delete('/api/requisicoes/demo', authenticateToken, isAdmin, async (_req, res
         res.status(200).json({ message: `${result.changes} requisições DEMO foram excluídas.` });
     } catch (err) {
         res.status(500).json({ error: `Erro ao limpar requisições DEMO: ${err.message}` });
+
+        }
+});
+
+// ================= OM Persistence (In-Memory) =================
+// Cria tabela de OMs finalizadas se não existir
+setTimeout(async () => {
+    if (typeof dbRun === 'function') {
+        await dbRun(`CREATE TABLE IF NOT EXISTS oms_finalizadas (
+            omNumber TEXT PRIMARY KEY,
+            startTime INTEGER,
+            endTime INTEGER,
+            pausedTime INTEGER,
+            qtdlote INTEGER
+        )`);
+    }
+}, 1500);
+
+// Salva OM finalizada no banco
+async function salvarOMFinalizada(omNumber) {
+    const om = oms[omNumber];
+    if (!om || om.status !== 'finalizada') return;
+    // Busca qtdlote
+    const qtdRes = await dbGet('SELECT qtdlote FROM registros WHERE om = ? LIMIT 1', [omNumber]);
+    await dbRun(`INSERT OR REPLACE INTO oms_finalizadas (omNumber, startTime, endTime, pausedTime, qtdlote) VALUES (?, ?, ?, ?, ?)`, [
+        om.omNumber,
+        om.startTime,
+        om.endTime,
+        om.pausedTime || 0,
+        qtdRes ? qtdRes.qtdlote : null
+    ]);
+}
+// Estrutura: { omNumber: { omNumber, startTime, pausedTime, endTime, status, pauseStartedAt } }
+const oms = {};
+
+function getElapsed(om) {
+    if (!om) return 0;
+    if (om.status === 'finalizada') {
+        return (om.endTime - om.startTime - (om.pausedTime || 0));
+    }
+    let now = Date.now();
+    let paused = om.pausedTime || 0;
+    if (om.status === 'pausada' && om.pauseStartedAt) {
+        paused += (now - om.pauseStartedAt);
+    }
+    return (now - om.startTime - paused);
+}
+
+// POST /api/om/start
+app.post('/api/om/start', (req, res) => {
+    const { omNumber } = req.body;
+    if (!omNumber) return res.status(400).json({ error: 'omNumber obrigatório' });
+    if (oms[omNumber] && oms[omNumber].status !== 'finalizada') {
+        return res.status(400).json({ error: 'Já existe OM em andamento com esse número' });
+    }
+    oms[omNumber] = {
+        omNumber,
+        startTime: Date.now(),
+        pausedTime: 0,
+        status: 'em_andamento',
+        endTime: null,
+        pauseStartedAt: null
+    };
+    console.log(`[OM] Iniciada: ${omNumber}`);
+    res.json({ ...oms[omNumber], elapsed: 0 });
+});
+
+// GET /api/om/:omNumber
+app.get('/api/om/:omNumber', (req, res) => {
+    const { omNumber } = req.params;
+    const om = oms[omNumber];
+    if (!om) return res.status(404).json({ error: 'OM não encontrada' });
+    let elapsed = getElapsed(om);
+    res.json({
+        omNumber: om.omNumber,
+        status: om.status,
+        startTime: om.startTime,
+        pausedTime: om.pausedTime,
+        endTime: om.endTime,
+        elapsed
+    });
+});
+
+// PUT /api/om/pause
+app.put('/api/om/pause', (req, res) => {
+    const { omNumber } = req.body;
+    const om = oms[omNumber];
+    if (!om || om.status !== 'em_andamento') {
+        return res.status(400).json({ error: 'OM não encontrada ou não está em andamento' });
+    }
+    om.status = 'pausada';
+    om.pauseStartedAt = Date.now();
+    console.log(`[OM] Pausada: ${omNumber}`);
+    res.json({ ...om, elapsed: getElapsed(om) });
+});
+
+// PUT /api/om/resume
+app.put('/api/om/resume', (req, res) => {
+    const { omNumber } = req.body;
+    const om = oms[omNumber];
+    if (!om || om.status !== 'pausada') {
+        return res.status(400).json({ error: 'OM não encontrada ou não está pausada' });
+    }
+    if (om.pauseStartedAt) {
+        om.pausedTime += (Date.now() - om.pauseStartedAt);
+    }
+    om.status = 'em_andamento';
+    om.pauseStartedAt = null;
+    console.log(`[OM] Retomada: ${omNumber}`);
+    res.json({ ...om, elapsed: getElapsed(om) });
+});
+
+// PUT /api/om/finalizar
+app.put('/api/om/finalizar', (req, res) => {
+    const { omNumber } = req.body;
+    const om = oms[omNumber];
+    if (!om || (om.status !== 'em_andamento' && om.status !== 'pausada')) {
+        return res.status(400).json({ error: 'OM não encontrada ou já finalizada' });
+    }
+    if (om.status === 'pausada' && om.pauseStartedAt) {
+        om.pausedTime += (Date.now() - om.pauseStartedAt);
+        om.pauseStartedAt = null;
+    }
+    om.status = 'finalizada';
+    om.endTime = Date.now();
+    console.log(`[OM] Finalizada: ${omNumber}`);
+    salvarOMFinalizada(omNumber).then(() => {
+        res.json({ ...om, elapsed: getElapsed(om) });
+    });
+});
+// ================= Fim OM Persistence =================
+// Endpoint para relatório de inspeções (OMs finalizadas)
+// Endpoint para relatório completo de falhas agrupadas por OM
+app.get('/api/relatorio-falhas', async (req, res) => {
+    try {
+        // Busca todos os registros de falhas com todos os campos necessários
+    const registros = await dbAll('SELECT om, qtdlote, serial, designador, tipoDefeito, pn, descricao, obs, createdAt, status, operador FROM registros ORDER BY om, createdAt');
+        // Agrupa por OM
+        const porOM = {};
+        for (const r of registros) {
+            if (!porOM[r.om]) porOM[r.om] = { om: r.om, qtdlote: r.qtdlote, falhas: [] };
+            porOM[r.om].falhas.push({
+                pn: r.pn,
+                serial: r.serial,
+                designador: r.designador,
+                tipodefeito: r.tipoDefeito ?? '',
+                descricao: r.descricao,
+                createdat: r.createdAt ?? '',
+                operador: r.operador,
+                status: r.status,
+                obs: r.obs
+            });
+        }
+        // Retorna como array
+        res.json(Object.values(porOM));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+app.get('/api/om/relatorio', async (req, res) => {
+    try {
+        console.log('[OM RELATORIO] Iniciando consulta de OMs finalizadas...');
+        const finalizadas = await dbAll('SELECT * FROM oms_finalizadas ORDER BY endTime DESC');
+        console.log(`[OM RELATORIO] Encontradas ${finalizadas.length} OMs finalizadas.`);
+        const relatorio = [];
+        for (const om of finalizadas) {
+            console.log(`[OM RELATORIO] Processando OM:`, om);
+            const registros = await dbAll('SELECT tipodefeito FROM registros WHERE om = ?', [om.omNumber]);
+            console.log(`[OM RELATORIO] Registros encontrados:`, registros);
+            relatorio.push({
+                omNumber: om.omNumber,
+                qtdlote: om.qtdlote || '-',
+                tempo: om.endTime && om.startTime ? ((om.endTime - om.startTime - (om.pausedTime || 0)) / 1000).toFixed(0) + 's' : '-',
+                defeitos: registros.map(r => r.tipodefeito).filter(Boolean)
+            });
+        }
+        console.log('[OM RELATORIO] Relatório gerado:', relatorio);
+        res.json(relatorio);
+    } catch (e) {
+        console.error('[OM RELATORIO] Erro:', e);
+        res.status(500).json({ error: e.message });
     }
 });
 

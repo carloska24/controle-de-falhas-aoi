@@ -1,3 +1,7 @@
+***git add frontend/index.html; git commit -m "style(ui): make Relatórios/Acessos Rápidos buttons full-width pill style to match design"***
+
+
+
 endereço do backend
 https://controle-de-falhas-aoi.onrender.com
 
