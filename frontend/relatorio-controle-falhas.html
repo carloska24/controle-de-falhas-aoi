@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Controle de Falhas</title>
+    <link rel="stylesheet" href="./style.css?v=1.5">
+</head>
+<body>
+    <div class="app-header">
+        <div class="app-title">Relatório de Controle de Falhas</div>
+        <div class="user-info">
+            <a href="index.html" class="btn outline">Voltar</a>
+            <span id="userDisplay"></span>
+            <button id="btnLogout" class="btn outline">Sair</button>
+        </div>
+    </div>
+    <div class="container main-layout" style="display:flex; flex-direction:row; justify-content:center; align-items:flex-start; width:100vw; min-height:80vh;">
+        <section class="card" style="flex:1 1 0; max-width:1800px; width:100%; margin:32px 0;">
+            <div class="section-title-wrap" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+                <h2 class="section-title" style="margin-bottom:0;">Relatório Completo de Registro de Falhas</h2>
+                <select id="filtroOMFalhas" class="select-om" style="padding:8px 16px; border-radius:8px; border:1.5px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem; min-width:180px; max-width:320px;">
+                    <option value="">Filtrar por OM</option>
+                </select>
+            </div>
+            <div class="toolbar" style="margin-bottom:18px; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+                <input id="buscaFalhas" class="search-input" placeholder="🔎 Buscar..." style="max-width:320px;">
+                <button id="btnExportarCSV" class="btn info" style="padding:8px 18px; font-size:1rem; border-radius:8px;">Exportar CSV</button>
+            </div>
+            <div id="falhasReportContainer" style="overflow-x:auto;">
+                <div class="note">Carregando dados...</div>
+            </div>
+        </section>
+    </div>
+    <script src="./relatorio-controle-falhas.js?v=1.0"></script>
+</body>
+</html>
