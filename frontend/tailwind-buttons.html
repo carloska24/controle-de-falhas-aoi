@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Botões Tailwind - Demo</title>
+    <!-- Tailwind via CDN for quick demo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { background: #0f172a; }
+    </style>
+  </head>
+  <body class="min-h-screen flex items-center justify-center p-8">
+    <div class="w-full max-w-2xl bg-slate-800/60 rounded-lg p-6 shadow-lg">
+      <h1 class="text-white text-xl font-semibold mb-4">Demo: Botões estilo moderno (Tailwind)</h1>
+
+      <div class="space-y-4">
+        <div class="flex gap-3">
+          <button class="btn-danger">Excluir Selecionados</button>
+          <button class="btn-amber">Gerar Requisição</button>
+          <button class="btn-primary">Iniciar OM</button>
+          <button class="btn-ghost">Adicionar Demo</button>
+        </div>
+
+        <div class="text-sm text-slate-300">Exemplo com classes utilitárias reutilizáveis.</div>
+      </div>
+    </div>
+
+    <script>
+      // Declarative Tailwind classes via JS helper to keep markup clean
+      const styleMap = {
+        'btn-base': 'inline-flex items-center gap-2 px-4 py-2 rounded-md font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2',
+        'btn-danger': 'bg-rose-700 hover:bg-rose-600 text-white ring-rose-400',
+        'btn-amber': 'bg-amber-700 hover:bg-amber-600 text-white ring-amber-300',
+        'btn-primary': 'bg-sky-700 hover:bg-sky-600 text-white ring-sky-300',
+        'btn-ghost': 'bg-transparent border border-slate-600 text-slate-200 hover:bg-slate-700/30 ring-slate-400'
+      };
+
+      Object.keys(styleMap).forEach(k => {
+        // nothing
+      });
+
+      // Apply composed classes
+      document.querySelectorAll('button').forEach(btn => {
+        const text = btn.textContent || '';
+        const key = text.includes('Excluir') ? 'btn-danger' :
+                    text.includes('Gerar') ? 'btn-amber' :
+                    text.includes('Iniciar') ? 'btn-primary' : 'btn-ghost';
+        btn.className = styleMap['btn-base'] + ' ' + styleMap[key];
+      });
+    </script>
+  </body>
+</html>

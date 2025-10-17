@@ -6,16 +6,18 @@
     <title>Registro de Defeitos SMD</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=1.5">
+  <link rel="stylesheet" href="./style.css?v=1.5">
+  <!-- Tailwind CDN for modern button styles (non-breaking) -->
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
 
-<div class="app-header">
-    <div class="app-title">Controle de Falhas AOI</div>
-    <div class="user-info">
-        <span id="userDisplay"></span>
-        <button id="btnLogout" class="btn outline">Sair</button>
-    </div>
+  <div class="app-header bg-slate-900/60 border-b border-slate-800">
+  <div class="app-title text-white">Controle de Falhas AOI</div>
+  <div class="user-info flex items-center gap-3">
+    <span id="userDisplay" class="text-slate-200"></span>
+    <button id="btnLogout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
+  </div>
 </div>
 
 <div class="container main-layout">
@@ -78,12 +80,33 @@
             </h2>
             <div class="toolbar">
               <div class="left">
-                <button id="btnExcluir" class="btn danger" disabled>Excluir Selecionados</button>
-                <button id="btnGerarRequisicao" class="btn warn" disabled>Gerar Requisição</button>
-                <button id="btnIniciarOM" class="btn success btn-sm" title="Iniciar Inspeção da OM">Iniciar OM</button>
-                <button id="btnPausarOM" class="btn outline btn-sm" title="Pausar/Retomar Inspeção" style="display:none;">Pausar</button>
-                <button id="btnFinalizarOM" class="btn danger btn-sm" title="Finalizar Inspeção da OM" style="display:none;">Finalizar OM</button>
-                <button id="btnDemo" class="btn outline">Adicionar Demo</button>
+                <button id="btnExcluir" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-rose-700 hover:bg-rose-600 text-white disabled:opacity-50" disabled aria-label="Excluir selecionados">
+                  <!-- trash icon -->
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6L18.2 19.2C18.1 20.3 17.2 21 16.1 21H7.9C6.8 21 5.9 20.3 5.8 19.2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 6V4C9 3.44772 9.44772 3 10 3H14C14.5523 3 15 3.44772 15 4V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Excluir Selecionados</span>
+                </button>
+
+                <button id="btnGerarRequisicao" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50" disabled aria-label="Gerar requisição">
+                  <!-- document icon -->
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2V8H20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Gerar Requisição</span>
+                </button>
+
+                <button id="btnIniciarOM" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-sky-700 hover:bg-sky-600 text-white" title="Iniciar Inspeção da OM">
+                  <!-- play icon -->
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M5 3.86987V20.1301C5 21.0805 6.07258 21.6203 6.88913 21.0498L19.2159 12.7799C20.0051 12.2243 20.0051 11.0043 19.2159 10.4486L6.88913 2.1787C6.07258 1.60818 5 2.14792 5 3.09831Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Iniciar OM</span>
+                </button>
+
+                <button id="btnPausarOM" class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30" title="Pausar/Retomar Inspeção" style="display:none;">Pausar</button>
+
+                <button id="btnFinalizarOM" class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm font-medium bg-rose-700 hover:bg-rose-600 text-white" title="Finalizar Inspeção da OM" style="display:none;">Finalizar OM</button>
+
+                <button id="btnDemo" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold border border-slate-600 text-slate-200 hover:bg-slate-700/30" aria-label="Adicionar demo"> 
+                  <!-- plus icon -->
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M12 5V19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 12H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Adicionar Demo</span>
+                </button>
               </div>
               <div class="right">
                 <input class="search-input" id="busca" placeholder="🔎 Buscar..."/>
@@ -143,17 +166,28 @@
         </section>
 
       <section class="card noprint">
-            <h2 class="section-title">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.16992 14.83L14.8299 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.8299 14.83L9.16992 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Relatórios</span>
-            </h2>
-       <div class="grid cols-2">
-  <a href="relatorio-qualidade.html" class="btn primary full-width admin-only">Análise de Qualidade</a>
-  <a href="relatorio-qualidade.html?demo=true" class="btn warn full-width admin-only">Qualidade (c/ Demo)</a>
-  <a href="almoxarifado.html" class="btn primary full-width">Almoxarifado</a>
-  <a href="reparo.html" class="btn primary full-width">Tela de Reparo</a>
-      </div>
-        </section>
+        <h2 class="section-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.16992 14.83L14.8299 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.8299 14.83L9.16992 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Relatórios</span>
+        </h2>
+        <div class="grid cols-1">
+          <a href="relatorio-controle-falhas.html" class="btn info full-width admin-only">Relatório de Registro de Falhas</a>
+          <a href="relatorio-qualidade.html" class="btn primary full-width admin-only">Análise de Qualidade</a>
+          <a href="relatorio-qualidade.html?demo=true" class="btn warn full-width admin-only">Qualidade (c/ Demo)</a>
+          <a href="relatorio-reparo.html" class="btn info full-width admin-only">Relatório de Reparo</a>
+        </div>
+      </section>
+
+      <section class="card noprint">
+        <h2 class="section-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20V20H4V4Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Acessos Rápidos</span>
+        </h2>
+        <div class="grid cols-1">
+          <a href="almoxarifado.html" class="btn primary full-width">Almoxarifado</a>
+          <a href="reparo.html" class="btn primary full-width">Tela de Reparo</a>
+        </div>
+      </section>
     </div>
 </div>
 

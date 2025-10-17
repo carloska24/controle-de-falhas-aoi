@@ -6,16 +6,18 @@
     <title>Painel Admin - Controle de Falhas</title>
     <link rel="stylesheet" href="./style.css?v=1.5">
     <link rel="stylesheet" href="./admin.css?v=1.5">
+    <!-- Tailwind CDN (quick-add for modern styles) -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
     <div class="app-header">
         <div class="app-title">
             Painel do Administrador
         </div>
-        <div class="user-info">
-            <a href="index.html" class="btn outline">Voltar ao Registro</a>
-            <span id="userDisplay"></span>
-            <button id="btnLogout" class="btn outline">Sair</button>
+        <div class="user-info flex items-center gap-3">
+            <a href="index.html" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-slate-200 bg-transparent border border-slate-600 hover:bg-slate-700/30">Voltar ao Registro</a>
+            <span id="userDisplay" class="text-slate-200"></span>
+            <button id="btnLogout" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-rose-700 hover:bg-rose-600 text-white">Sair</button>
         </div>
     </div>
     <div class="container">
@@ -53,8 +55,8 @@
                             <option value="admin">Administrador</option>
                         </select>
                     </div>
-                    <div class="toolbar">
-                        <button type="submit" class="btn primary">Cadastrar Usuário</button>
+                    <div class="toolbar mt-4">
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-md font-semibold bg-sky-700 hover:bg-sky-600 text-white">Cadastrar Usuário</button>
                     </div>
                 </form>
             </div>
