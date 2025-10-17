@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tela de Reparo - Controle de Falhas</title>
     <link rel="stylesheet" href="./style.css?v=1.5">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
 
@@ -12,11 +13,12 @@
     <div class="app-title">
         Tela de Reparo
     </div>
-    <div class="user-info">
-        <!-- Botão de Voltar para o Admin -->
-        <a href="index.html" class="btn outline admin-only">Voltar ao Registro</a>
-        <span id="userDisplay"></span>
-        <button id="btnLogout" class="btn outline">Sair</button>
+    <div class="user-info flex items-center gap-3">
+    <!-- Botão de Voltar para o Admin -->
+    <a href="index.html" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 admin-only">Voltar ao Registro</a>
+    <!-- O botão de voltar para operadores é inserido via JS -->
+        <span id="userDisplay" class="text-slate-200"></span>
+        <button id="btnLogout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
     </div>
 </div>
 
