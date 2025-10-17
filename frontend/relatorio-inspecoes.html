@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Inspeções</title>
+    <link rel="stylesheet" href="./style.css?v=1.5">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="app-header">
+        <div class="app-title">Relatório de Inspeções</div>
+        <div class="user-info flex items-center gap-3">
+            <a href="index.html" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Voltar</a>
+            <span id="userDisplay" class="text-slate-200"></span>
+            <button id="btnLogout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
+        </div>
+    </div>
+    <div class="container main-layout">
+        <section class="card">
+            <h2 class="section-title">OMs Finalizadas</h2>
+            <div id="omReportContainer">
+                <div class="note">Carregando inspeções...</div>
+            </div>
+        </section>
+    </div>
+    <script src="./relatorio-inspecoes.js?v=1.0"></script>
+</body>
+</html>
