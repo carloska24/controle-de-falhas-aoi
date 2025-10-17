@@ -11,9 +11,9 @@
     <div class="app-header">
         <div class="app-title">Relatório de Reparo</div>
         <div class="user-info flex items-center gap-3">
-            <a href="index.html" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Voltar</a>
+            <a href="index.html" data-action="back" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Voltar</a>
             <span id="userDisplay" class="text-slate-200"></span>
-            <button id="btnLogout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
+            <button id="btnLogout" data-action="logout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
         </div>
     </div>
     <div class="container main-layout" style="display:flex; flex-direction:row; justify-content:center; align-items:flex-start; width:100vw; min-height:80vh;">
@@ -26,7 +26,7 @@
                         </div>
                         <div class="toolbar" style="margin-bottom:18px; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
                                                                 <input id="buscaReparo" class="search-input" placeholder="🔎 Buscar..." style="max-width:320px;">
-                                                                <button id="btnExportarCSVReparo" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white" style="font-size:1rem;">
+                                                                <button id="btnExportarCSVReparo" data-action="export-csv" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white" style="font-size:1rem;">
                                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11L12 15L16 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                                                     <span>Exportar CSV</span>
                                                                 </button>
