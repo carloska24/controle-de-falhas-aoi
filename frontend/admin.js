@@ -139,9 +139,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listener para os botões de exclusão (delegação de evento)
     usersTbody.addEventListener('click', async (e) => {
-    const editButton = e.target.closest('.edit-btn');
+        const editButton = e.target.closest('.edit-btn');
         const deleteButton = e.target.closest('.btn-delete');
-    const resetPwButton = e.target.closest('.btn-reset-pw');
+        const resetPwButton = e.target.closest('.btn-reset-pw');
+        const btn = e.target.closest && e.target.closest('button');
 
         // --- LÓGICA DE EDIÇÃO IN-LINE ---
         if (editButton) {
@@ -174,15 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
             row.querySelector('select[name="role"]').value = user.role;
 
         // --- LÓGICA DE CANCELAR EDIÇÃO ---
-        } else if (e.target.classList.contains('cancel-btn')) {
-            const row = e.target.closest('tr');
+        } else if (btn && btn.classList.contains('cancel-btn')) {
+            const row = btn.closest('tr');
             row.innerHTML = row.dataset.originalHtml;
             row.classList.remove('editing');
 
         // --- LÓGICA DE SALVAR EDIÇÃO ---
-        } else if (e.target.classList.contains('save-btn')) {
-            const row = e.target.closest('tr');
-            const id = e.target.dataset.id;
+        } else if (btn && btn.classList.contains('save-btn')) {
+            const row = btn.closest('tr');
+            const id = btn.dataset.id;
             const updatedData = {
                 name: row.querySelector('input[name="name"]').value,
                 username: row.querySelector('input[name="username"]').value,
