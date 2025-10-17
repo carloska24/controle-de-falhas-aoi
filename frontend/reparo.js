@@ -200,11 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     [omFilter, statusFilter].forEach(el => el.addEventListener('change', renderTable));
     tableBody.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-reparar')) {
-            handleReparar(e.target.dataset.id);
+        // Use delegation with closest so clicks on SVG or span inside button still count
+        const btn = e.target.closest && e.target.closest('button');
+        if (!btn) return;
+        if (btn.classList.contains('btn-reparar')) {
+            const id = btn.dataset.id || btn.getAttribute('data-id');
+            handleReparar(id);
+            return;
         }
-        if (e.target.classList.contains('btn-excluir-reparo')) {
-            handleExcluir(e.target.dataset.id);
+        if (btn.classList.contains('btn-excluir-reparo')) {
+            const id = btn.dataset.id || btn.getAttribute('data-id');
+            handleExcluir(id);
+            return;
         }
     });
 
