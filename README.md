@@ -136,3 +136,34 @@ O arquivo gerado ficará em `frontend/react-examples/dist/output.css`. O demo `f
 - Validação de entrada com Zod/express-validator
 - Logs estruturados e auditoria de alterações
 - Testes automatizados (unit/integration)
+
+## Logs e Debug
+
+Por padrão, os logs do servidor (stdout/stderr) não devem ser expostos publicamente. Em desenvolvimento, pode ser útil visualizar logs para debug, mas recomenda-se sempre proteger ou desativar a exposição em ambientes acessíveis.
+
+Como bloquear acesso público a arquivos de log
+
+1. No backend, existe uma rota estática que serve a pasta `frontend/`. Para evitar que arquivos `.log` sejam lidos via HTTP, adicione um middleware rápido no `backend/server.js` (antes de `app.use(express.static(frontendDir))`) para retornar 404 para URLs que terminem em `.log`.
+
+Como habilitar exposição temporária para teste (apenas em dev)
+
+1. Defina a variável de ambiente `EXPOSE_LOGS=true` ao iniciar o servidor (somente em dev). Exemplos (PowerShell):
+
+```powershell
+# Inicia o backend expondo logs (apenas para testes locais)
+$env:EXPOSE_LOGS = "true"; npm --prefix .\backend run dev
+```
+
+2. Com `EXPOSE_LOGS=true` você pode criar uma rota controlada no backend que retorna o conteúdo de `server.out.log` (apenas para o host local). IMPORTANTE: não habilite isso em produção.
+
+Como desfazer / testar se está sendo impresso
+
+- Para testar se o servidor está imprimindo logs no arquivo `server.out.log` (PowerShell):
+
+```powershell
+Get-Content .\backend\server.out.log -Tail 50 -Wait
+```
+
+- Para reverter a exposição (recomendado): remova `EXPOSE_LOGS` ou reinicie o servidor sem essa variável.
+
+Se quiser, eu aplico agora um middleware no `backend/server.js` que bloqueia qualquer request que tente acessar arquivos `.log` publicamente; depois você pode ativar uma rota de teste protegida quando quiser verificar se algo está sendo impresso.
