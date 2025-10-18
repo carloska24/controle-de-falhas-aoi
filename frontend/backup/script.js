@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Detecta se estamos em ambiente local ou de produção para definir a URL da API
   const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-  const API_BASE_URL = 'http://192.168.0.67:3001';
+  const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('http://' + window.location.hostname + ':3001'));
   const API_URL = `${API_BASE_URL}/api/registros`;
   let registros = [];
   let sortState = { key: 'createdat', dir: 'desc' }; // padrão: mais recentes primeiro

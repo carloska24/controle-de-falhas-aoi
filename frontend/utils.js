@@ -2,8 +2,14 @@
 // Funções utilitárias compartilhadas para o frontend
 
 export function getApiBaseUrl() {
-    const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    return 'http://192.168.0.67:3001';
+    // Retorna a base da API dinamicamente baseada no host atual.
+    // Se o frontend estiver sendo servido pelo próprio backend, use a origem atual.
+    const proto = window.location.protocol || 'http:';
+    const host = window.location.hostname || 'localhost';
+    // Se a porta atual for 3001 (servido pelo backend), mantenha a origem completa
+    if (window.location.port === '3001') return `${proto}//${host}:3001`;
+    // Caso contrário, a API está no mesmo host mas na porta 3001
+    return `${proto}//${host}:3001`;
 }
 
 export function getToken() {
@@ -54,4 +60,13 @@ export function showToast(message, type = 'success') {
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => { toast.remove(); }, 4000);
+}
+
+// Predefine uma variável global utilitária para compatibilidade com scripts antigos
+try {
+    if (typeof window !== 'undefined' && !window.API_BASE_URL) {
+        window.API_BASE_URL = getApiBaseUrl();
+    }
+} catch (e) {
+    // ignore in non-browser contexts
 }

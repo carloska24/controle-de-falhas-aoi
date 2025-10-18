@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // CONFIGURAÇÕES E SELETORES DO DOM
     // =================================================================
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = 'http://192.168.0.67:3001';
+    const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('http://' + window.location.hostname + ':3001'));
 
     const loginForm = document.querySelector('#loginForm');
     const usernameInput = document.querySelector('#username');
