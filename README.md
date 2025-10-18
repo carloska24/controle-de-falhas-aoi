@@ -101,6 +101,36 @@ Este repo está pronto para:
 - `npm run start` — inicia server
 - `npm run dev` — inicia com nodemon e dotenv/config
 
+## Build do CSS Tailwind (frontend/react-examples) — PowerShell
+
+Se você quiser gerar o CSS localmente (útil para desenvolvimento do demo de botões):
+
+1. Abra PowerShell e entre na pasta `frontend/react-examples`:
+
+```powershell
+cd C:\Users\joaob\OneDrive\Documentos\BRANCH\controle-de-falhas-aoi\frontend\react-examples
+```
+
+2. Instale dependências (se ainda não instalou):
+
+```powershell
+npm install
+```
+
+3. Gerar o CSS uma vez:
+
+```powershell
+npm run build:css
+```
+
+4. Para desenvolvimento em tempo real (recompila ao salvar):
+
+```powershell
+npm run watch:css
+```
+
+O arquivo gerado ficará em `frontend/react-examples/dist/output.css`. O demo `frontend/tailwind-buttons.html` já está apontando para esse arquivo local.
+
 ## Melhorias sugeridas
 - Rate limiting em autenticação
 - Validação de entrada com Zod/express-validator
