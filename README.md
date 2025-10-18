@@ -14,14 +14,36 @@ Aplicação full-stack para registro de defeitos AOI, gestão de usuários e flu
 - Se quiser usar SQLite (mais simples), deixe `DATABASE_URL` vazio.
 - Se for usar PostgreSQL local, defina `DATABASE_URL` (ex.: `postgres://user:pass@localhost:5432/aoi`).
 
-Instale e suba o servidor:
+## Sequência ideal (PowerShell):
+
+- Verifique a versão do Node/NPM (Node v18+ recomendado):
 
 ```powershell
-npm --prefix "c:\Users\joaob\controle-de-falhas-aoi\backend" install
-npm --prefix "c:\Users\joaob\controle-de-falhas-aoi\backend" run dev
+node -v
+npm -v
 ```
 
-O servidor sobe na porta 3000. Em primeiro run, as tabelas são criadas. 
+- Instale dependências do backend (executar a partir da raiz do repo):
+
+```powershell
+npm --prefix .\backend install
+```
+
+- Inicie o backend em modo dev (nível de desenvolvimento):
+
+```powershell
+npm --prefix .\backend run dev
+```
+
+- O servidor local usa por padrão SQLite em dev e normalmente sobe na porta 3001.
+	Após iniciar, verifique o healthcheck:
+
+```powershell
+# Testa health endpoint
+Invoke-RestMethod -Uri http://localhost:3001/health
+```
+
+Em primeiro run, as tabelas são criadas automaticamente.
 - Em SQLite, um admin local é semeado automaticamente: `DevAdmin` / `123456`.
 - Em PostgreSQL local, se não houver usuários, também é criado.
 
