@@ -80,6 +80,32 @@ app.get('/health', (_req, res) => {
 // Servir frontend estatico: permite abrir a aplicação diretamente em /
 // Mapeia a pasta ../frontend como conteúdo estático
 const frontendDir = path.join(__dirname, '..', 'frontend');
+// Segurança: bloqueia acesso público a arquivos de log por padrão.
+// Para testes locais, definir EXPOSE_LOGS=true antes de iniciar o servidor permitirá
+// a visualização somente se a requisição vier do host local.
+app.use((req, res, next) => {
+    try {
+        const urlPath = req.path || '';
+        if (urlPath.endsWith('.log')) {
+            const expose = String(process.env.EXPOSE_LOGS || '').toLowerCase() === 'true';
+            // permite exposição apenas quando EXPOSE_LOGS=true E requisição local
+            if (expose) {
+                const ip = (req.ip || req.connection && req.connection.remoteAddress || '').toString();
+                const forwarded = (req.headers && req.headers['x-forwarded-for']) || '';
+                const combined = `${ip} ${forwarded}`;
+                if (/127\.0\.0\.1|::1|::ffff:127\.0\.0\.1/.test(combined)) {
+                    return next();
+                }
+            }
+            return res.status(404).send('Not found');
+        }
+    } catch (e) {
+        // Em caso de erro inesperado, prossegue para não bloquear o app
+        console.error('[log-blocker] erro ao verificar path:', e && e.message);
+    }
+    next();
+});
+
 console.log(`[static] Servindo frontend de: ${frontendDir}`);
 app.use(express.static(frontendDir));
 // Redireciona raiz para login.html por conveniência
