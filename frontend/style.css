@@ -134,6 +134,16 @@
 .hover\:bg-amber-500:hover { background-color: var(--btn-amber-hover); }
 .bg-emerald-600, .bg-sky-700, .bg-rose-700, .bg-amber-600 { color: #fff; }
 
+/* fallback text and border colors so SVGs with stroke=currentColor inherit correct color */
+.text-sky-400 { color: var(--btn-sky); }
+.text-amber-400 { color: var(--btn-amber); }
+.text-rose-600 { color: var(--btn-rose); }
+.border-sky-600 { border-color: var(--btn-sky); }
+.border-amber-600 { border-color: var(--btn-amber); }
+.border-rose-600 { border-color: var(--btn-rose); }
+/* subtle hover background variant used on action icons */
+.hover\:bg-sky-700\/10:hover { background: rgba(14,165,233,0.08); }
+
 /* subtle hover backgrounds */
 .hover\:bg-slate-700\/30:hover { background: var(--slate-700-30); }
 .hover\:bg-rose-700\/5:hover { background: rgba(190,18,60,0.05); }
