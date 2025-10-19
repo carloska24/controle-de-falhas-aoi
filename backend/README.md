@@ -19,74 +19,124 @@ cd C:\Users\joaob\OneDrive\Documentos\BRANCH\controle-de-falhas-aoi\backend
 npm ci
 ```
 
-Rodando o servidor (desenvolvimento)
+# Backend — instruções completas (Windows / PowerShell)
 
-1. Defina a porta opcionalmente (padrão 3001 neste projeto):
+Este README descreve como clonar o repositório, instalar dependências, executar a API em desenvolvimento e rodar a suíte de testes no Windows (PowerShell). Inclui exemplos de variáveis de ambiente usadas pelo projeto.
+
+Pré-requisitos
+
+- Node.js 18+ (ou 16+ compatível)
+- npm (ou yarn)
+- Git
+
+Clone (no PC da empresa)
 
 ```powershell
-# $env:PORT = '3001'
+git clone --branch meu-trabalho-local https://github.com/carloska24/controle-de-falhas-aoi.git
+cd controle-de-falhas-aoi
 ```
 
-2. Inicie o servidor em modo dev (nodemon) e deixe o terminal aberto para ver logs:
+ou, se preferir clonar a branch principal e depois trocar de branch:
+
+```powershell
+git clone https://github.com/carloska24/controle-de-falhas-aoi.git
+cd controle-de-falhas-aoi
+git fetch origin
+git checkout meu-trabalho-local
+```
+
+Instalar dependências (backend)
+
+```powershell
+cd backend
+npm ci
+```
+
+Se preferir usar `npm install` em vez de `npm ci`:
+
+```powershell
+npm install
+```
+
+Variáveis de ambiente essenciais (exemplos)
+
+- `JWT_SECRET`: segredo para assinar JWTs (IMPORTANTE em produção — use um valor forte/secreto).
+- `DEV_SEED_KEY`: chave usada pelas rotas de seed em desenvolvimento. Valor padrão usado no projeto: `local-dev-2024`.
+- `PORT`: porta em que o backend irá rodar (padrão 3001).
+- `CORS_ORIGIN`: origem permitida para CORS (ex.: `http://localhost:5500` ou URL do frontend).
+- `COOKIE_SECURE`: `true` ou `false`. Em produção com HTTPS e cross-site cookies, use `true` e `COOKIE_SAMESITE=None`.
+- `NODE_ENV`: `development` (padrão) ou `production`.
+
+Exemplo de como definir variáveis no PowerShell (session-local):
+
+```powershell
+# Definir temporariamente no terminal (apenas para a sessão atual)
+$env:JWT_SECRET = "uma-senha-fraca-para-dev"
+$env:DEV_SEED_KEY = "local-dev-2024"
+$env:PORT = '3001'
+$env:CORS_ORIGIN = 'http://localhost:5500'
+$env:COOKIE_SECURE = 'false'
+$env:NODE_ENV = 'development'
+```
+
+Rodando o servidor em desenvolvimento
+
+1) A partir da pasta `backend` (após `npm ci`):
 
 ```powershell
 npm run dev
 ```
 
-Verifique a saúde da API em outro terminal:
+Esse script usa nodemon para reiniciar automaticamente quando arquivos mudam. Deixe o terminal aberto para ver logs.
+
+Verificando saúde da API (em outro terminal):
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing http://localhost:3001/health | ConvertFrom-Json
-# Deve retornar um JSON com { status: 'ok', time: '...' }
 ```
+
+Resposta esperada: JSON contendo algo como { "status": "ok", "time": "..." }
 
 Rodando os testes
 
 ```powershell
-# No diretório backend
-npm test -- --detectOpenHandles -i
+# a partir da raiz do repositório
+npm --prefix backend test -- --detectOpenHandles -i
 ```
 
-Notas e variáveis de ambiente úteis
-- `DEV_SEED_KEY`: chave usada pela rota de seed em desenvolvimento (padrão: `local-dev-2024`).
-- `JWT_SECRET`: definir um segredo real em produção.
-- `COOKIE_SECURE`: se `true`, o cookie será enviado apenas via HTTPS (deve ser true em produção quando SameSite=None).
-
-CI
-- Há um workflow em `.github/workflows/backend-tests.yml` que roda `npm ci` e `npm --prefix backend test`.
-
-Se algo falhar
-- Cole a saída do terminal (logs) aqui para eu ajudar a diagnosticar.
-
----
-Feito por automação para facilitar desenvolvimento e CI.
-# Backend - instruções rápidas
-
-Pré-requisitos:
-- Node.js (v16+ recomendado)
-- npm
-
-Instalar dependências:
+Ou diretamente dentro de `backend`:
 
 ```powershell
 cd backend
-npm install
+npm test -- --detectOpenHandles -i
 ```
 
-Iniciar servidor em modo de desenvolvimento:
+Notas de segurança e produção
 
-```powershell
-npm run dev
-```
+- Em produção, configure `JWT_SECRET` com um valor forte e não commitado.
+- Para suportar cookies cross-site (frontend hospedado em outro domínio), configure:
+	- `COOKIE_SECURE=true`
+	- `COOKIE_SAMESITE=None`
+	- Sirva via HTTPS
+- Rotas de debug/seed são protegidas por `DEV_SEED_KEY` e devem ser desabilitadas em `NODE_ENV=production`.
 
-Rodar o teste de integração (auth cookie flow):
+CI
 
-```powershell
-# a partir da raiz do repositório
-npm --prefix "backend" run test:auth
-```
+- Existe um workflow de GitHub Actions em `.github/workflows/backend-tests.yml` que executa os testes do backend. Configure secrets no repositório para `JWT_SECRET` em ambientes sensíveis.
 
-Notas de produção:
-- Em produção, defina `JWT_SECRET` e `CORS_ORIGIN`.
-- Para cross-site cookies, configure `COOKIE_SECURE=true` e `COOKIE_SAMESITE=None` e sirva via HTTPS.
-- O backend aceita tanto cookie HttpOnly quanto header Authorization para compatibilidade durante a migração.
+Erros comuns e soluções rápidas
+
+- "Impossível conectar-se ao servidor remoto" ao acessar `/health`: verifique se o servidor está em execução no terminal onde você rodou `npm run dev`.
+- Testes Jest travando por handles abertos: o projeto já aplica `.unref()` em timers e exporta `initApp()` para testes; execute com `--detectOpenHandles` para detectar fontes.
+
+Scripts úteis (resumo)
+
+- `npm run dev` — iniciar servidor em modo dev (nodemon).
+- `npm test` — rodar testes (backend).
+
+Ajuda / contato
+
+- Se quiser, posso gerar um script PowerShell de setup (instala dependências e define variáveis temporárias) ou um arquivo `.env.example` com os valores mínimos. Diga qual prefere.
+
+---
+Arquivo gerado automaticamente com instruções ampliadas para facilitar setup no Windows (PowerShell).
