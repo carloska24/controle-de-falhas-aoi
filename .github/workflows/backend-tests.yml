@@ -1,0 +1,34 @@
+name: Backend tests
+
+on:
+  push:
+    branches: [ main, master, feat/* ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-backend:
+    name: Run backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run backend tests
+        run: |
+          npm --prefix backend test -- --detectOpenHandles -i
+        env:
+          CI: true
+          DEV_SEED_KEY: local-dev-2024
+          JWT_SECRET: test-jwt-secret-please-change
+          COOKIE_SECURE: 'false'

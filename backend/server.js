@@ -1,17 +1,20 @@
 
-// Endpoint temporário para listar todos os registros do banco (para análise)
-setTimeout(() => {
-    if (typeof app !== 'undefined' && typeof dbAll !== 'undefined') {
-        app.get('/api/debug/listar-todos-registros', async (req, res) => {
-            try {
-                const registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
-                res.json(registros);
-            } catch (err) {
-                res.status(500).json({ error: err.message });
-            }
-        });
-    }
-}, 1000);
+// Endpoint temporário para listar todos os registros do banco (para análise) - somente em desenvolvimento
+if (process.env.NODE_ENV !== 'production') {
+    const _t_debug = setTimeout(() => {
+        if (typeof app !== 'undefined' && typeof dbAll !== 'undefined') {
+            app.get('/api/debug/listar-todos-registros', async (req, res) => {
+                try {
+                    const registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
+                    res.json(registros);
+                } catch (err) {
+                    res.status(500).json({ error: err.message });
+                }
+            });
+        }
+    }, 1000);
+    if (typeof _t_debug.unref === 'function') _t_debug.unref();
+}
 // redeploy: estrutura backend limpa em 2025-10-07
 // trigger redeploy - 2025-10-07
 require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
@@ -23,6 +26,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
+const cookieParser = require('cookie-parser');
 
 console.log('Deploy forçado em 2025-10-07 para Render.');
 
@@ -34,22 +38,26 @@ const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
 
 // Middleware para interpretar JSON deve vir antes de todas as rotas
 app.use(express.json());
+// Parser de cookies (necessário para autenticação via HttpOnly cookie)
+app.use(cookieParser());
 
-// Endpoint de manutenção: redefinir senha de um usuário específico (DISPONÍVEL EM PRODUÇÃO)
-app.post('/api/debug/reset-password', async (req, res) => {
-    const { username, password } = req.body || {};
-    if (!username || !password) return res.status(400).json({ error: 'username e password são obrigatórios' });
-    try {
-        const user = await dbGet('SELECT id FROM users WHERE username = ?', [username]);
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-        const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash(password, salt);
-        await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, user.id]);
-        res.json({ message: `Senha redefinida para ${username}.` });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+// Endpoint de manutenção: redefinir senha de um usuário específico (SOMENTE EM DESENVOLVIMENTO)
+if (!isProduction) {
+    app.post('/api/debug/reset-password', async (req, res) => {
+        const { username, password } = req.body || {};
+        if (!username || !password) return res.status(400).json({ error: 'username e password são obrigatórios' });
+        try {
+            const user = await dbGet('SELECT id FROM users WHERE username = ?', [username]);
+            if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash(password, salt);
+            await dbRun('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, user.id]);
+            res.json({ message: `Senha redefinida para ${username}.` });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+}
 
 // Segurança: exigir um JWT_SECRET válido em produção
 if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'seu-segredo-super-secreto-padrao')) {
@@ -62,11 +70,13 @@ let db, dbAll, dbGet, dbRun, dbTransaction;
 
 // CORS configurável: em desenvolvimento (sem CORS_ORIGIN) libera geral; em produção, exige CORS_ORIGIN
 const corsOrigin = process.env.CORS_ORIGIN;
+// Habilita CORS com suporte a credenciais (cookies). Em dev, permite origem dinâmica;
+// em produção, respeita CORS_ORIGIN (lista separada por vírgula).
 if (!isProduction && !corsOrigin) {
-    app.use(cors());
+    app.use(cors({ origin: true, credentials: true }));
 } else if (corsOrigin) {
     const allowed = corsOrigin.split(',').map(s => s.trim());
-    app.use(cors({ origin: allowed }));
+    app.use(cors({ origin: allowed, credentials: true }));
 } else {
     // produção sem CORS_ORIGIN definido
     app.use((_req, res, _next) => res.status(500).json({ error: 'CORS_ORIGIN não configurado no ambiente de produção.' }));
@@ -215,15 +225,18 @@ const requisicaoItensSchema = z.object({
 // MIDDLEWARES
 // =================================================================
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; 
-  if (token == null) return res.sendStatus(401); 
+    // Primeiro tenta extrair do cookie HttpOnly, em seguida do header Authorization.
+    const cookieToken = req.cookies && req.cookies['aoi_token'];
+    const authHeader = req.headers['authorization'];
+    const headerToken = authHeader && authHeader.split(' ')[1];
+    const token = cookieToken || headerToken;
+    if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403); 
-    req.user = user;
-    next(); 
-  });
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
 }
 
 function isAdmin(req, res, next) {
@@ -446,10 +459,38 @@ app.post('/api/auth/login', loginLimiter, validate(loginSchema), async (req, res
         if (!isMatch) return res.status(401).json({ error: "Usuário ou senha inválidos." });
         const tokenPayload = { email: user.username, role: user.role, id: user.id, name: user.name }; // Note: email is username
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
-        res.json({ token, user: tokenPayload });
+
+        // Define cookie HttpOnly para autenticação. A configuração de 'secure' e 'sameSite'
+        // pode ser ajustada via variáveis de ambiente. Para cross-site em produção,
+        // sameSite='None' e secure=true são recomendados (requer HTTPS).
+        const cookieOptions = {
+            httpOnly: true,
+            // default path
+            path: '/',
+            // permitir controle via env
+            secure: String(process.env.COOKIE_SECURE || 'false') === 'true',
+            sameSite: process.env.COOKIE_SAMESITE || 'Lax',
+            maxAge: 8 * 60 * 60 * 1000 // 8 horas
+        };
+
+        res.cookie('aoi_token', token, cookieOptions);
+        // Retorna apenas dados do usuário (sem token) para que o frontend saiba o perfil
+        res.json({ user: tokenPayload });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// Endpoint para logout — limpa o cookie HttpOnly
+app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('aoi_token', { path: '/' });
+    res.json({ message: 'Desconectado' });
+});
+
+// Endpoint que retorna o usuário autenticado (útil para o frontend validar sessão)
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    // req.user é injetado pelo authenticateToken
+    res.json({ user: req.user });
 });
 
 // ROTAS DE GERENCIAMENTO DE USUÁRIOS
@@ -837,7 +878,7 @@ app.delete('/api/requisicoes/demo', authenticateToken, isAdmin, async (_req, res
 
 // ================= OM Persistence (In-Memory) =================
 // Cria tabela de OMs finalizadas se não existir
-setTimeout(async () => {
+const _t_oms = setTimeout(async () => {
     if (typeof dbRun === 'function') {
         await dbRun(`CREATE TABLE IF NOT EXISTS oms_finalizadas (
             omNumber TEXT PRIMARY KEY,
@@ -848,6 +889,7 @@ setTimeout(async () => {
         )`);
     }
 }, 1500);
+if (typeof _t_oms.unref === 'function') _t_oms.unref();
 
 // Salva OM finalizada no banco
 async function salvarOMFinalizada(omNumber) {
@@ -1018,7 +1060,7 @@ app.get('/api/om/relatorio', async (req, res) => {
 // =================================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // =================================================================
-async function startServer() {
+async function initApp() {
     // isProduction já foi calculado acima; aqui só referencia
 
     if (isProduction && process.env.DATABASE_URL) {
@@ -1277,9 +1319,21 @@ async function startServer() {
         }
     }
 
+    // Retorna o app já inicializado (sem dar listen) para permitir testes que importem e usem request(app)
+    return app;
+}
+
+async function startServer() {
+    await initApp();
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Servidor rodando na porta ${PORT} (acessível na rede local)`);
     });
 }
 
-startServer();
+// Só inicia o servidor quando o arquivo é executado diretamente (node server.js)
+if (require.main === module) {
+    startServer();
+}
+
+// Export para testes: app e initApp
+module.exports = { app, initApp, startServer };

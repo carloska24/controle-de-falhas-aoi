@@ -7,11 +7,12 @@
     });
     const loginJson = await loginResp.json();
     if (!loginResp.ok) { console.error('LOGIN_FAILED', loginJson); process.exit(1); }
-    const token = loginJson.token;
-    console.log('GOT_TOKEN', token && token.substring(0,16) + '...');
+    const setCookie = loginResp.headers.get('set-cookie');
+    if (!setCookie) { console.error('NO_SET_COOKIE_IN_LOGIN'); process.exit(1); }
+    console.log('GOT_SET_COOKIE', setCookie.split(';')[0]);
 
     const resp = await fetch(base + '/api/requisicoes', {
-      method: 'GET', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+      method: 'GET', headers: { 'Content-Type': 'application/json', 'Cookie': setCookie.split(';')[0] }
     });
     const json = await resp.json();
     console.log('GET /api/requisicoes status=', resp.status);
