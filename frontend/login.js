@@ -5,7 +5,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // CONFIGURAÇÕES E SELETORES DO DOM
     // =================================================================
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('http://' + window.location.hostname + ':3001'));
+    // Usa `window.API_BASE_URL` definido por `config.js`. Se estiver vazio, usa caminho relativo.
+    let API_BASE_URL = typeof window.API_BASE_URL !== 'undefined' ? window.API_BASE_URL : '';
+    if (!API_BASE_URL) {
+        // Fallback: assume backend rodando na porta 3001 no mesmo host (útil em dev)
+        API_BASE_URL = (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : (isLocal ? ('http://' + window.location.hostname + ':3001') : '')) || '';
+    }
 
     const loginForm = document.querySelector('#loginForm');
     const usernameInput = document.querySelector('#username');
@@ -60,24 +65,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // Layout agora é centrado apenas com CSS responsivo (sem escala JS)
 
     // Lógica do Formulário
+    const formError = document.getElementById('formError');
+
+    function showError(msg) {
+        if (!formError) { alert(msg); return; }
+        formError.textContent = msg;
+        formError.classList.add('show');
+        formError.style.display = 'block';
+        formError.setAttribute('tabindex', '-1');
+        formError.focus();
+    }
+
+    function clearError() {
+        if (!formError) return;
+        formError.textContent = '';
+        formError.classList.remove('show');
+        formError.style.display = 'none';
+    }
+
     loginForm.addEventListener('submit', async (event) => {
         event.preventDefault(); 
         const username = usernameInput.value;
         const password = passwordInput.value;
         const submitButton = loginForm.querySelector('button[type="submit"]');
+        clearError();
         submitButton.disabled = true;
         submitButton.textContent = 'Entrando...';
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            const url = API_BASE_URL ? `${API_BASE_URL}/api/auth/login` : `/api/auth/login`;
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
+                credentials: 'include'
             });
             const data = await response.json();
-            if (!response.ok) { throw new Error(data.error || 'Erro desconhecido'); }
-            
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
+            if (!response.ok) { 
+                const msg = data && data.error ? data.error : 'Erro ao autenticar. Verifique usuário e senha.';
+                throw new Error(msg);
+            }
+
+            // O backend agora retorna apenas os dados do usuário e define o cookie HttpOnly.
+            // Armazenamos apenas os metadados do usuário (não sensíveis) localmente para controle de UI.
+            if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
 
             // Lógica de Redirecionamento Baseada na Função (Role)
             switch (data.user.role) {
@@ -99,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
             }
         } catch (error) {
-            alert(`Falha no login: ${error.message}`);
+            showError(`Falha no login: ${error.message}`);
             submitButton.disabled = false;
             submitButton.textContent = 'Entrar';
         }

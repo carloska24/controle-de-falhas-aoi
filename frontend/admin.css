@@ -125,3 +125,16 @@
 .toast.success { background-color: #16a34a; }
 .toast.error { background-color: #dc2626; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Modal reutilizável */
+.modal-root { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 2000; }
+.modal-root.open { display: flex; }
+.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+.modal { position: relative; background: #0b1220; color: var(--text); border-radius: 10px; padding: 20px; width: min(560px, 90%); box-shadow: 0 20px 60px rgba(0,0,0,0.6); z-index: 2001; }
+.modal-title { margin: 0 0 8px 0; font-size: 18px; }
+.modal-message { margin-bottom: 12px; color: var(--text-dim); }
+.modal-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-dark); color: var(--text); margin-bottom: 12px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.modal-btn { padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; }
+.modal-cancel { background: transparent; color: var(--text-dim); border: 1px solid rgba(255,255,255,0.04); }
+.modal-confirm { background: #ef4444; color: white; }

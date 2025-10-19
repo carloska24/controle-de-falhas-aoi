@@ -1,11 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================
     // Bloco de Segurança e Configurações
     // =================================================================
-    const token = localStorage.getItem('authToken');
-    const user = JSON.parse(localStorage.getItem('user'));
-
-    if (!token) { window.location.href = 'login.html'; return; }
+    // Garantir user via cookie HttpOnly
+    try {
+        const utils = await import('./utils.js');
+        await utils.ensureUser();
+    } catch (e) { /* ignore */ }
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user) { window.location.href = 'login.html'; return; }
     // Guarda de rota: admin, almoxarifado e operador têm acesso
     if (!user || !['admin','almoxarifado','operator'].includes(user.role)) {
         window.location.href = 'index.html';
@@ -60,8 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Funções Utilitárias
     // =================================================================
     async function fetchAutenticado(url, options = {}) {
-        const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        const defaultHeaders = { 'Content-Type': 'application/json' };
         options.headers = { ...defaultHeaders, ...options.headers };
+        options.credentials = options.credentials || 'include';
         const response = await fetch(url, options);
         if (response.status === 401 || response.status === 403) {
             localStorage.clear(); sessionStorage.clear();

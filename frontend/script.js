@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // --- Controle de Inspeção OM ---
   let omTimer = null;
   let omStart = null;
@@ -238,13 +238,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restaurar timer ao carregar
   setTimeout(restaurarOM, 0);
   const { jsPDF } = window.jspdf;
-  const token = localStorage.getItem('authToken');
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  if (!token) {
-    window.location.href = 'login.html';
-    return;
-  }
+  // Garantir que o usuário esteja autenticado via cookie HttpOnly e popular localStorage.user
+  let user = null;
+  try {
+    let ensureUser = window.__utils__?.ensureUser;
+    if (!ensureUser) {
+      const mod = await import('./utils.js');
+      ensureUser = mod.ensureUser;
+    }
+    if (typeof ensureUser === 'function') user = await ensureUser();
+    if (!user) user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch (e) { user = JSON.parse(localStorage.getItem('user') || 'null'); }
+  if (!user) { window.location.href = 'login.html'; return; }
 
   // Lógica de Controle de Acesso: mostra elementos apenas para admins
   const isAdmin = !!(user && user.role === 'admin');
@@ -307,8 +312,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function fetchAutenticado(url, options = {}) {
-      const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      const defaultHeaders = { 'Content-Type': 'application/json' };
       options.headers = { ...defaultHeaders, ...options.headers };
+      options.credentials = options.credentials || 'include';
       const response = await fetch(url, options);
       if (response.status === 401 || response.status === 403) {
         localStorage.clear(); sessionStorage.clear();

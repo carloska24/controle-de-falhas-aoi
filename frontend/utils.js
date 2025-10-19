@@ -12,6 +12,8 @@ export function getApiBaseUrl() {
     return `${proto}//${host}:3001`;
 }
 
+// NOTE: tokens are now expected to be stored as HttpOnly cookies.
+// getToken kept for backward compatibility but returns null by default.
 export function getToken() {
     return localStorage.getItem('authToken');
 }
@@ -24,11 +26,37 @@ export function getUser() {
     }
 }
 
+// Garante que exista um user metadata local obtido do servidor via cookie HttpOnly
+export async function ensureUser() {
+    try {
+        const resp = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!resp.ok) {
+            // limpa qualquer rastro local e anuncia que não está autenticado
+            localStorage.removeItem('user');
+            return null;
+        }
+        const data = await resp.json();
+        if (data && data.user) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            return data.user;
+        }
+        localStorage.removeItem('user');
+        return null;
+    } catch (e) {
+        localStorage.removeItem('user');
+        return null;
+    }
+}
+
+export function clearUser() {
+    localStorage.removeItem('user');
+}
+
 export async function fetchAutenticado(url, options = {}) {
-    const token = getToken();
+    // Use cookies for authentication (HttpOnly cookie). Include credentials so browser sends cookies.
     const defaultHeaders = { 'Content-Type': 'application/json' };
-    if (token) defaultHeaders['Authorization'] = `Bearer ${token}`;
     options.headers = { ...defaultHeaders, ...options.headers };
+    options.credentials = options.credentials || 'include';
     const response = await fetch(url, options);
     if (response.status === 401 || response.status === 403) {
         localStorage.clear(); sessionStorage.clear();

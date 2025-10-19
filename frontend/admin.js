@@ -1,21 +1,27 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const utils = await import('./utils.js');
+        await utils.ensureUser();
+    } catch (e) { /* ignore */ }
     // =================================================================
     // BLOCO DE SEGURANÇA E CONFIGURAÇÕES GLOBAIS
     // =================================================================
-    const token = localStorage.getItem('authToken');
-    const user = JSON.parse(localStorage.getItem('user'));
-
-    // Redireciona se não houver token ou se o usuário não for admin
-    if (!token || !user || user.role !== 'admin') {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    // Se não houver informações do usuário localmente, permitimos que a primeira chamada à API
+    // responsável por carregar dados retorne 401 e então o utils.fetchAutenticado cuidará do redirect.
+    if (!user || user.role !== 'admin') {
+        // Não bloqueia imediamente — algumas páginas consultam /api/users e serão redirecionadas se necessário.
+        // Limpa storage parcial
         localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        window.location.href = 'login.html';
-        return;
+        if (!user) localStorage.removeItem('user');
     }
 
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-    const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('http://' + window.location.hostname + ':3001'));
-    const USERS_API_URL = `${API_BASE_URL}/api/users`;
+    let API_BASE_URL = typeof window.API_BASE_URL !== 'undefined' ? window.API_BASE_URL : '';
+    if (!API_BASE_URL) {
+        API_BASE_URL = (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : (isLocal ? ('http://' + window.location.hostname + ':3001') : '')) || '';
+    }
+    const USERS_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/users` : `/api/users`;
 
     // =================================================================
     // SELETORES DO DOM
@@ -30,8 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // FUNÇÃO CENTRAL DE COMUNICAÇÃO COM A API
     // =================================================================
     async function fetchAutenticado(url, options = {}) {
-        const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        const defaultHeaders = { 'Content-Type': 'application/json' };
         options.headers = { ...defaultHeaders, ...options.headers };
+        options.credentials = options.credentials || 'include';
         const response = await fetch(url, options);
         if (response.status === 401 || response.status === 403) {
             localStorage.clear();
@@ -67,8 +74,60 @@ document.addEventListener('DOMContentLoaded', () => {
     // LÓGICA DA PÁGINA
     // =================================================================
 
+    // Helper: cria uma linha de usuário de forma segura (evita innerHTML com dados)
+    function createUserRow(u) {
+        const tr = document.createElement('tr');
+        tr.dataset.userId = u.id;
+
+        const tdName = document.createElement('td');
+        tdName.textContent = u.name || '';
+        tr.appendChild(tdName);
+
+        const tdUser = document.createElement('td');
+        tdUser.textContent = u.username || '';
+        tr.appendChild(tdUser);
+
+        const tdRole = document.createElement('td');
+        tdRole.textContent = u.role || '';
+        tr.appendChild(tdRole);
+
+        const tdActions = document.createElement('td');
+        tdActions.className = 'actions-cell';
+        tdActions.style.justifyContent = 'center';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-sky-600 text-sky-400 hover:bg-sky-700/10 edit-btn';
+        editBtn.type = 'button';
+        editBtn.dataset.id = u.id;
+        editBtn.setAttribute('aria-label', 'Editar usuário');
+        editBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        tdActions.appendChild(editBtn);
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-amber-600 text-amber-400 hover:bg-amber-700/5 btn-reset-pw';
+        resetBtn.type = 'button';
+        resetBtn.dataset.id = u.id;
+        resetBtn.title = 'Resetar senha';
+        resetBtn.setAttribute('aria-label', 'Resetar senha');
+        resetBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V3M12 21V19M5 12H3M21 12H19M5.64 5.64L4.22 4.22M19.78 19.78L18.36 18.36M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        tdActions.appendChild(resetBtn);
+
+        if (u.role !== 'admin') {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-delete btn-small';
+            delBtn.type = 'button';
+            delBtn.dataset.id = u.id;
+            delBtn.setAttribute('aria-label', 'Excluir usuário');
+            delBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            tdActions.appendChild(delBtn);
+        }
+
+        tr.appendChild(tdActions);
+        return tr;
+    }
+
     // Preenche informações do usuário e configura o botão de logout
-    if (userDisplay) userDisplay.textContent = user.name || user.email;
+            if (userDisplay) userDisplay.textContent = user.name || user.email;
     if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
             try {
@@ -76,9 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Aciona o logout admin no backend que também remove DEMOs de registros e requisições
                     await fetch(`${API_BASE_URL}/api/admin/logout`, {
                         method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        credentials: 'include'
                     });
                 }
+                // Also call auth logout to clear cookie
+                await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(()=>{});
             } catch (e) { /* ignora erros de limpeza */ }
             localStorage.clear();
             sessionStorage.clear();
@@ -91,25 +152,60 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const users = await fetchAutenticado(USERS_API_URL) || [];
             window.appUsers = users; // Armazena os usuários globalmente na janela para fácil acesso
-            usersTbody.innerHTML = users.map(u => `
-                <tr data-user-id="${u.id}">
-                    <td>${u.name}</td>
-                    <td>${u.username}</td>
-                    <td>${u.role}</td>
-                    <td class="actions-cell" style="justify-content: center;">
-                        <button class="inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-sky-600 text-sky-400 hover:bg-sky-700/10 edit-btn" data-id="${u.id}" aria-label="Editar usuário">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                        <button class="inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-amber-600 text-amber-400 hover:bg-amber-700/5 btn-reset-pw" data-id="${u.id}" title="Resetar senha" aria-label="Resetar senha">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V3M12 21V19M5 12H3M21 12H19M5.64 5.64L4.22 4.22M19.78 19.78L18.36 18.36M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                        ${u.role !== 'admin' ? `
-                        <button class="btn-delete btn-small" data-id="${u.id}" aria-label="Excluir usuário">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>` : ''}
-                    </td>
-                </tr>
-            `).join('');
+            usersTbody.innerHTML = '';
+            users.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.dataset.userId = u.id;
+
+                const tdName = document.createElement('td');
+                tdName.textContent = u.name || '';
+                tr.appendChild(tdName);
+
+                const tdUser = document.createElement('td');
+                tdUser.textContent = u.username || '';
+                tr.appendChild(tdUser);
+
+                const tdRole = document.createElement('td');
+                tdRole.textContent = u.role || '';
+                tr.appendChild(tdRole);
+
+                const tdActions = document.createElement('td');
+                tdActions.className = 'actions-cell';
+                tdActions.style.justifyContent = 'center';
+
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-sky-600 text-sky-400 hover:bg-sky-700/10 edit-btn';
+                editBtn.type = 'button';
+                editBtn.dataset.id = u.id;
+                editBtn.setAttribute('aria-label', 'Editar usuário');
+                editBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                tdActions.appendChild(editBtn);
+
+                // Reset password button
+                const resetBtn = document.createElement('button');
+                resetBtn.className = 'inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-amber-600 text-amber-400 hover:bg-amber-700/5 btn-reset-pw';
+                resetBtn.type = 'button';
+                resetBtn.dataset.id = u.id;
+                resetBtn.title = 'Resetar senha';
+                resetBtn.setAttribute('aria-label', 'Resetar senha');
+                resetBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V3M12 21V19M5 12H3M21 12H19M5.64 5.64L4.22 4.22M19.78 19.78L18.36 18.36M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                tdActions.appendChild(resetBtn);
+
+                // Delete button only if not admin
+                if (u.role !== 'admin') {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn-delete btn-small';
+                    delBtn.type = 'button';
+                    delBtn.dataset.id = u.id;
+                    delBtn.setAttribute('aria-label', 'Excluir usuário');
+                    delBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                    tdActions.appendChild(delBtn);
+                }
+
+                tr.appendChild(tdActions);
+                usersTbody.appendChild(tr);
+            });
 
         } catch (error) {
             showToast(`Erro ao carregar usuários: ${error.message}`, 'error');
@@ -148,37 +244,97 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editButton) {
             const userId = editButton.dataset.id;
             const row = editButton.closest('tr');
-            
+
             // Se já existe uma linha em modo de edição, cancela-a primeiro
             const existingEditRow = usersTbody.querySelector('tr.editing');
             if (existingEditRow) {
-                existingEditRow.innerHTML = existingEditRow.dataset.originalHtml;
-                existingEditRow.classList.remove('editing');
+                const existingId = existingEditRow.dataset.userId;
+                const originalUser = (window.appUsers || []).find(u => String(u.id) === String(existingId));
+                if (originalUser) {
+                    // Re-renderiza a linha original de forma segura
+                    const newRow = createUserRow(originalUser);
+                    usersTbody.replaceChild(newRow, existingEditRow);
+                } else {
+                    existingEditRow.remove();
+                }
             }
 
-            // Salva o estado original da linha e entra em modo de edição
-            row.dataset.originalHtml = row.innerHTML;
-            row.classList.add('editing');
+            const user = window.appUsers.find(u => String(u.id) === String(userId));
+            if (!user) return;
 
-            const user = window.appUsers.find(u => u.id == userId);
-            const roleOptions = document.getElementById('role').innerHTML;
+            // Entrar em modo de edição: substitui a linha por inputs
+            const editRow = document.createElement('tr');
+            editRow.classList.add('editing');
+            editRow.dataset.userId = user.id;
 
-            row.innerHTML = `
-                <td><input type="text" class="inline-edit" name="name" value="${user.name}"></td>
-                <td><input type="text" class="inline-edit" name="username" value="${user.username}"></td>
-                <td><select class="inline-edit" name="role">${roleOptions}</select></td>
-                <td class="actions-cell">
-                    <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white save-btn" data-id="${userId}">Salvar</button>
-                    <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 cancel-btn" data-id="${userId}">Cancelar</button>
-                </td>
-            `;
-            row.querySelector('select[name="role"]').value = user.role;
+            const tdName = document.createElement('td');
+            const inputName = document.createElement('input');
+            inputName.type = 'text';
+            inputName.className = 'inline-edit';
+            inputName.name = 'name';
+            inputName.value = user.name || '';
+            tdName.appendChild(inputName);
+            editRow.appendChild(tdName);
+
+            const tdUser = document.createElement('td');
+            const inputUser = document.createElement('input');
+            inputUser.type = 'text';
+            inputUser.className = 'inline-edit';
+            inputUser.name = 'username';
+            inputUser.value = user.username || '';
+            tdUser.appendChild(inputUser);
+            editRow.appendChild(tdUser);
+
+            const tdRole = document.createElement('td');
+            const selectRole = document.createElement('select');
+            selectRole.className = 'inline-edit';
+            selectRole.name = 'role';
+            // Clona opções do select principal de roles
+            const roleSelect = document.getElementById('role');
+            if (roleSelect) {
+                Array.from(roleSelect.options).forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt.value;
+                    o.textContent = opt.textContent;
+                    selectRole.appendChild(o);
+                });
+            }
+            selectRole.value = user.role || 'operator';
+            tdRole.appendChild(selectRole);
+            editRow.appendChild(tdRole);
+
+            const tdActions = document.createElement('td');
+            tdActions.className = 'actions-cell';
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white save-btn';
+            saveBtn.type = 'button';
+            saveBtn.dataset.id = user.id;
+            saveBtn.textContent = 'Salvar';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 cancel-btn';
+            cancelBtn.type = 'button';
+            cancelBtn.dataset.id = user.id;
+            cancelBtn.textContent = 'Cancelar';
+
+            tdActions.appendChild(saveBtn);
+            tdActions.appendChild(cancelBtn);
+            editRow.appendChild(tdActions);
+
+            usersTbody.replaceChild(editRow, row);
 
         // --- LÓGICA DE CANCELAR EDIÇÃO ---
         } else if (btn && btn.classList.contains('cancel-btn')) {
             const row = btn.closest('tr');
-            row.innerHTML = row.dataset.originalHtml;
-            row.classList.remove('editing');
+            const id = row.dataset.userId;
+            const originalUser = (window.appUsers || []).find(u => String(u.id) === String(id));
+            if (originalUser) {
+                const newRow = createUserRow(originalUser);
+                usersTbody.replaceChild(newRow, row);
+            } else {
+                row.remove();
+            }
 
         // --- LÓGICA DE SALVAR EDIÇÃO ---
         } else if (btn && btn.classList.contains('save-btn')) {
@@ -192,7 +348,15 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await fetchAutenticado(`${USERS_API_URL}/${id}`, { method: 'PUT', body: JSON.stringify(updatedData) });
                 showToast('Usuário atualizado com sucesso!');
-                carregarUsuarios(); // Recarrega tudo para garantir consistência
+                // Atualiza cache local e re-renderiza a linha
+                const idx = (window.appUsers || []).findIndex(u => String(u.id) === String(id));
+                if (idx !== -1) {
+                    window.appUsers[idx] = { ...window.appUsers[idx], ...updatedData };
+                    const newRow = createUserRow(window.appUsers[idx]);
+                    usersTbody.replaceChild(newRow, row);
+                } else {
+                    carregarUsuarios();
+                }
             } catch (error) {
                 showToast(`Erro ao atualizar: ${error.message}`, 'error');
             }
@@ -202,9 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const userId = deleteButton.dataset.id;
             const alvo = (window.appUsers || []).find(u => String(u.id) === String(userId));
             const nome = alvo ? (alvo.name || alvo.username) : `ID ${userId}`;
-            const conf = confirm(`Excluir o usuário ${nome}? Esta ação não pode ser desfeita.`);
-            if (!conf) return;
             try {
+                const ok = await openConfirm(`Excluir o usuário ${nome}? Esta ação não pode ser desfeita.`);
+                if (!ok) return;
                 await fetchAutenticado(`${USERS_API_URL}/${userId}`, { method: 'DELETE' });
                 carregarUsuarios(); // Recarrega a lista após a exclusão
                 showToast('Usuário excluído com sucesso.');
@@ -216,13 +380,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const userId = resetPwButton.dataset.id;
             const target = window.appUsers.find(u => String(u.id) === String(userId));
             if (!target) { showToast('Usuário não encontrado na lista atual.', 'error'); return; }
-            const novaSenha = prompt(`Definir nova senha para '${target.username}':`);
-            if (novaSenha === null) return; // cancelado
-            const confirmacao = prompt('Confirme a nova senha:');
-            if (confirmacao === null) return;
-            if (novaSenha !== confirmacao) { showToast('As senhas não coincidem.', 'error'); return; }
-            if (novaSenha.length < 4) { showToast('A senha deve ter pelo menos 4 caracteres.', 'error'); return; }
             try {
+                const novaSenha = await openPrompt(`Definir nova senha para '${target.username}':`, 'Nova senha');
+                if (novaSenha === null) return; // cancelado
+                const confirmacao = await openPrompt('Confirme a nova senha:', 'Confirme a senha');
+                if (confirmacao === null) return;
+                if (novaSenha !== confirmacao) { showToast('As senhas não coincidem.', 'error'); return; }
+                if (novaSenha.length < 4) { showToast('A senha deve ter pelo menos 4 caracteres.', 'error'); return; }
                 await fetchAutenticado(`${USERS_API_URL}/${userId}`, {
                     method: 'PUT',
                     body: JSON.stringify({ name: target.name, username: target.username, role: target.role, password: novaSenha })
@@ -242,6 +406,58 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.type = isPassword ? 'text' : 'password';
         togglePasswordBtn.classList.toggle('visible', isPassword);
     });
+
+    // ================= Modal utilities (confirm + prompt) =================
+    const modalRoot = document.getElementById('modalRoot');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalInput = document.getElementById('modalInput');
+    const modalCancel = document.getElementById('modalCancel');
+    const modalConfirm = document.getElementById('modalConfirm');
+
+    function openModal({ title = 'Confirmação', message = '', showInput = false, placeholder = '' } = {}) {
+        return new Promise((resolve) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalInput.value = '';
+            modalInput.placeholder = placeholder || '';
+            modalInput.style.display = showInput ? 'block' : 'none';
+            modalRoot.classList.add('open');
+            modalRoot.setAttribute('aria-hidden', 'false');
+
+            const cleanup = () => {
+                modalRoot.classList.remove('open');
+                modalRoot.setAttribute('aria-hidden', 'true');
+                document.removeEventListener('keydown', onKeyDown);
+                modalCancel.removeEventListener('click', onCancel);
+                modalConfirm.removeEventListener('click', onConfirm);
+            };
+
+            const onCancel = () => { cleanup(); resolve({ confirmed: false, value: null }); };
+            const onConfirm = () => { const val = showInput ? modalInput.value : true; cleanup(); resolve({ confirmed: true, value: val }); };
+            const onKeyDown = (ev) => { if (ev.key === 'Escape') onCancel(); };
+
+            modalCancel.addEventListener('click', onCancel);
+            modalConfirm.addEventListener('click', onConfirm);
+            document.addEventListener('keydown', onKeyDown);
+
+            // Focus
+            setTimeout(() => {
+                if (showInput) modalInput.focus(); else modalCancel.focus();
+            }, 10);
+        });
+    }
+
+    async function openConfirm(message) {
+        const res = await openModal({ title: 'Confirmação', message, showInput: false });
+        return res.confirmed === true;
+    }
+
+    async function openPrompt(message, placeholder = '') {
+        const res = await openModal({ title: 'Entrada', message, showInput: true, placeholder });
+        if (!res.confirmed) return null;
+        return res.value;
+    }
 
     // Carga inicial dos dados
     carregarUsuarios();

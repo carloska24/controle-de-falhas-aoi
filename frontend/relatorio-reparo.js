@@ -70,13 +70,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     filtrarRegistros();
   });
 
+  // Garantir user via cookie
+  try {
+    const utils = await import('./utils.js');
+    await utils.ensureUser();
+  } catch (e) { /* ignore */ }
+
   // Busca dados
   container.innerHTML = '<div class="note">Carregando dados...</div>';
   try {
-    const token = localStorage.getItem('authToken');
-    const resp = await fetch('/api/registros', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const resp = await fetch('/api/registros', { credentials: 'include' });
     if (!resp.ok) throw new Error('Erro ao buscar dados');
     const data = await resp.json();
     if (!Array.isArray(data) || data.length === 0) {

@@ -1,11 +1,16 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================
     // Bloco de Segurança e Configurações
     // =================================================================
-    const token = localStorage.getItem('authToken');
-    const user = JSON.parse(localStorage.getItem('user'));
-
-    if (!token) { window.location.href = 'login.html'; return; }
+    // Token é mantido como HttpOnly cookie; usamos ensureUser para popular metadata local
+    let user = null;
+    try {
+        const ensureUser = window.__utils__?.ensureUser || (await import('./utils.js').then(m => m.ensureUser));
+        user = await ensureUser();
+    } catch (e) {
+        user = JSON.parse(localStorage.getItem('user') || 'null');
+    }
+    if (!user) { window.location.href = 'login.html'; return; }
     // Guarda de rota: admin, reparo e operador têm acesso
     if (!user || !['admin','reparo','operator'].includes(user.role)) {
         window.location.href = 'index.html';
@@ -51,8 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Funções Utilitárias
     // =================================================================
     async function fetchAutenticado(url, options = {}) {
-        const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        const defaultHeaders = { 'Content-Type': 'application/json' };
         options.headers = { ...defaultHeaders, ...options.headers };
+        options.credentials = options.credentials || 'include';
         const response = await fetch(url, options);
         if (response.status === 401 || response.status === 403) {
             localStorage.clear(); sessionStorage.clear();
