@@ -126,12 +126,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td data-label="Defeito" style="text-align: center;">${item.tipodefeito ?? ''}</td>
                 <td data-label="Data/Hora" style="text-align: center;">${formatDate(item.createdat ?? '')}</td>
                 <td data-label="Status" style="text-align: center;"><span class="status-tag status-${item.status}">${item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : ''}</span></td>
-                <td data-label="Ação" class="actions-cell" style="justify-content: center;">
-                    ${item.status === 'aberto' ? `<button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white btn-reparar" data-id="${item.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.44 2.5C17.44 2.5 14.42 2.5 12.64 4.87C10.86 7.24 10.56 10.23 10.56 10.23M10.56 10.23L13.44 13.11M10.56 10.23L7.68 7.35M6.56 13.77C6.56 13.77 9.58 13.77 11.36 11.4C12.43 10.01 12.82 8.37 12.82 8.37M12.82 8.37L9.94 5.49M12.82 8.37L15.7 11.25M2 22L10 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Reparar</span></button>` : ''}
-                    <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold border border-rose-600 text-rose-600 hover:bg-rose-700/5 btn-excluir-reparo" data-id="${item.id}" style="margin-left: 4px;"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6L18.2 19.2C18.1 20.3 17.2 21 16.1 21H7.9C6.8 21 5.9 20.3 5.8 19.2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Excluir</span></button>
+                    <td data-label="Ação" class="actions-cell flex flex-wrap md:flex-nowrap items-center justify-center gap-2" style="position: relative;">
+                        <div class="action-wrap">
+                            ${item.status === 'aberto' ? `<button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white btn-reparar" data-id="${item.id}"><i data-lucide="tool" class="w-4 h-4"></i><span>Reparar</span></button>` : ''}
+                            <button class="btn-delete btn-small btn-excluir-reparo" data-id="${item.id}" aria-label="Excluir registro">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                 </td>
             </tr>
         `).join('');
+        try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
     }
 
     async function handleReparar(id) {

@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tela de Reparo - Controle de Falhas</title>
+    
     <link rel="stylesheet" href="./style.css?v=1.5">
     <link rel="stylesheet" href="./react-examples/dist/output.css">
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./reparo.css?v=1.6"> 
+
 </head>
 <body>
 
@@ -15,19 +17,14 @@
         Tela de Reparo
     </div>
     <div class="user-info flex items-center gap-3">
-    <!-- Botão de Voltar para o Admin -->
     <a href="index.html" data-action="back" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 admin-only">Voltar ao Registro</a>
-    <!-- O botão de voltar para operadores é inserido via JS -->
-        <span id="userDisplay" class="text-slate-200"></span>
+    <span id="userDisplay" class="text-slate-200"></span>
         <button id="btnLogout" data-action="logout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
     </div>
 </div>
 
 <div class="container">
     <div class="main-column">
-        <header>
-            <div class="title">Registros para Reparo</div>
-        </header>
 
         <section class="card">
             <h2 class="section-title">
@@ -49,9 +46,17 @@
                 </div>
             </div>
             <table id="reparoTable">
+                <colgroup>
+                    <col style="width:8%">
+                    <col style="width:10%">
+                    <col style="width:10%">
+                    <col style="width:22%"> <col style="width:8%">
+                    <col style="width:10%">
+                    <col style="width:12%">
+                    <col style="width:8%">
+                    <col style="width:12%"> </colgroup>
                 <thead>
-                    <!-- O cabeçalho da tabela é gerado pelo reparo.js -->
-                </thead>
+                    </thead>
                 <tbody id="reparoTbody"></tbody>
             </table>
         </section>
@@ -62,5 +67,10 @@
 <div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
 
 <script src="./reparo.js?v=1.5"></script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) { console.warn('lucide init failed', e); }
+</script>
 </body>
 </html>

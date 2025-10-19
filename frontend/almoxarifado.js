@@ -147,14 +147,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td data-label="Requisição" style="text-align: center; vertical-align: middle;">
                     <button class="inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 btn-ver-itens" data-id="${req.id}" title="Ver Itens da Requisição"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 11V17C22 20 20 22 17 22H7C4 22 2 20 2 17V7C2 4 4 2 7 2H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.57 5.11L12.15 8.54M15.57 5.11L18.89 8.54M15.57 5.11V2M15.57 5.11L22 5.18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ver</span></button>
                 </td>
-                <td data-label="Ações" style="text-align: center; vertical-align: middle;">
+                <td data-label="Ações" class="actions-cell flex flex-wrap md:flex-nowrap items-center justify-center gap-2" style="position: relative; text-align: center; vertical-align: middle;">
+                    <div class="action-wrap">
                     ${req.status !== 'entregue' ? `
-                        <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-sky-700 hover:bg-sky-600 text-white btn-atender-req" data-id="${req.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 12L10.5 15L16.5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Atender</span></button>
+                        <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-sky-700 hover:bg-sky-600 text-white btn-atender-req" data-id="${req.id}"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Atender</span></button>
                     ` : ''}
-                    <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold border border-rose-600 text-rose-600 btn-excluir-req" data-id="${req.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6L18.2 19.2C18.1 20.3 17.2 21 16.1 21H7.9C6.8 21 5.9 20.3 5.8 19.2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Excluir</span></button>
+                    <button class="btn-delete btn-small btn-excluir-req" data-id="${req.id}" aria-label="Excluir requisição">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
+        try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
     }
 
     function popularFiltroOM() {
@@ -255,13 +260,15 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.dataset.reqId = reqId; // Armazena o ID da requisição no modal
             
             if (items && items.length > 0) {
+                // Exibe apenas a descrição limpa (remove designador entre parênteses, ex: "Componente (C188)" -> "Componente")
                 tbodyItens.innerHTML = items.map(item => {
                     const isDelivered = (item.quantidade_entregue || 0) >= item.quantidade_requisitada;
+                    // Remove trecho do designador entre parênteses no final da descrição, caso exista
+                    const descricaoLimpa = (item.descricao || '').replace(/\s*\([^)]*\)\s*$/, '').trim() || 'N/A';
                     return `
                         <tr data-pn="${item.pn}">
-                            <td>${requisicao.om}</td>
                             <td>${item.pn}</td>
-                            <td>${item.descricao || 'N/A'}</td>
+                            <td>${descricaoLimpa}</td>
                             <td>${item.quantidade_requisitada}</td>
                             <td>
                                 <input 
@@ -282,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }).join('');
             } else {
-                tbodyItens.innerHTML = '<tr><td colspan="6">Nenhum item encontrado para esta requisição.</td></tr>';
+                tbodyItens.innerHTML = '<tr><td colspan="5">Nenhum item encontrado para esta requisição.</td></tr>';
             }
 
             modal.classList.remove('hidden');

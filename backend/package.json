@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
   "start": "node -r dotenv/config server.js",
-    "dev": "nodemon -r dotenv/config --ext js,json,env server.js"
+    "dev": "nodemon -r dotenv/config --ext js,json,env server.js",
+    "export:sqlite": "node scripts/export_sqlite.js"
   },
   "keywords": [],
   "author": "",

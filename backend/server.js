@@ -17,6 +17,7 @@ setTimeout(() => {
 require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -650,6 +651,30 @@ app.post('/api/admin/logout', authenticateToken, isAdmin, async (_req, res) => {
         res.json({ message: `Logout admin: ${r1.changes || 0} registros DEMO e ${r2.changes || 0} requisições DEMO removidos.` });
     } catch (err) {
         res.status(500).json({ error: `Erro no logout admin: ${err.message}` });
+    }
+});
+
+// Endpoint seguro para exportar o arquivo SQLite (apenas em ambiente sem DATABASE_URL)
+app.get('/api/admin/export-sqlite', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL) {
+            return res.status(400).json({ error: 'Export SQLite somente disponível quando usando SQLite local.' });
+        }
+        const DB_PATH = path.join(__dirname, 'aoi.db');
+        if (!fs.existsSync(DB_PATH)) return res.status(404).json({ error: 'Arquivo SQLite não encontrado.' });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const tmpName = `aoi-export-${timestamp}.db`;
+        const tmpPath = path.join(__dirname, tmpName);
+        fs.copyFileSync(DB_PATH, tmpPath);
+        res.setHeader('Content-Disposition', `attachment; filename="${tmpName}"`);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        const stream = fs.createReadStream(tmpPath);
+        stream.pipe(res);
+        stream.on('end', () => {
+            try { fs.unlinkSync(tmpPath); } catch(e) { /* ignore */ }
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 

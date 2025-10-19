@@ -1,9 +1,21 @@
 .status-tag {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 3px 6px; /* reduzido para evitar quebra de linha */
+    border-radius: 10px;
+    font-size: 11px; /* levemente menor */
+    font-weight: 700;
     text-transform: uppercase;
+    line-height: 1; /* evita alto espaçamento vertical */
+    display: inline-block;
+    white-space: nowrap; /* evita quebra do texto do status */
+}
+
+/* Regra com especificidade maior para garantir que badges na tabela de reparo
+   não quebrem e tenham prioridade sobre definies globais */
+#reparoTable .status-tag {
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
 }
 
 .status-aberto {
@@ -16,6 +28,58 @@
 }
 
 /* --- Tabela Responsiva --- */
+
+/* Garante colunas com largura fixa */
+#reparoTable { table-layout: fixed; width: 100%; }
+
+/* Permite que o texto nas células quebre em várias linhas, seguindo o padrão
+     da página de Registro de Falhas, exceto na coluna de Ação que deve ficar
+     em uma linha para manter os botões alinhados. */
+#reparoTable td { 
+        overflow: visible; 
+        text-overflow: clip; 
+        white-space: normal; 
+        word-break: break-word; 
+}
+
+#reparoTable td.actions-cell { 
+    /* Use display: table-cell para manter o alinhamento natural das células
+       da tabela. O wrapper .action-wrap dentro do td será inline-flex e
+       ficará verticalmente alinhado com os demais conteúdos da linha. */
+    display: table-cell;
+    vertical-align: middle; /* garante centralização vertical relativa à linha */
+    text-align: center;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+/* Wrapper e botões dentro da célula de ação -- regras específicas para reparo */
+#reparoTable td.actions-cell .action-wrap {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+
+#reparoTable td.actions-cell .action-wrap > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    flex: 0 1 auto;
+}
+
+/* Força botões de exclusão dentro da tabela de reparo a usarem a variante pequena */
+#reparoTable td.actions-cell .btn-delete { width: 32px; height: 32px; border-radius: 6px; }
+
+/* REGRA REMOVIDA:
+  A regra que forçava o texto DENTRO do botão a ficar em uma linha
+  foi removida, conforme seu pedido ("pode vir para baixo").
+  Agora o texto "Reparar" ou "Excluir" pode quebrar para a linha de baixo.
+*/
+
+
 @media (max-width: 800px) {
     #reparoTable thead {
         display: none;
@@ -34,6 +98,11 @@
         text-align: right;
         border-bottom: 1px dashed var(--border-color);
         padding: 10px 4px;
+        
+        /* Garante que no modo celular o truncamento também seja desativado */
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
     }
     #reparoTable td:last-child { border-bottom: none; }
     #reparoTable td::before {
@@ -43,4 +112,8 @@
         text-align: left;
         padding-right: 16px;
     }
+
+    /* Em modo mobile, permitir que as ações quebrem para múltiplas linhas se necessário */
+    #reparoTable td.actions-cell .action-wrap { flex-wrap: wrap; gap: 6px; }
+    #reparoTable td.actions-cell .action-wrap > button { min-width: 44px; flex: 1 1 auto; }
 }

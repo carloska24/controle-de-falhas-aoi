@@ -230,6 +230,34 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
     padding: 6px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
 }
 .btn-icon:hover { background: rgba(255,255,255,0.06); }
+
+/* Botão específico de exclusão (ícone-only) — aparência consistente */
+.btn-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 8px;
+    background: #fff; /* fundo claro para destacar o ícone */
+    color: var(--btn-rose);
+    border: 2px solid var(--btn-rose);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+.btn-delete:hover {
+    background: rgba(239,68,68,0.06);
+}
+.btn-delete svg, .btn-delete i[data-lucide] { stroke: currentColor; }
+
+/* Variante pequena quando usado em tabelas com pouco espaço */
+.btn-delete.btn-small { width: 32px; height: 32px; border-radius: 6px; }
+
+/* Garantia de consist eancia quando usados dentro de c e9lulas de tabela escuras */
+.actions-cell .btn-delete, #reparoTable .btn-delete, #tabelaRequisicoes .btn-delete {
+    background: #fff; color: var(--btn-rose); border: 2px solid var(--btn-rose); box-shadow: none;
+}
+.actions-cell .btn-delete:hover, #reparoTable .btn-delete:hover, #tabelaRequisicoes .btn-delete:hover { background: rgba(239,68,68,0.06); }
 .inline-edit { 
     width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color);
     background: #0f172a; color: var(--text);
@@ -413,11 +441,62 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 /* Garante que os botões de ação em tabelas fiquem sempre na mesma linha */
 .actions-cell {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: center; /* garante centralização vertical do conteúdo */
+    justify-content: center; /* centraliza horizontalmente os botões */
     gap: 8px;
     white-space: nowrap; /* Impede a quebra de linha dos botões */
 }
+
+/* Permite que o texto das tabelas principais quebre em linhas (melhora legibilidade)
+   enquanto a coluna de ações continua sem quebra para manter os botões alinhados. */
+#tabela td, #tabelaRequisicoes td, #tabelaItens td {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal; /* permite quebra de linha */
+    word-break: break-word; /* quebra palavras longas quando necessário */
+}
+
+#tabela td.actions-cell, #tabelaRequisicoes td.actions-cell, #tabelaItens td.actions-cell {
+    white-space: nowrap; /* mantém os botões em uma única linha */
+    text-align: center;
+    display: flex;
+    align-items: center; /* garante centralização vertical mesmo em linhas altas */
+    justify-content: center;
+}
+
+/* Garante que botões dentro das células de ação respeitem alinhamento vertical */
+#tabela td.actions-cell > button, #tabelaRequisicoes td.actions-cell > button, #tabelaItens td.actions-cell > button,
+.actions-cell > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Wrapper para as ações: usar flexbox para centralizar vertical e horizontalmente
+   dentro da célula. Evita problemas com posicionamento absoluto em células de tabela. */
+.actions-cell .action-wrap {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap; /* por padrão tenta manter os botões em uma linha */
+    padding: 2px 6px;
+    box-sizing: border-box;
+}
+
+/* Em telas pequenas, mantemos o comportamento de bloco quando necessário */
+@media (max-width: 800px) {
+    .actions-cell .action-wrap { flex-wrap: wrap; gap: 6px; }
+    .actions-cell .action-wrap > button { min-width: 44px; flex: 1 1 auto; }
+}
+
+/* Ajustes para tornar botões responsivos horizontalmente sem estourar a célula */
+.actions-cell .action-wrap > button {
+    min-width: 36px; /* evita colapso total do botão */
+    flex: 0 1 auto; /* permite encolher, mas não crescer demais */
+}
+.actions-cell .action-wrap > button .btn-text,
+.actions-cell .action-wrap > button span { white-space: nowrap; }
 
 /* Toasts e área de notificações */
 #toastContainer {
