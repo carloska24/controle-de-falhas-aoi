@@ -1004,6 +1004,22 @@ app.put('/api/om/finalizar', (req, res) => {
     });
 });
 // ================= Fim OM Persistence =================
+
+// Endpoint para buscar o tempo de uma OM específica
+app.get('/api/om-time/:omNumber', async (req, res) => {
+    const { omNumber } = req.params;
+    try {
+        const omData = await dbGet('SELECT * FROM oms_finalizadas WHERE omNumber = ?', [omNumber]);
+        if (!omData) {
+            return res.status(404).json({ error: 'Dados de tempo para esta OM não encontrados.' });
+        }
+        const elapsed = (omData.endTime - omData.startTime) - (omData.pausedTime || 0);
+        res.json({ elapsed });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Endpoint para relatório de inspeções (OMs finalizadas)
 // Endpoint para relatório completo de falhas agrupadas por OM
 app.get('/api/relatorio-falhas', async (req, res) => {
