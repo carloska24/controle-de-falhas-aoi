@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('falhasReportContainer');
-  const buscaInput = document.getElementById('buscaFalhas');
   const btnExportarCSV = document.getElementById('btnExportarCSV');
   const filtroOM = document.getElementById('filtroOMFalhas');
   const omTimeDisplay = document.getElementById('omTimeDisplay');
@@ -31,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       const data = await resp.json();
       if (data.elapsed) {
-        omTimeDisplay.innerHTML = `<strong>Tempo de Inspeção:</strong> ${formatTimer(data.elapsed)}`;
+        omTimeDisplay.innerHTML = `<strong>Tempo Total de Inspeção:</strong> ${formatTimer(data.elapsed)}`;
       }
     } catch (e) {
       console.error(`Erro ao buscar tempo para OM ${omNumber}:`, e);
@@ -71,12 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (omSelecionada) {
       regs = regs.filter(r => r.om === omSelecionada);
     }
-
-    // Busca por texto
-    const busca = (buscaInput.value || '').toLowerCase();
-    if (busca) {
-      regs = regs.filter(r => Object.values(r).some(v => (v || '').toString().toLowerCase().includes(busca)));
-    }
     
     renderTabela(regs);
   }
@@ -98,10 +91,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const omSelecionada = filtroOM.value;
     if (omSelecionada) {
       regsParaExportar = regsParaExportar.filter(r => r.om === omSelecionada);
-    }
-    const busca = (buscaInput.value || '').toLowerCase();
-    if (busca) {
-      regsParaExportar = regsParaExportar.filter(r => Object.values(r).some(v => (v || '').toString().toLowerCase().includes(busca)));
     }
 
     if (regsParaExportar.length === 0) {
@@ -125,7 +114,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Eventos
-  buscaInput.addEventListener('input', filtrarRegistros);
   filtroOM.addEventListener('change', () => {
     filtrarRegistros();
     fetchAndDisplayOmTime(filtroOM.value);
