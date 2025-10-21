@@ -35,7 +35,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+    
+    // CORRIGIDO: Removido o 'G'
     const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('http://' + window.location.hostname + ':3001'));
+    
     const API_URL = `${API_BASE_URL}/api/registros`;
 
     let allData = [];
@@ -49,8 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const omFilter = document.querySelector('#omFilter');
     const statusFilter = document.querySelector('#statusFilter');
     const tableBody = document.querySelector('#reparoTbody');
-    const tableHead = document.querySelector('#reparoTable thead');
-    const toastContainer = document.querySelector('#toastContainer'); // Adicionado
+    // const tableHead = document.querySelector('#reparoTable thead'); // Não é mais necessário
+    const toastContainer = document.querySelector('#toastContainer'); 
 
     // =================================================================
     // Funções Utilitárias
@@ -89,9 +92,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
     }
 
-    // Adicionando a função de Toast para feedback visual
     function showToast(message, type = 'success') {
-        if (!toastContainer) { // Adiciona o container se não existir no HTML
+        if (!toastContainer) { 
             const container = document.createElement('div');
             container.id = 'toastContainer';
             document.body.appendChild(container);
@@ -116,12 +118,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             dadosFiltrados = dadosFiltrados.filter(d => d.status === statusFilter.value);
         }
 
-        // Cabeçalho da tabela com a nova ordem e centralizado
-        tableHead.innerHTML = `<tr>
-            <th style="text-align: center;">OM</th><th style="text-align: center;">Cod. Alt</th><th style="text-align: center;">Serial</th><th style="text-align: center;">Descrição</th><th style="text-align: center;">Designador</th><th style="text-align: center;">Defeito</th><th style="text-align: center;">Data/Hora</th><th style="text-align: center;">Status</th><th style="text-align: center;">Ação</th>
-        </tr>`;
+        // REMOVIDO: tableHead.innerHTML foi removido
+        // (Cabeçalho agora está no reparo.html)
 
-        // Corpo da tabela com a nova ordem e centralizado
+        // CORPO DA TABELA ATUALIZADO COM BOTÕES DE ÍCONE
         tableBody.innerHTML = dadosFiltrados.map(item => `
             <tr data-id="${item.id}">
                 <td data-label="OM" style="text-align: center;">${item.om ?? ''}</td>
@@ -132,23 +132,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td data-label="Defeito" style="text-align: center;">${item.tipodefeito ?? ''}</td>
                 <td data-label="Data/Hora" style="text-align: center;">${formatDate(item.createdat ?? '')}</td>
                 <td data-label="Status" style="text-align: center;"><span class="status-tag status-${item.status}">${item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : ''}</span></td>
-                    <td data-label="Ação" class="actions-cell flex flex-wrap md:flex-nowrap items-center justify-center gap-2" style="position: relative;">
-                        <div class="action-wrap">
-                            ${item.status === 'aberto' ? `<button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white btn-reparar" data-id="${item.id}"><i data-lucide="tool" class="w-4 h-4"></i><span>Reparar</span></button>` : ''}
-                            <button class="btn-delete btn-small btn-excluir-reparo" data-id="${item.id}" aria-label="Excluir registro">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </div>
+                
+                <td data-label="Ação" class="actions-cell" style="text-align: center; vertical-align: middle;">
+                    <div class="action-wrap">
+                        ${item.status === 'aberto' ? `
+                        <button class="btn-icon text-amber-400 hover:bg-amber-500/10 btn-reparar" data-id="${item.id}" title="Marcar como Reparado — sem confirmação">
+                            <i data-lucide="wrench" class="w-4 h-4"></i>
+                        </button>` : ''}
+                        
+                        <button class="btn-icon text-rose-600 hover:bg-rose-700/5 btn-excluir-reparo" data-id="${item.id}" title="Excluir Registro — sem confirmação">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
+        // Esta chamada SÓ vai funcionar se lucide.js for carregado ANTES
         try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
     }
 
     async function handleReparar(id) {
-        const item = allData.find(d => d.id === id);
+        // CORRIGIDO: Comparação flexível (==) para funcionar com string ou número
+        const item = allData.find(d => d.id == id); 
         if (!item) return;
+
+        // Nota: confirmação removida — a ação é executada imediatamente
+
         try {
+            setLoading(true); // ADICIONADO
             await fetchAutenticado(`${API_URL}/${id}/status`, {
                 method: 'PUT',
                 body: JSON.stringify({ status: 'reparado' })
@@ -157,10 +168,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             await inicializar(); // Recarrega os dados para garantir consistência
         } catch (error) {
             showToast(`Erro ao atualizar status: ${error.message}`, 'error');
+        } finally {
+            setLoading(false); // ADICIONADO
         }
     }
 
     async function handleExcluir(id) {
+        // CORRIGIDO: Comparação flexível (==)
+        const item = allData.find(d => d.id == id); 
+        if (!item) return;
+
+        // Nota: confirmação removida — a exclusão é executada imediatamente
         try {
             setLoading(true);
             // A API espera um array de IDs, mesmo que seja para um único item.
@@ -173,7 +191,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             showToast(`Erro ao excluir registro: ${error.message}`, 'error');
         } finally {
-            setLoading(false);
+            setLoading(false); 
+            // CORRIGIDO: O "img" que estava aqui foi removido.
         }
     }
 
@@ -210,18 +229,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = 'login.html';
     });
     [omFilter, statusFilter].forEach(el => el.addEventListener('change', renderTable));
+    
     tableBody.addEventListener('click', (e) => {
-        // Use delegation with closest so clicks on SVG or span inside button still count
         const btn = e.target.closest && e.target.closest('button');
         if (!btn) return;
+        
+        const id = btn.dataset.id || btn.getAttribute('data-id');
+        if (!id) return; 
+
         if (btn.classList.contains('btn-reparar')) {
-            const id = btn.dataset.id || btn.getAttribute('data-id');
-            handleReparar(id);
+            // CORREÇÃO: Passa o ID como string (texto).
+            // A função handleReparar() já usa '==' para comparar.
+            handleReparar(id); 
             return;
         }
         if (btn.classList.contains('btn-excluir-reparo')) {
-            const id = btn.dataset.id || btn.getAttribute('data-id');
-            handleExcluir(id);
+            // CORREÇÃO: Passa o ID como string (texto).
+            // A função handleExcluir() já usa '==' para comparar.
+            handleExcluir(id); 
             return;
         }
     });
