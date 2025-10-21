@@ -522,6 +522,235 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ---------- Helpers para ícones de cards (dashboard) ---------- */
+.card-link { display: inline-flex; align-items: center; gap: 12px; }
+.card-icon {
+    width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px; background: rgba(255,255,255,0.04); box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.card-icon i[data-lucide], .card-icon svg { width: 20px; height: 20px; }
+.card-link .card-label { font-weight: 700; }
+
+/* pequenas variações para dar destaque nos ícones */
+.card-icon--muted { background: rgba(255,255,255,0.03); color: #fff; }
+.card-icon--accent { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* Label dentro do card: faz o bloco colorido com borda arredondada (herda background do link) */
+.card-label {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: inherit; /* herda o fundo do link (bg-slate-800, bg-emerald-600 etc) */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    color: #fff; 
+    text-decoration: none;
+}
+
+/* ajuste fino: ícone dentro do card com borda/offset para destacar */
+.card-icon { flex: 0 0 44px; margin-right: 8px; }
+.card-link { display: flex; align-items: center; }
+
+/* Botões de ação (toolbar) estilo Tailwind-like */
+.action-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; color: #fff; font-weight: 700; box-shadow: 0 4px 10px rgba(2,6,23,0.4); border: none; cursor: pointer; }
+.action-btn i[data-lucide], .action-btn svg { width: 16px; height: 16px; }
+.action-btn--danger { background: #b91c1c; }
+.action-btn--warning { background: #b45309; }
+.action-btn--primary { background: #0284c7; }
+
+/* small responsive tweak */
+@media (max-width: 800px) {
+    .card-label { padding: 8px 10px; font-size: 0.95rem; }
+    .card-icon { flex: 0 0 40px; }
+}
+
+/* ---------- Tile unified container (ícone + rótulo) ---------- */
+.tile {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px; border-radius: 10px; color: #fff; text-decoration: none;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+.tile:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(2,6,23,0.45); }
+.tile-icon {
+    width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; border-radius:10px; flex-shrink:0;
+    box-shadow: inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile-label { font-weight: 700; }
+
+/* Color identities (choose accessible palettes) */
+.tile--report { background: linear-gradient(90deg,#0f172a,#111827); color: #e6eef8; }
+.tile--quality { background: linear-gradient(90deg,#059669,#10b981); color: #042b1f; }
+.tile--demo { background: linear-gradient(90deg,#c2410c,#f97316); color: #fff; }
+.tile--repair { background: linear-gradient(90deg,#0369a1,#0ea5e9); color: #fff; }
+.tile--warehouse { background: linear-gradient(90deg,#075985,#0ea5e9); color: #fff; }
+.tile--shortcut { background: linear-gradient(90deg,#065f46,#10b981); color: #fff; }
+
+/* Toolbar action buttons adopt tile look */
+.action-btn { gap:10px; padding: 10px 14px; border-radius: 10px; font-weight: 700; }
+.action-btn i[data-lucide] { width:18px; height:18px; }
+.action-btn--danger { background: linear-gradient(90deg,#8b1420,#b91c1c); }
+.action-btn--warning { background: linear-gradient(90deg,#9a5800,#b45309); }
+.action-btn--primary { background: linear-gradient(90deg,#0369a1,#0284c7); }
+
+
+/* ---------- Hover 'acender' para ícones (tiles, cards, action buttons) ---------- */
+/* Transições e estado base para todos os ícones usados como <i data-lucide> ou <svg> */
+.tile-icon i[data-lucide], .tile-icon svg,
+.card-icon i[data-lucide], .card-icon svg,
+.action-btn i[data-lucide], .action-btn svg,
+.card-icon, .tile-icon {
+    transition: transform .18s ease, filter .22s ease, box-shadow .22s ease, color .18s ease;
+    will-change: transform, filter, box-shadow, color;
+}
+
+/* Estado hover geral: leve escala do ícone e brilho */
+.tile:hover .tile-icon, .card-link:hover .card-icon {
+    transform: translateY(-2px) scale(1.06);
+}
+.tile:hover .tile-icon i[data-lucide], .card-link:hover .card-icon i[data-lucide],
+.tile:hover .tile-icon svg, .card-link:hover .card-icon svg {
+    transform: scale(1.12);
+}
+
+/* Glow e sombra colorida por identidade (ajuste para cada variante) */
+.tile--repair:hover .tile-icon {
+    box-shadow: 0 10px 30px rgba(14,165,233,0.18), inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile--repair:hover .tile-icon i[data-lucide], .tile--repair:hover .tile-icon svg {
+    color: #e6f7ff; filter: drop-shadow(0 10px 24px rgba(14,165,233,0.30));
+}
+.tile--warehouse:hover .tile-icon {
+    box-shadow: 0 10px 30px rgba(14,165,233,0.16), inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile--warehouse:hover .tile-icon i[data-lucide], .tile--warehouse:hover .tile-icon svg {
+    color: #f0fbff; filter: drop-shadow(0 10px 24px rgba(14,165,233,0.26));
+}
+.tile--quality:hover .tile-icon {
+    box-shadow: 0 10px 30px rgba(16,185,129,0.18), inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile--quality:hover .tile-icon i[data-lucide], .tile--quality:hover .tile-icon svg {
+    color: #e8fff4; filter: drop-shadow(0 10px 24px rgba(16,185,129,0.30));
+}
+.tile--demo:hover .tile-icon {
+    box-shadow: 0 10px 30px rgba(249,115,22,0.18), inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile--demo:hover .tile-icon i[data-lucide], .tile--demo:hover .tile-icon svg {
+    color: #fff7ef; filter: drop-shadow(0 10px 24px rgba(249,115,22,0.30));
+}
+.tile--report:hover .tile-icon {
+    box-shadow: 0 10px 30px rgba(96,165,250,0.12), inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile--report:hover .tile-icon i[data-lucide], .tile--report:hover .tile-icon svg {
+    color: #eef7ff; filter: drop-shadow(0 10px 24px rgba(96,165,250,0.22));
+}
+.tile--shortcut:hover .tile-icon {
+    box-shadow: 0 10px 30px rgba(16,185,129,0.14), inset 0 -6px 18px rgba(0,0,0,0.12);
+}
+.tile--shortcut:hover .tile-icon i[data-lucide], .tile--shortcut:hover .tile-icon svg {
+    color: #f2fff7; filter: drop-shadow(0 10px 24px rgba(16,185,129,0.24));
+}
+
+/* Action buttons: intensificar sombra e brilho no hover por variante */
+.action-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(2,6,23,0.55); }
+.action-btn--primary:hover i[data-lucide], .action-btn--primary:hover svg { transform: scale(1.12); filter: drop-shadow(0 8px 26px rgba(2,132,199,0.34)); }
+.action-btn--warning:hover i[data-lucide], .action-btn--warning:hover svg { transform: scale(1.12); filter: drop-shadow(0 8px 26px rgba(180,83,9,0.32)); }
+.action-btn--danger:hover i[data-lucide], .action-btn--danger:hover svg { transform: scale(1.12); filter: drop-shadow(0 8px 26px rgba(185,28,28,0.32)); }
+
+/* Pequeno ajuste para ícones em card-link antigos */
+.card-link:hover .card-icon { transform: translateY(-2px) scale(1.04); box-shadow: 0 8px 22px rgba(2,6,23,0.35); }
+.card-link:hover .card-icon i[data-lucide] { transform: scale(1.08); filter: drop-shadow(0 8px 20px rgba(0,0,0,0.25)); }
+
+/* Reduzir impacto em dispositivos touch (evitar hover muito chamativo) */
+@media (hover: none) {
+    .tile:hover .tile-icon, .card-link:hover .card-icon, .action-btn:hover { transform: none; box-shadow: none; }
+    .tile .tile-icon i[data-lucide], .action-btn i[data-lucide] { transform: none; filter: none; }
+}
+
+/* Hover para botões genéricos que usam SVG inline (ex.: .inline-flex, .btn, .btn-icon) */
+.inline-flex:hover svg, .inline-flex:hover i[data-lucide],
+.btn:hover svg, .btn:hover i[data-lucide],
+.btn-icon:hover svg, .btn-icon:hover i[data-lucide],
+.toolbar .left button:hover svg, .toolbar .left button:hover i[data-lucide],
+.toolbar .right button:hover svg, .toolbar .right button:hover i[data-lucide] {
+    transform: scale(1.12);
+    filter: drop-shadow(0 10px 28px rgba(255,255,255,0.08));
+}
+
+/* Adicionar sombra colorida sutil ao redor do botão quando em hover */
+.inline-flex:hover, .btn:hover, .btn-icon:hover, .toolbar .left button:hover, .toolbar .right button:hover {
+    box-shadow: 0 10px 28px rgba(2,6,23,0.35);
+    transform: translateY(-2px);
+}
+
+/* Ajuste específico para export / demo / action buttons com fundo verde (brilho esverdeado) */
+.bg-emerald-600:hover svg, .bg-emerald-600:hover i[data-lucide],
+.bg-emerald-600:hover { box-shadow: 0 12px 34px rgba(16,185,129,0.16); }
+
+
+/* ---------- Glow no container (pseudo-element) otimizado ---------- */
+/* Usar box-shadow em vez de filter: blur para reduzir custo de repintura.
+   O ::before fica atrás do conteúdo e anima apenas opacity/transform/box-shadow.
+   Também expõe :focus-visible para acessibilidade e respeita prefers-reduced-motion. */
+.tile, .action-btn, .btn, .inline-flex, .card-link, .btn-icon, .btn-delete {
+    position: relative;
+    z-index: 0;
+    will-change: transform, opacity;
+}
+
+.tile::before, .action-btn::before, .btn::before, .inline-flex::before, .card-link::before, .btn-icon::before, .btn-delete::before {
+    content: "";
+    position: absolute;
+    left: -6px; right: -6px; top: -6px; bottom: -6px; /* halo levemente além do container */
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(.98);
+    transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
+    z-index: -1; /* atrás do conteúdo */
+    box-shadow: none; /* irá receber box-shadow por variante */
+    background: transparent;
+}
+
+/* Ativar halo no hover e no foco por teclado (focus-visible) */
+.tile:hover::before, .tile:focus-visible::before,
+.action-btn:hover::before, .action-btn:focus-visible::before,
+.btn:hover::before, .btn:focus-visible::before,
+.inline-flex:hover::before, .inline-flex:focus-visible::before,
+.card-link:hover::before, .card-link:focus-visible::before,
+.btn-icon:hover::before, .btn-icon:focus-visible::before,
+.btn-delete:hover::before, .btn-delete:focus-visible::before {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Halos por identidade (box-shadow otimizado) */
+.tile--repair::before, .action-btn--primary::before { box-shadow: 0 12px 36px rgba(14,165,233,0.18); }
+.tile--warehouse::before { box-shadow: 0 12px 36px rgba(14,165,233,0.14); }
+.tile--quality::before { box-shadow: 0 12px 36px rgba(16,185,129,0.18); }
+.tile--demo::before { box-shadow: 0 12px 36px rgba(249,115,22,0.18); }
+.tile--report::before { box-shadow: 0 10px 30px rgba(96,165,250,0.12); }
+.tile--shortcut::before { box-shadow: 0 10px 30px rgba(16,185,129,0.12); }
+.action-btn--warning::before { box-shadow: 0 12px 36px rgba(180,83,9,0.14); }
+.action-btn--danger::before { box-shadow: 0 12px 36px rgba(185,28,28,0.14); }
+.bg-emerald-600::before { box-shadow: 0 12px 34px rgba(16,185,129,0.14); }
+
+/* Também exibir halo mais sutil para botões genéricos (classe .btn, .inline-flex) */
+.btn::before, .inline-flex::before { box-shadow: 0 8px 26px rgba(2,6,23,0.28); }
+
+/* Respeitar preferência por reduzir movimento */
+@media (prefers-reduced-motion: reduce) {
+    .tile::before, .action-btn::before, .btn::before, .inline-flex::before, .card-link::before, .btn-icon::before, .btn-delete::before {
+        transition: none !important; transform: none !important; opacity: 1 !important; box-shadow: none !important;
+    }
+}
+
+/* Em dispositivos touch, reduzir efeitos (mantém desempenho e evita overlays indesejados) */
+@media (hover: none) {
+    .tile::before, .action-btn::before, .btn::before, .inline-flex::before, .card-link::before, .btn-icon::before, .btn-delete::before { display: none; }
+}
+
+
+
 /* --- Regras específicas de reparo aplicadas ao Almoxarifado --- */
 /* Copiado de reparo.css, adaptado para #tabelaRequisicoes para garantir
    que o card de Almoxarifado siga os mesmos padrões visuais do Reparo. */

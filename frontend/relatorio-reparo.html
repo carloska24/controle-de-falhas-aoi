@@ -21,16 +21,19 @@
         <section class="card" style="flex:1 1 0; max-width:1800px; width:100%; margin:32px 0;">
                         <div class="section-title-wrap" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
                             <h2 class="section-title" style="margin-bottom:0;">Registros de Reparo</h2>
-                            <select id="filtroOMReparo" class="select-om" style="padding:8px 16px; border-radius:8px; border:1.5px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem; min-width:180px; max-width:320px;">
-                                <option value="">Filtrar por OM</option>
-                            </select>
                         </div>
-                        <div class="toolbar" style="margin-bottom:18px; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
-                                                                <input id="buscaReparo" class="search-input" placeholder="🔎 Buscar..." style="max-width:320px;">
-                                                                <button id="btnExportarCSVReparo" data-action="export-csv" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white" style="font-size:1rem;">
-                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11L12 15L16 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                                                    <span>Exportar CSV</span>
-                                                                </button>
+                        <div class="toolbar" style="margin-bottom:18px; display:flex; gap:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                            <div class="filters" style="display:flex; align-items:center; gap:16px;">
+                                <select id="filtroOMReparo" class="select-om" style="padding: 8px 12px; border-radius: 8px; border: 1.5px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.95rem; min-width:180px; max-width:320px;">
+                                    <option value="">Filtrar por OM</option>
+                                </select>
+                            </div>
+                            <div class="actions">
+                                <button id="btnExportarCSVReparo" data-action="export-csv" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11L12 15L16 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <span>Exportar CSV</span>
+                                </button>
+                            </div>
                         </div>
             <div id="reparoReportContainer" style="overflow-x:auto;">
                 <div class="note">Carregando dados...</div>
