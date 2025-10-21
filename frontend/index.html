@@ -83,26 +83,23 @@
               <span id="omTimerDisplay" class="om-timer-display" style="font-size:2.5rem; color:#f1f5f9; font-weight:700; letter-spacing:2px; background:#0f172a; border-radius:8px; padding:6px 24px; box-shadow:0 1px 8px #0006; text-shadow:0 2px 8px #000a;">00:00:00</span>
             </div>
             <h2 class="section-title">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.75 9H8.25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.75 15H8.25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Registros</span>
+                <i data-lucide="file-text" class="w-6 h-6 text-sky-400"></i>
+                <span>Registros</span>
             </h2>
             <div class="toolbar">
               <div class="left">
-          <button id="btnExcluir" data-action="exclude" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-rose-700 hover:bg-rose-600 text-white disabled:opacity-50" disabled aria-label="Excluir selecionados">
-                  <!-- trash icon -->
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6L18.2 19.2C18.1 20.3 17.2 21 16.1 21H7.9C6.8 21 5.9 20.3 5.8 19.2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 6V4C9 3.44772 9.44772 3 10 3H14C14.5523 3 15 3.44772 15 4V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button id="btnExcluir" data-action="exclude" class="action-btn action-btn--danger" disabled aria-label="Excluir selecionados">
+                  <i data-lucide="trash-2"></i>
                   <span>Excluir Selecionados</span>
                 </button>
 
-                <button id="btnGerarRequisicao" data-action="generate-request" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50" disabled aria-label="Gerar requisição">
-                  <!-- document icon -->
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2V8H20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button id="btnGerarRequisicao" data-action="generate-request" class="action-btn action-btn--warning" disabled aria-label="Gerar requisição">
+                  <i data-lucide="file-text"></i>
                   <span>Gerar Requisição</span>
                 </button>
 
-                <button id="btnIniciarOM" data-action="start-om" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-sky-700 hover:bg-sky-600 text-white" title="Iniciar Inspeção da OM">
-                  <!-- play icon -->
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-90"><path d="M5 3.86987V20.1301C5 21.0805 6.07258 21.6203 6.88913 21.0498L19.2159 12.7799C20.0051 12.2243 20.0051 11.0043 19.2159 10.4486L6.88913 2.1787C6.07258 1.60818 5 2.14792 5 3.09831Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button id="btnIniciarOM" data-action="start-om" class="action-btn action-btn--primary" title="Iniciar Inspeção da OM">
+                  <i data-lucide="play"></i>
                   <span>Iniciar OM</span>
                 </button>
 
@@ -178,42 +175,42 @@
 
       <section class="card noprint">
         <h2 class="section-title">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.16992 14.83L14.8299 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.8299 14.83L9.16992 9.17" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <i data-lucide="bar-chart-2" class="w-6 h-6 text-sky-400"></i>
           <span>Relatórios</span>
         </h2>
         <div class="grid cols-1">
-          <a href="relatorio-controle-falhas.html" class="w-full block rounded-lg px-4 py-3 text-sm font-semibold flex items-center gap-3 justify-start shadow-sm transition-colors duration-150 bg-slate-800 hover:bg-slate-700 text-white full-width admin-only" aria-label="Relatório de Registro de Falhas">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2V8H20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Relatório de Registro de Falhas</span>
+          <a href="relatorio-controle-falhas.html" class="tile tile--report full-width admin-only" aria-label="Relatório de Registro de Falhas">
+            <span class="tile-icon"><i data-lucide="file-text"></i></span>
+            <span class="tile-label">Relatório de Registro de Falhas</span>
           </a>
-          <a href="relatorio-qualidade.html" class="w-full block rounded-lg px-4 py-3 text-sm font-semibold flex items-center gap-3 justify-start shadow-sm transition-colors duration-150 bg-emerald-600 hover:bg-emerald-500 text-white full-width admin-only" aria-label="Análise de Qualidade">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8 2 4 4 4 8C4 12 8 14 12 14C16 14 20 12 20 8C20 4 16 2 12 2Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Análise de Qualidade</span>
+          <a href="relatorio-qualidade.html" class="tile tile--quality full-width admin-only" aria-label="Análise de Qualidade">
+            <span class="tile-icon"><i data-lucide="activity"></i></span>
+            <span class="tile-label">Análise de Qualidade</span>
           </a>
-          <a href="relatorio-qualidade.html?demo=true" class="w-full block rounded-lg px-4 py-3 text-sm font-semibold flex items-center gap-3 justify-start shadow-sm transition-colors duration-150 bg-amber-500 hover:bg-amber-400 text-white full-width admin-only" aria-label="Qualidade demo">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8 2 4 4 4 8C4 12 8 14 12 14C16 14 20 12 20 8C20 4 16 2 12 2Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Qualidade (c/ Demo)</span>
+          <a href="relatorio-qualidade.html?demo=true" class="tile tile--demo full-width admin-only" aria-label="Qualidade demo">
+            <span class="tile-icon"><i data-lucide="zap"></i></span>
+            <span class="tile-label">Qualidade (c/ Demo)</span>
           </a>
-          <a href="relatorio-reparo.html" class="w-full block rounded-lg px-4 py-3 text-sm font-semibold flex items-center gap-3 justify-start shadow-sm transition-colors duration-150 bg-sky-700 hover:bg-sky-600 text-white full-width admin-only" aria-label="Relatório de Reparo">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 21V19C3 17.8954 3.89543 17 5 17H19C20.1046 17 21 17.8954 21 19V21" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11V7C8 5.89543 8.89543 5 10 5H14C15.1046 5 16 5.89543 16 7V11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Relatório de Reparo</span>
+          <a href="relatorio-reparo.html" class="tile tile--repair full-width admin-only" aria-label="Relatório de Reparo">
+            <span class="tile-icon"><i data-lucide="wrench"></i></span>
+            <span class="tile-label">Relatório de Reparo</span>
           </a>
         </div>
       </section>
 
       <section class="card noprint">
         <h2 class="section-title">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20V20H4V4Z" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <i data-lucide="zap" class="w-6 h-6 text-amber-400"></i>
           <span>Acessos Rápidos</span>
         </h2>
         <div class="grid cols-1">
-          <a href="almoxarifado.html" class="w-full block rounded-lg px-4 py-3 text-sm font-semibold flex items-center gap-3 justify-start shadow-sm transition-colors duration-150 bg-sky-700 hover:bg-sky-600 text-white full-width" aria-label="Almoxarifado">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7H21V17H3V7Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 7V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Almoxarifado</span>
+          <a href="almoxarifado.html" class="tile tile--warehouse full-width" aria-label="Almoxarifado">
+            <span class="tile-icon"><i data-lucide="archive"></i></span>
+            <span class="tile-label">Almoxarifado</span>
           </a>
-          <a href="reparo.html" class="w-full block rounded-lg px-4 py-3 text-sm font-semibold flex items-center gap-3 justify-start shadow-sm transition-colors duration-150 bg-emerald-600 hover:bg-emerald-500 text-white full-width" aria-label="Tela de Reparo">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 8V20C21 21.1046 20.1046 22 19 22H5C3.89543 22 3 21.1046 3 20V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8V6C7 4.89543 7.89543 4 9 4H15C16.1046 4 17 4.89543 17 6V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Tela de Reparo</span>
+          <a href="reparo.html" class="tile tile--shortcut full-width" aria-label="Tela de Reparo">
+            <span class="tile-icon"><i data-lucide="wrench"></i></span>
+            <span class="tile-label">Tela de Reparo</span>
           </a>
         </div>
       </section>
