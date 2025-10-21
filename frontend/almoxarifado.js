@@ -44,10 +44,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userDisplay = document.querySelector('#userDisplay');
     const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
     const loadingOverlay = document.querySelector('#loadingOverlay');
-    const buscaInput = document.querySelector('#buscaRequisicao');
+    
+    // SUGESTÃO APLICADA (Reversão): Trocamos buscaInput por filtroOM
+    // const buscaInput = document.querySelector('#buscaRequisicao'); // REMOVIDO
+    const filtroOM = document.querySelector('#filtroOM'); // ADICIONADO DE VOLTA
+    
     const tableBody = document.querySelector('#tbodyRequisicoes');
     const toastContainer = document.querySelector('#toastContainer');
-    const filtroOM = document.querySelector('#filtroOM');
     const filtroStatus = document.querySelector('#filtroStatus');
     const emptyState = document.querySelector('#emptyStateAlmox');
     let sortState = { key: 'created_at', dir: 'desc' };
@@ -104,15 +107,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         entregue: 'Entregue'
     };
 
+    // SUGESTÃO APLICADA (Reversão): Função para popular o dropdown de OM
+    function popularFiltroOM() {
+        const oms = [...new Set(allRequisicoes.map(r => r.om))];
+        filtroOM.innerHTML = `<option value="todos">Todas as OMs</option>`;
+        oms.sort().forEach(om => {
+            const option = document.createElement('option');
+            option.value = om;
+            option.textContent = om;
+            filtroOM.appendChild(option);
+        });
+    }
+
     function renderTable() {
-        const filtroTexto = (buscaInput?.value || '').toLowerCase();
-        const omSelecionada = filtroOM.value;
+        // SUGESTÃO APLICADA (Reversão): Lógica de filtro alterada
+        // const filtroTexto = (buscaInput?.value || '').toLowerCase(); // REMOVIDO
+        const omSelecionada = filtroOM.value; // ADICIONADO DE VOLTA
         const statusSel = filtroStatus.value;
 
         let dadosFiltrados = allRequisicoes.filter(r =>
-            (omSelecionada === 'todos' || r.om === omSelecionada) &&
-            (statusSel === 'todos' || r.status === statusSel) &&
-            r.om.toLowerCase().includes(filtroTexto)
+            (omSelecionada === 'todos' || r.om === omSelecionada) && // Filtro pelo dropdown
+            (statusSel === 'todos' || r.status === statusSel)
+            // r.om.toLowerCase().includes(filtroTexto) // Filtro por texto removido
         );
 
         // Ordenação
@@ -141,6 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (emptyState) emptyState.style.display = 'none';
         }
 
+        // A renderização da tabela com botões de ícone unificados (da sugestão anterior) é mantida
         tableBody.innerHTML = dadosFiltrados.map(req => `
             <tr data-id="${req.id}">
                 <td data-label="ID" style="text-align: center; vertical-align: middle;">#${req.id}</td>
@@ -148,17 +165,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td data-label="Data" style="text-align: center; vertical-align: middle;">${formatDate(req.created_at)}</td>
                 <td data-label="Solicitante" style="text-align: center; vertical-align: middle;">${req.created_by}</td>
                 <td data-label="Status" style="text-align: center; vertical-align: middle;"><span class="status-tag status-${req.status}">${statusMap[req.status] || req.status}</span></td>
-                <td data-label="Requisição" style="text-align: center; vertical-align: middle;">
-                    <button class="inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 btn-ver-itens" data-id="${req.id}" title="Ver Itens da Requisição"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 11V17C22 20 20 22 17 22H7C4 22 2 20 2 17V7C2 4 4 2 7 2H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.57 5.11L12.15 8.54M15.57 5.11L18.89 8.54M15.57 5.11V2M15.57 5.11L22 5.18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ver</span></button>
-                </td>
-                <td data-label="Ações" class="actions-cell flex flex-wrap md:flex-nowrap items-center justify-center gap-2" style="position: relative; text-align: center; vertical-align: middle;">
+                
+                <td data-label="Ações" class="actions-cell" style="text-align: center; vertical-align: middle;">
                     <div class="action-wrap">
+                        <button class="btn-icon btn-ver-itens" data-id="${req.id}" title="Ver Itens da Requisição">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
                     ${req.status !== 'entregue' ? `
-                        <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold bg-sky-700 hover:bg-sky-600 text-white btn-atender-req" data-id="${req.id}"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Atender</span></button>
+                        <button class="btn-icon text-sky-400 hover:bg-sky-700/10 btn-atender-req" data-id="${req.id}" title="Atender Requisição">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        </button>
                     ` : ''}
-                    <button class="btn-delete btn-small btn-excluir-req" data-id="${req.id}" aria-label="Excluir requisição">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
+                        <button class="btn-icon text-rose-600 hover:bg-rose-700/5 btn-excluir-req" data-id="${req.id}" title="Excluir Requisição — sem confirmação">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -166,17 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
     }
 
-    function popularFiltroOM() {
-        const oms = [...new Set(allRequisicoes.map(r => r.om))];
-        filtroOM.innerHTML = `<option value="todos">Todas as OMs</option>`;
-        oms.sort().forEach(om => {
-            const option = document.createElement('option');
-            option.value = om;
-            option.textContent = om;
-            filtroOM.appendChild(option);
-        });
-    }
-
+    
     async function inicializar() {
         setLoading(true);
         if (userDisplay) userDisplay.textContent = user.name || user.username;
@@ -185,6 +195,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const raw = await fetchAutenticado(API_URL) || [];
             // Filtro defensivo no frontend: oculta DEMO para não-admin
             allRequisicoes = (user && user.role === 'admin') ? raw : raw.filter(r => !(r.om || '').startsWith('DEMO-'));
+            
+            // SUGESTÃO APLICADA (Reversão): Popular o filtro de OM
             popularFiltroOM();
             renderTable();
         } catch (error) {
@@ -218,7 +230,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Remove da lista local e renderiza a tabela novamente
             allRequisicoes = allRequisicoes.filter(r => r.id != reqId);
             renderTable();
-            popularFiltroOM(); // Atualiza o filtro de OMs caso a última de uma OM seja removida
+            
+            // SUGESTÃO APLICADA (Reversão): Atualiza o filtro de OMs
+            popularFiltroOM(); 
 
             showToast(`Requisição #${reqId} excluída com sucesso.`);
         } catch (error) { showToast(`Erro ao excluir requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
@@ -249,14 +263,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             return; // Encerra a função para evitar outras verificações
         }
 
-        // Excluir requisição
+        // Excluir requisição (sem confirmação)
         if (target.classList.contains('btn-excluir-req')) {
+            // Nota: confirmação removida — a exclusão é executada imediatamente
             handleExcluirRequisicao(target.dataset.id);
             return; // Encerra a função
         }
+        
         // Ver itens da requisição
         if (target.classList.contains('btn-ver-itens')) {
-            const reqId = target.dataset.id; // Corrigido para usar 'target'
+            const reqId = target.dataset.id;
             const requisicao = allRequisicoes.find(r => r.id == reqId);
             const items = requisicao ? requisicao.items : [];
 
@@ -339,12 +355,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Busca com debounce
-    buscaInput.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(renderTable, 200);
-    });
-    filtroOM.addEventListener('change', renderTable);
+    // SUGESTÃO APLICADA (Reversão): Listeners de filtro
+    // buscaInput.addEventListener('input', () => { ... }); // REMOVIDO
+    filtroOM.addEventListener('change', renderTable); // ADICIONADO DE VOLTA
     filtroStatus.addEventListener('change', renderTable);
 
     // Ordenação por cabeçalho
