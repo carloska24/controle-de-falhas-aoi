@@ -7,8 +7,7 @@
     
     <link rel="stylesheet" href="./style.css?v=1.5">
     <link rel="stylesheet" href="./react-examples/dist/output.css">
-    <link rel="stylesheet" href="./reparo.css?v=1.6"> 
-
+    <link rel="stylesheet" href="./reparo.css?v=1.9"> 
 </head>
 <body>
 
@@ -17,7 +16,9 @@
         Tela de Reparo
     </div>
     <div class="user-info flex items-center gap-3">
-    <a href="index.html" data-action="back" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 admin-only">Voltar ao Registro</a>
+        <a href="index.html" data-action="back" class="back-btn admin-only" style="background:transparent; border:none; box-shadow:none;" title="Voltar">
+            <i data-lucide="arrow-big-left" class="w-6 h-6" style="color:#fff;"></i>
+        </a>
     <span id="userDisplay" class="text-slate-200"></span>
         <button id="btnLogout" data-action="logout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
     </div>
@@ -28,17 +29,15 @@
 
         <section class="card">
             <h2 class="section-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.44 2.5C17.44 2.5 14.42 2.5 12.64 4.87C10.86 7.24 10.56 10.23 10.56 10.23M10.56 10.23L13.44 13.11M10.56 10.23L7.68 7.35M6.56 13.77C6.56 13.77 9.58 13.77 11.36 11.4C12.43 10.01 12.82 8.37 12.82 8.37M12.82 8.37L9.94 5.49M12.82 8.37L15.7 11.25M2 22L10 14" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <i data-lucide="tool-case" class="w-6 h-6" style="color: orange;"></i>
                 <span>Lista de Falhas Abertas</span>
             </h2>
             <div class="toolbar">
-                <div class="left field">
-                    <label for="omFilter">Filtrar por OM:</label>
-                    <select id="omFilter"></select>
-                </div>
-                <div class="left field">
-                    <label for="statusFilter">Filtrar por Status:</label>
-                    <select id="statusFilter">
+                <div class="right">
+                    <select id="omFilter" class="search-input" style="width: auto;">
+                        <option value="all">Todas as OMs</option>
+                    </select>
+                    <select id="statusFilter" class="search-input" style="width: auto;">
                         <option value="all">Todos</option>
                         <option value="aberto" selected>Aberto</option>
                         <option value="reparado">Reparado</option>
@@ -46,17 +45,19 @@
                 </div>
             </div>
             <table id="reparoTable">
-                <colgroup>
-                    <col style="width:8%">
-                    <col style="width:10%">
-                    <col style="width:10%">
-                    <col style="width:22%"> <col style="width:8%">
-                    <col style="width:10%">
-                    <col style="width:12%">
-                    <col style="width:8%">
-                    <col style="width:12%"> </colgroup>
                 <thead>
-                    </thead>
+                    <tr>
+                        <th style="text-align: center;">OM</th>
+                        <th style="text-align: center;">Cod. Alt</th>
+                        <th style="text-align: center;">Serial</th>
+                        <th style="text-align: center;">Descrição</th>
+                        <th style="text-align: center;">Designador</th>
+                        <th style="text-align: center;">Defeito</th>
+                        <th style="text-align: center;">Data/Hora</th>
+                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: center;">Ação</th>
+                    </tr>
+                </thead>
                 <tbody id="reparoTbody"></tbody>
             </table>
         </section>
@@ -66,8 +67,7 @@
 <div id="toastContainer"></div>
 <div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
 
-<script src="./reparo.js?v=1.5"></script>
-
+<script src="./reparo.js?v=1.9"></script> 
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
   try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) { console.warn('lucide init failed', e); }

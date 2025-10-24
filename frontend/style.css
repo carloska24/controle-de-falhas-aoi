@@ -70,17 +70,27 @@
     text-align: center;
     box-shadow: 0 1px 4px #0003;
 }
+
+/* ================== BLOCO (om-final-time) ATUALIZADO ================== */
 .om-final-time {
     margin-top: 12px;
-    text-align: right;
-    font-size: 1.3em;
+    text-align: left; /* MUDADO de 'right' */
+    font-size: 1.1em; /* REDUZIDO de '1.3em' para caber mais info */
     color: #fbbf24;
     font-weight: bold;
     background: #232c3b;
     border-radius: 8px;
-    padding: 8px 18px;
+    padding: 12px 18px; /* AUMENTADO padding vertical */
     box-shadow: 0 1px 4px #0002;
+    line-height: 1.6; /* NOVO: para espaçar as linhas */
 }
+/* NOVO: Adicione este estilo para destacar os rótulos */
+.om-final-time strong {
+    color: #f1f5f9; 
+    font-weight: 600;
+}
+/* ================== FIM DA ALTERAÇÃO ================== */
+
 :root {
     --bg: #0f172a; --panel: #1e293b; --muted: #334155; --text: #e5e7eb; 
     --text-dim: #94a3b8; --primary: #22c55e; --danger: #ef4444; 
@@ -253,7 +263,7 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
 /* Variante pequena quando usado em tabelas com pouco espaço */
 .btn-delete.btn-small { width: 32px; height: 32px; border-radius: 6px; }
 
-/* Garantia de consist eancia quando usados dentro de c e9lulas de tabela escuras */
+/* Garantia de consist eancia quando usados dentro de c e9lulas de tabela escuras */
 .actions-cell .btn-delete, #reparoTable .btn-delete, #tabelaRequisicoes .btn-delete {
     background: #fff; color: var(--btn-rose); border: 2px solid var(--btn-rose); box-shadow: none;
 }

@@ -16,7 +16,9 @@
             Painel do Administrador
         </div>
         <div class="user-info flex items-center gap-3">
-            <a href="index.html" data-action="back" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-slate-200 bg-transparent border border-slate-600 hover:bg-slate-700/30">Voltar ao Registro</a>
+                        <a href="index.html" data-action="back" class="back-btn" style="background:transparent; border:none; box-shadow:none;" title="Ir para Registro" aria-label="Ir para Registro">
+                            <i data-lucide="arrow-big-right" class="w-6 h-6" style="color:#fff;"></i>
+                        </a>
             <span id="userDisplay" class="text-slate-200"></span>
             <button id="btnLogout" data-action="logout" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-rose-700 hover:bg-rose-600 text-white">Sair</button>
         </div>
@@ -96,5 +98,7 @@
     </div>
     <script src="./config.js"></script>
     <script src="./admin.js?v=1.5"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}</script>
 </body>
 </html>

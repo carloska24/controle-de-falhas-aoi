@@ -17,6 +17,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `${h}:${m}:${s}`;
   }
 
+  // ================== FUNÇÃO ADICIONADA ==================
+  function formatTimestamp(ms) {
+    if (!ms) return 'N/A';
+    // Formato: 23/10/2025, 13:50:15
+    return new Date(ms).toLocaleString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+  }
+  // ================== FIM DA ADIÇÃO ==================
+
+
+  // ================== FUNÇÃO ATUALIZADA ==================
   async function fetchAndDisplayOmTime(omNumber) {
     if (!omNumber) {
       omTimeDisplay.innerHTML = '';
@@ -29,14 +46,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       const data = await resp.json();
+      
+      // Atualizado para usar os novos dados (startTime, endTime, elapsed)
       if (data.elapsed) {
-        omTimeDisplay.innerHTML = `<strong>Tempo Total de Inspeção:</strong> ${formatTimer(data.elapsed)}`;
+        omTimeDisplay.innerHTML = `
+          <strong>Início:</strong> ${formatTimestamp(data.startTime)}<br>
+          <strong>Fim:</strong> ${formatTimestamp(data.endTime)}<br>
+          <strong>Tempo Total: ${formatTimer(data.elapsed)}</strong>
+        `;
       }
     } catch (e) {
       console.error(`Erro ao buscar tempo para OM ${omNumber}:`, e);
       omTimeDisplay.innerHTML = '<span style="color: #ef4444; font-size: 0.9rem;">Erro ao buscar tempo</span>';
     }
   }
+  // ================== FIM DA ATUALIZAÇÃO ==================
 
   function renderTabela(registros) {
     if (!registros || !registros.length) {

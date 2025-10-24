@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const API_URL = `${API_BASE_URL}/api/requisicoes`;
 
     let allRequisicoes = [];
+    
+    // REMOVIDO: 'hasPlayedSound' não é mais necessário aqui
 
     // =================================================================
     // Seletores do DOM
@@ -45,9 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnLogout = document.querySelector('[data-action="logout"]') || document.querySelector('#btnLogout');
     const loadingOverlay = document.querySelector('#loadingOverlay');
     
-    // SUGESTÃO APLICADA (Reversão): Trocamos buscaInput por filtroOM
-    // const buscaInput = document.querySelector('#buscaRequisicao'); // REMOVIDO
-    const filtroOM = document.querySelector('#filtroOM'); // ADICIONADO DE VOLTA
+    const filtroOM = document.querySelector('#filtroOM');
     
     const tableBody = document.querySelector('#tbodyRequisicoes');
     const toastContainer = document.querySelector('#toastContainer');
@@ -61,6 +61,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeModalBtn = document.querySelector('#closeModal');
     const tbodyItens = document.querySelector('#tbodyItens');
     const btnSalvarItens = document.querySelector('[data-action="save-items"]') || document.querySelector('#btnSalvarItens');
+    
+    // Seletores da Notificação (ADICIONADO)
+    const notificationBell = document.querySelector('#notificationBellContainer');
+    const notificationSound = document.getElementById('notificationSound');
+
+    // Controle do sino
+    let bellActive = false;
+    let bellInterval = null;
+    let bellTimeout = null;
+
+    function tocarSinoRepetido() {
+        if (!bellActive) return;
+        if (notificationSound) {
+            notificationSound.pause(); // Garante que reinicia
+            notificationSound.currentTime = 0;
+            notificationSound.play().catch(()=>{});
+        }
+    }
+
+    function ativarSino() {
+        if (bellActive) return;
+        bellActive = true;
+        notificationBell.innerHTML = '<i data-lucide="bell-ring" class="w-6 h-6"></i>';
+        notificationBell.dataset.pending = "true";
+        try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
+        tocarSinoRepetido();
+        bellInterval = setInterval(tocarSinoRepetido, 5000); // a cada 5s
+    }
+
+    function desativarSino() {
+        bellActive = false;
+        if (bellInterval) { clearInterval(bellInterval); bellInterval = null; }
+        notificationBell.innerHTML = '<i data-lucide="bell" class="w-6 h-6"></i>';
+        notificationBell.dataset.pending = "false";
+        try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
+    }
 
     // =================================================================
     // Funções Utilitárias
@@ -99,7 +135,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // =================================================================
-    // Lógica da Página
+    // FUNÇÃO DO SINO (SIMPLIFICADA)
+    // =================================================================
+    function checkNotificationStatus() {
+        if (!notificationBell) return; // Aborta se os elementos não existirem
+
+        // Verifica se existe alguma requisição pendente ou em separação
+        const hasPending = allRequisicoes.some(r => r.status === 'pendente' || r.status === 'parcialmente_entregue');
+
+        if (hasPending) {
+            // Estado 1: Pendente
+            notificationBell.innerHTML = '<i data-lucide="bell-ring" class="w-6 h-6"></i>';
+            notificationBell.dataset.pending = "true"; // Adiciona o data-attribute para o CSS (ponto vermelho)
+
+            // Ativa o sino automaticamente se não estiver ativo
+            if (!bellActive) {
+                ativarSino();
+            }
+        } else {
+            // Estado 2: Tudo em ordem
+            notificationBell.innerHTML = '<i data-lucide="bell" class="w-6 h-6"></i>';
+            notificationBell.dataset.pending = "false";
+            // Desativa o sino se não houver mais pendências
+            if (bellActive) {
+                desativarSino();
+            }
+        }
+
+        // Recria os ícones do Lucide
+        try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
+    }
+
+
+    // =================================================================
+    // Lógica da Página (Funções existentes)
     // =================================================================
     const statusMap = {
         pendente: 'Aberto',
@@ -107,7 +176,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         entregue: 'Entregue'
     };
 
-    // SUGESTÃO APLICADA (Reversão): Função para popular o dropdown de OM
     function popularFiltroOM() {
         const oms = [...new Set(allRequisicoes.map(r => r.om))];
         filtroOM.innerHTML = `<option value="todos">Todas as OMs</option>`;
@@ -120,15 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderTable() {
-        // SUGESTÃO APLICADA (Reversão): Lógica de filtro alterada
-        // const filtroTexto = (buscaInput?.value || '').toLowerCase(); // REMOVIDO
-        const omSelecionada = filtroOM.value; // ADICIONADO DE VOLTA
+        const omSelecionada = filtroOM.value;
         const statusSel = filtroStatus.value;
 
         let dadosFiltrados = allRequisicoes.filter(r =>
-            (omSelecionada === 'todos' || r.om === omSelecionada) && // Filtro pelo dropdown
+            (omSelecionada === 'todos' || r.om === omSelecionada) &&
             (statusSel === 'todos' || r.status === statusSel)
-            // r.om.toLowerCase().includes(filtroTexto) // Filtro por texto removido
         );
 
         // Ordenação
@@ -152,12 +217,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dadosFiltrados.length === 0) {
             tableBody.innerHTML = '';
             if (emptyState) emptyState.style.display = 'block';
-            return;
         } else {
             if (emptyState) emptyState.style.display = 'none';
         }
 
-        // A renderização da tabela com botões de ícone unificados (da sugestão anterior) é mantida
         tableBody.innerHTML = dadosFiltrados.map(req => `
             <tr data-id="${req.id}">
                 <td data-label="ID" style="text-align: center; vertical-align: middle;">#${req.id}</td>
@@ -193,12 +256,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const raw = await fetchAutenticado(API_URL) || [];
-            // Filtro defensivo no frontend: oculta DEMO para não-admin
             allRequisicoes = (user && user.role === 'admin') ? raw : raw.filter(r => !(r.om || '').startsWith('DEMO-'));
             
-            // SUGESTÃO APLICADA (Reversão): Popular o filtro de OM
             popularFiltroOM();
             renderTable();
+            checkNotificationStatus(); // <-- ADICIONADO: Verifica o status do sino após carregar
         } catch (error) {
             console.error("Erro ao carregar requisições:", error);
             showToast(`Não foi possível carregar as requisições: ${error.message}`, 'error');
@@ -218,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ status: 'entregue' })
             });
             showToast(`Requisição #${reqId} marcada como "Entregue".`);
-            await inicializar(); // Recarrega os dados para refletir a mudança
+            await inicializar(); // Recarrega os dados (e o inicializar() já chama o checkNotificationStatus())
         } catch (error) { showToast(`Erro ao atender requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
     }
 
@@ -227,11 +289,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             setLoading(true);
             await fetchAutenticado(`${API_URL}/${reqId}`, { method: 'DELETE' });
             
-            // Remove da lista local e renderiza a tabela novamente
             allRequisicoes = allRequisicoes.filter(r => r.id != reqId);
             renderTable();
-            
-            // SUGESTÃO APLICADA (Reversão): Atualiza o filtro de OMs
+            checkNotificationStatus(); // <-- ADICIONADO: Atualiza o sino após excluir
             popularFiltroOM(); 
 
             showToast(`Requisição #${reqId} excluída com sucesso.`);
@@ -241,49 +301,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================
     // Event Listeners
     // =================================================================
+    
+    // Tenta desbloquear o áudio automaticamente ao carregar a página
+    setTimeout(() => {
+        if (notificationSound && notificationSound.paused) {
+            notificationSound.play().catch(()=>{});
+            notificationSound.pause();
+            notificationSound.currentTime = 0;
+        }
+    }, 500);
+
+
+    // Clique no sino ativa/desativa
+    if (notificationBell) {
+        notificationBell.addEventListener('click', () => {
+            if (bellActive) {
+                desativarSino();
+            } else {
+                ativarSino();
+            }
+        });
+    }
+
+
     btnLogout.addEventListener('click', async () => {
         if (user && user.role === 'admin') {
             try {
-                // Chama o endpoint unificado de logout admin que limpa DEMOs em ambos os domínios
                 await fetchAutenticado(`${API_BASE_URL}/api/admin/logout`, { method: 'POST' });
             } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         }
         localStorage.clear(); sessionStorage.clear();
+        await fetchAutenticado(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' }).catch(()=>{});
         window.location.href = 'login.html';
     });
 
-    // Listener para abrir o modal
     tableBody.addEventListener('click', async (e) => {
-        const target = e.target.closest('button'); // Otimização: foca apenas em cliques em botões
-        if (!target) return; // Se o clique não foi em um botão, ignora.
+        const target = e.target.closest('button');
+        if (!target) return;
 
-        // Atender requisição
         if (target.classList.contains('btn-atender-req')) {
             handleAtenderRequisicao(target.dataset.id);
-            return; // Encerra a função para evitar outras verificações
+            return;
         }
 
-        // Excluir requisição (sem confirmação)
         if (target.classList.contains('btn-excluir-req')) {
-            // Nota: confirmação removida — a exclusão é executada imediatamente
             handleExcluirRequisicao(target.dataset.id);
-            return; // Encerra a função
+            return;
         }
         
-        // Ver itens da requisição
         if (target.classList.contains('btn-ver-itens')) {
             const reqId = target.dataset.id;
             const requisicao = allRequisicoes.find(r => r.id == reqId);
             const items = requisicao ? requisicao.items : [];
 
             modalTitle.textContent = `Requisição #${reqId} (OM: ${requisicao.om})`;
-            modal.dataset.reqId = reqId; // Armazena o ID da requisição no modal
+            modal.dataset.reqId = reqId;
             
             if (items && items.length > 0) {
-                // Exibe apenas a descrição limpa (remove designador entre parênteses, ex: "Componente (C188)" -> "Componente")
                 tbodyItens.innerHTML = items.map(item => {
                     const isDelivered = (item.quantidade_entregue || 0) >= item.quantidade_requisitada;
-                    // Remove trecho do designador entre parênteses no final da descrição, caso exista
                     const descricaoLimpa = (item.descricao || '').replace(/\s*\([^)]*\)\s*$/, '').trim() || 'N/A';
                     return `
                         <tr data-pn="${item.pn}">
@@ -333,15 +409,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             await fetchAutenticado(`${API_URL}/${reqId}/itens`, { method: 'PUT', body: JSON.stringify({ items: updatedItems }) });
             showToast('Quantidades entregues salvas com sucesso!');
             modal.classList.add('hidden');
-            await inicializar(); // Recarrega tudo para atualizar o status na tabela principal
+            await inicializar(); // Recarrega tudo (e o inicializar() já chama o checkNotificationStatus())
         } catch (error) { showToast(`Erro ao salvar itens: ${error.message}`, 'error'); } finally { setLoading(false); }
     });
 
-    // Listeners para fechar o modal
     closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
 
-    // Listener para o botão "Entregar" dentro do modal
     tbodyItens.addEventListener('click', (e) => {
         const target = e.target.closest('.btn-entregar-item');
         if (!target) return;
@@ -350,17 +424,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const row = tbodyItens.querySelector(`tr[data-pn="${pn}"]`);
         if (row) {
             const inputEntregue = row.querySelector('.input-table');
-            inputEntregue.value = inputEntregue.max; // Preenche com a quantidade máxima (requisitada)
-            target.parentElement.innerHTML = `<span style="color: var(--primary); font-weight: 600;">Entregue</span>`; // Atualiza a UI
+            inputEntregue.value = inputEntregue.max; 
+            target.parentElement.innerHTML = `<span style="color: var(--primary); font-weight: 600;">Entregue</span>`; 
         }
     });
 
-    // SUGESTÃO APLICADA (Reversão): Listeners de filtro
-    // buscaInput.addEventListener('input', () => { ... }); // REMOVIDO
-    filtroOM.addEventListener('change', renderTable); // ADICIONADO DE VOLTA
+    filtroOM.addEventListener('change', renderTable);
     filtroStatus.addEventListener('change', renderTable);
 
-    // Ordenação por cabeçalho
     document.querySelectorAll('#tabelaRequisicoes th.sortable').forEach(th => {
         th.addEventListener('click', () => {
             const key = th.dataset.key;
@@ -370,13 +441,67 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sortState.key = key;
                 sortState.dir = key === 'created_at' || key === 'id' ? 'desc' : 'asc';
             }
-            // Atualiza indicadores visuais
             document.querySelectorAll('#tabelaRequisicoes th.sortable').forEach(h => h.classList.remove('sort-asc','sort-desc'));
             th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
             renderTable();
         });
     });
 
+    // Exibe aviso para liberar áudio se necessário
+    function mostrarAvisoAudio() {
+        if (document.getElementById('audioUnlockPrompt')) return;
+        // Encontra o sino para posicionar o aviso abaixo dele
+        const bell = document.getElementById('notificationBellContainer');
+        const aviso = document.createElement('div');
+        aviso.id = 'audioUnlockPrompt';
+        aviso.style = 'position:absolute;z-index:1001;top:40px;right:0;min-width:220px;max-width:320px;padding:14px 18px;background:#222;color:#fff;border-radius:8px;box-shadow:0 2px 12px #0005;font-size:1rem;display:flex;align-items:center;gap:12px;animation:slideInNotif .3s;';
+        aviso.innerHTML = `
+            <span style="flex:1;">Clique para ativar notificações sonoras</span>
+            <button id='btnUnlockAudio' style='padding:7px 18px;font-size:1rem;background:#0ea5e9;color:#fff;border:none;border-radius:5px;cursor:pointer;'>Ativar Som</button>
+        `;
+        // Container para posicionamento relativo
+        let bellParent = bell && bell.parentElement;
+        if (bellParent && getComputedStyle(bellParent).position === 'static') {
+            bellParent.style.position = 'relative';
+        }
+        (bellParent || document.body).appendChild(aviso);
+        aviso.style.right = bell ? (bellParent.offsetWidth - bell.offsetLeft - bell.offsetWidth) + 'px' : '24px';
+        aviso.style.top = bell ? (bell.offsetTop + bell.offsetHeight + 8) + 'px' : '60px';
+        document.getElementById('btnUnlockAudio').onclick = function() {
+            if (notificationSound && notificationSound.paused) {
+                notificationSound.play().catch(()=>{});
+                notificationSound.pause();
+                notificationSound.currentTime = 0;
+            }
+            aviso.remove();
+            checkNotificationStatus();
+        };
+        // Animação CSS
+        if (!document.getElementById('audioUnlockNotifAnim')) {
+            const style = document.createElement('style');
+            style.id = 'audioUnlockNotifAnim';
+            style.innerHTML = `@keyframes slideInNotif{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}`;
+            document.head.appendChild(style);
+        }
+    }
+
+    // Testa se o áudio pode ser tocado automaticamente, senão mostra aviso
+    setTimeout(() => {
+        if (notificationSound && notificationSound.paused) {
+            notificationSound.play().then(() => {
+                notificationSound.pause();
+                notificationSound.currentTime = 0;
+            }).catch(() => {
+                mostrarAvisoAudio();
+            });
+        }
+    }, 500);
+
     // Inicializar a página
     inicializar();
+
+    // Atualização automática a cada 2 minutos (120000 ms)
+    setInterval(() => {
+        inicializar();
+    }, 120000);
 });

@@ -265,10 +265,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================
     btnLogout.addEventListener('click', async () => {
         try {
-            // Endpoint de logout admin no backend limpa registros e requisições de DEMO
             await fetchAutenticado(`${API_BASE_URL}/api/admin/logout`, { method: 'POST' });
         } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         localStorage.clear(); sessionStorage.clear();
+        await fetchAutenticado(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' }).catch(()=>{});
         window.location.href = 'login.html';
     });
 

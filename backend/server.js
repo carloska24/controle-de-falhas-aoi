@@ -1,4 +1,3 @@
-
 // Endpoint temporário para listar todos os registros do banco (para análise) - somente em desenvolvimento
 if (process.env.NODE_ENV !== 'production') {
     const _t_debug = setTimeout(() => {
@@ -28,11 +27,34 @@ const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const cookieParser = require('cookie-parser');
 
+// Logging gate: controla o que será impresso por console.log dependendo do ambiente
+const isProduction = process.env.NODE_ENV === 'production';
+const SILENCE_LOGS = String(process.env.SILENCE_LOGS || '').toLowerCase() === 'true';
+const LOG_LEVEL = (process.env.LOG_LEVEL || (isProduction ? 'error' : 'debug')).toLowerCase();
+const _levelOrder = { error: 0, warn: 1, info: 2, debug: 3 };
+const _currentLevel = _levelOrder[LOG_LEVEL] !== undefined ? _levelOrder[LOG_LEVEL] : 3;
+const _origConsoleLog = console.log.bind(console);
+console.log = function (...args) {
+    if (SILENCE_LOGS) return; // suprime todos os console.log quando ativado
+    try {
+        const first = typeof args[0] === 'string' ? args[0] : '';
+        let msgLevel = 'info';
+        if (/^\[debug/i.test(first) || first.toLowerCase().includes('[debug') || first.toLowerCase().includes('debug:')) msgLevel = 'debug';
+        if (/error|failed|exception|traceback/i.test(first)) msgLevel = 'error';
+        if (/warn|warning|limite/i.test(first)) msgLevel = 'warn';
+        if (_levelOrder[msgLevel] <= _currentLevel) {
+            _origConsoleLog(...args);
+        }
+    } catch (e) {
+        // se algo falhar ao decidir nível, não bloqueamos logs críticos
+        _origConsoleLog(...args);
+    }
+};
+
 console.log('Deploy forçado em 2025-10-07 para Render.');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
 const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
 
@@ -561,15 +583,38 @@ app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // ROTAS DE REGISTROS (PROTEGIDAS)
+// ================== INÍCIO DA ALTERAÇÃO ==================
 app.get('/api/registros', authenticateToken, async (req, res) => {
     try {
-        let registros;
-        if (req.user && req.user.role === 'admin') {
-            registros = await dbAll('SELECT * FROM registros ORDER BY createdat DESC');
-        } else {
-            registros = await dbAll("SELECT * FROM registros WHERE om NOT LIKE 'DEMO-%' ORDER BY createdat DESC");
+        const { om } = req.query; // <<< NOVO: Captura o parâmetro ?om=
+        const isAdminUser = req.user && req.user.role === 'admin';
+
+        let queryBase = 'SELECT * FROM registros';
+        let whereClauses = [];
+        let queryParams = [];
+
+        // Lógica de segurança que já existia
+        if (!isAdminUser) {
+            whereClauses.push("om NOT LIKE 'DEMO-%'");
         }
-        // Mapeia campos camelCase para minúsculo, compatível com o frontend
+
+        // <<< NOVO: Adiciona o filtro de OM à consulta SQL
+        if (om) {
+            whereClauses.push("om = ?");
+            queryParams.push(om);
+        }
+
+        let query = queryBase;
+        if (whereClauses.length > 0) {
+            query += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        query += ' ORDER BY createdat DESC';
+
+        console.log(`[API /api/registros] Executando SQL: ${query}`, queryParams);
+        let registros = await dbAll(query, queryParams);
+        // Fim da lógica SQL
+
+        // O restante da sua função continua igual...
         registros = registros.map(r => ({
             id: r.id,
             om: r.om,
@@ -587,6 +632,7 @@ app.get('/api/registros', authenticateToken, async (req, res) => {
         res.json(registros);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ================== FIM DA ALTERAÇÃO ==================
 
 app.post('/api/registros', authenticateToken, validate(registroCreateSchema), async (req, res) => {
     const r = req.body;
@@ -878,6 +924,34 @@ app.delete('/api/requisicoes/demo', authenticateToken, isAdmin, async (_req, res
 
 // ================= OM Persistence (In-Memory) =================
 // Cria tabela de OMs finalizadas se não existir
+// Endpoint para listar OMs em memória por status
+// Exemplo: /api/oms?status=pausada  ou  /api/oms?status=em_andamento  ou  /api/oms (todas)
+app.get('/api/oms', (req, res) => {
+    const { status } = req.query;
+    let lista = Object.values(oms);
+    if (status) {
+        lista = lista.filter(om => om.status === status);
+    }
+    // Não retorna OMs finalizadas (essas vão para o banco)
+    lista = lista.filter(om => om.status !== 'finalizada');
+    // Busca qtdlote de cada OM nos registros
+    Promise.all(lista.map(async om => {
+        let qtdlote = null;
+        try {
+            const qtdRes = await dbGet('SELECT qtdlote FROM registros WHERE om = ? LIMIT 1', [om.omNumber]);
+            qtdlote = qtdRes ? qtdRes.qtdlote : null;
+        } catch {}
+        return {
+            omNumber: om.omNumber,
+            status: om.status,
+            startTime: om.startTime,
+            pausedTime: om.pausedTime,
+            endTime: om.endTime,
+            pauseStartedAt: om.pauseStartedAt,
+            qtdlote
+        };
+    })).then(result => res.json(result));
+});
 const _t_oms = setTimeout(async () => {
     if (typeof dbRun === 'function') {
         await dbRun(`CREATE TABLE IF NOT EXISTS oms_finalizadas (
@@ -1006,6 +1080,7 @@ app.put('/api/om/finalizar', (req, res) => {
 // ================= Fim OM Persistence =================
 
 // Endpoint para buscar o tempo de uma OM específica
+// Endpoint para buscar o tempo de uma OM específica
 app.get('/api/om-time/:omNumber', async (req, res) => {
     const { omNumber } = req.params;
     try {
@@ -1014,7 +1089,14 @@ app.get('/api/om-time/:omNumber', async (req, res) => {
             return res.status(404).json({ error: 'Dados de tempo para esta OM não encontrados.' });
         }
         const elapsed = (omData.endTime - omData.startTime) - (omData.pausedTime || 0);
-        res.json({ elapsed });
+        // <<< MUDANÇA AQUI >>>
+        // Envia o objeto completo em vez de apenas o 'elapsed'
+        res.json({ 
+            elapsed: elapsed,
+            startTime: omData.startTime,
+            endTime: omData.endTime
+        });
+        // <<< FIM DA MUDANÇA >>>
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -1342,7 +1424,7 @@ async function initApp() {
 async function startServer() {
     await initApp();
     app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Servidor rodando na porta ${PORT} (acessível na rede local)`);
+    console.info(`Servidor rodando na porta ${PORT} (acessível na rede local)`);
     });
 }
 

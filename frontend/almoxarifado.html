@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./style.css?v=1.5">
         <link rel="stylesheet" href="./react-examples/dist/output.css">
         <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./reparo.css?v=1.6">
     <style>
         .modal-large {
             width: 80%; /* Aumenta a largura do modal */
@@ -22,6 +23,47 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
+
+        /* */
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            color: #cbd5e1; /* slate-300 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px; /* Espaçamento */
+        }
+        
+        .notification-bell[data-pending="true"] {
+             color: #f59e0b; /* amber-500 */
+        }
+
+        /* Animação de balanço */
+        .notification-bell .lucide-bell-ring {
+            animation: ring 1.5s ease-in-out infinite;
+        }
+
+        /* Ponto vermelho de notificação */
+        .notification-bell[data-pending="true"]::after {
+            content: '';
+            position: absolute;
+            top: 1px; /* Ajuste a posição do ponto */
+            right: 1px; /* Ajuste a posição do ponto */
+            width: 9px;
+            height: 9px;
+            background-color: #ef4444; /* red-500 */
+            border-radius: 50%;
+            border: 2px solid var(--background-dark); /* Borda para destacar do sino */
+        }
+
+        @keyframes ring {
+            0%, 100% { transform: rotate(0); }
+            10%, 30%, 50%, 70%, 90% { transform: rotate(15deg); }
+            20%, 40%, 60%, 80% { transform: rotate(-15deg); }
+        }
+        /* */
+
     </style>
 </head>
 <body>
@@ -31,8 +73,12 @@
         Requisições de Componentes
     </div>
     <div class="user-info flex items-center gap-3">
-    <a href="index.html" data-action="back" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30 admin-only">Voltar ao Registro</a>
-    <!-- O botão de voltar para operadores é inserido via JS -->
+        <a href="index.html" data-action="back" class="back-btn admin-only" style="background:transparent; border:none; box-shadow:none;" title="Voltar">
+            <i data-lucide="arrow-big-left" class="w-6 h-6" style="color:#fff;"></i>
+        </a>
+        
+        <div id="notificationBellContainer" class="notification-bell" title="Status das Requisições">
+            <i data-lucide="bell" class="w-6 h-6"></i> </div>
         <span id="userDisplay" class="text-slate-200"></span>
         <button id="btnLogout" data-action="logout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
     </div>
@@ -40,28 +86,24 @@
 
 <div class="container">
     <div class="main-column">
-        <header>
-            <div class="title">Requisições de Componentes</div>
-        </header>
 
         <section class="card">
             <h2 class="section-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 8.5C2 5 4 3.5 7 3.5H17C20 3.5 22 5 22 8.5V15.5C22 19 20 20.5 17 20.5H7" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9L13.87 11.5C12.84 12.32 11.15 12.32 10.12 11.5L7 9" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 16.5H8" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12.5H5" stroke="var(--primary)" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <i data-lucide="warehouse" class="w-6 h-6 text-sky-400"></i>
                 <span>Lista de Requisições Pendentes</span>
             </h2>
             <div class="toolbar">
-                <div class="left field">
-                    <label for="filtroOM">Filtrar por OM:</label>
-                    <select id="filtroOM"></select>
-                </div>
                 <div class="right">
-                    <select id="filtroStatus" class="search-input" style="min-width: 180px;">
+                    <select id="filtroOM" class="search-input" style="width: auto;">
+                        <option value="todos">Todas as OMs</option>
+                        </select>
+                    
+                    <select id="filtroStatus" class="search-input" style="width: auto;">
                         <option value="todos">Todos os status</option>
                         <option value="pendente">Aberto</option>
                         <option value="parcialmente_entregue">Separando</option>
                         <option value="entregue">Entregue</option>
                     </select>
-                    <input class="search-input" id="buscaRequisicao" placeholder="🔎 Buscar por OM...">
                 </div>
             </div>
             <table id="tabelaRequisicoes">
@@ -72,9 +114,7 @@
                         <th class="sortable" data-key="created_at" style="text-align: center;">Data</th>
                         <th class="sortable" data-key="created_by" style="text-align: center;">Solicitante</th>
                         <th class="sortable" data-key="status" style="text-align: center;">Status</th>
-                        <th style="text-align: center;">Requisição</th>
                         <th style="text-align: center;">Ações</th>
-                        <th style="text-align: center;"></th> <!-- Coluna vazia para o botão de excluir do admin -->
                     </tr>
                 </thead>
                 <tbody id="tbodyRequisicoes"></tbody>
@@ -87,7 +127,6 @@
 <div id="toastContainer"></div>
 <div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
 
-<!-- Modal para exibir itens da requisição -->
 <div id="itensModal" class="modal-overlay hidden">
     <div class="modal-content modal-large">
         <div class="modal-header">
@@ -114,6 +153,13 @@
     </div>
 </div>
 
-<script src="./almoxarifado.js?v=1.5"></script>
+<audio id="notificationSound" src="./sounds/notification.mp3" preload="metadata"></audio>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="./almoxarifado.js?v=1.7"></script>
+
+<script>
+    try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) { console.warn('lucide init failed', e); }
+</script>
 </body>
 </html>

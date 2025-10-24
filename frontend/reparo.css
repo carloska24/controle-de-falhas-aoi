@@ -1,22 +1,6 @@
-.status-tag {
-    padding: 3px 6px; /* reduzido para evitar quebra de linha */
-    border-radius: 10px;
-    font-size: 11px; /* levemente menor */
-    font-weight: 700;
-    text-transform: uppercase;
-    line-height: 1; /* evita alto espaçamento vertical */
-    display: inline-block;
-    white-space: nowrap; /* evita quebra do texto do status */
-}
+/* Regra .status-tag removida daqui */
 
-/* Regra com especificidade maior para garantir que badges na tabela de reparo
-   não quebrem e tenham prioridade sobre definies globais */
-#reparoTable .status-tag {
-    padding: 3px 6px !important;
-    font-size: 11px !important;
-    border-radius: 10px !important;
-    white-space: nowrap !important;
-}
+/* Regra #reparoTable .status-tag removida daqui */
 
 .status-aberto {
     background-color: rgba(249, 115, 22, 0.1);
@@ -116,4 +100,37 @@
     /* Em modo mobile, permitir que as ações quebrem para múltiplas linhas se necessário */
     #reparoTable td.actions-cell .action-wrap { flex-wrap: wrap; gap: 6px; }
     #reparoTable td.actions-cell .action-wrap > button { min-width: 44px; flex: 1 1 auto; }
+}
+
+/* SUGESTÃO APLICADA (do Almoxarifado): 
+  Tags de Status Maiores e mais destacadas
+*/
+#reparoTable .status-tag {
+    padding: 6px 12px;     /* Aumenta o "espaço" interno */
+    border-radius: 20px;  /* Deixa as bordas mais arredondadas */
+    font-size: 13px;      /* Aumenta o tamanho da fonte */
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.2;     /* Melhora o espaçamento vertical */
+    display: inline-block;
+    white-space: nowrap;
+}
+
+
+/* CORREÇÃO: 
+  Classes de cor para os ícones (copiadas do style.css principal)
+*/
+.text-amber-400 {
+    color: #f59e0b; /* Cor --warn (Laranja) */
+}
+.text-rose-600 {
+    color: #e11d48; /* Cor --btn-rose (Vermelho) */
+}
+
+/* Efeitos hover para os ícones */
+.hover\:bg-amber-500\/10:hover {
+    background: rgba(245, 158, 11, 0.1);
+}
+.hover\:bg-rose-700\/5:hover {
+    background: rgba(190, 18, 60, 0.05);
 }

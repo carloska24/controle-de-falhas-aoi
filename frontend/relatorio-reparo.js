@@ -2,11 +2,58 @@ document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('reparoReportContainer');
   const buscaInput = document.getElementById('buscaReparo');
   const filtroOM = document.getElementById('filtroOMReparo');
-  // Filtros removidos
   const btnExportarCSV = document.getElementById('btnExportarCSVReparo');
 
   let allRegistros = [];
   let flatRegistros = [];
+
+  // =================================================================
+  // Lógica de API e Autenticação (COPIADA DE REPARO.JS)
+  // =================================================================
+
+  let user = null;
+  let getApiBaseUrl = null;
+  try {
+    // Tenta importar as utils
+    const utils = await import('./utils.js');
+    user = await utils.ensureUser();
+    getApiBaseUrl = utils.getApiBaseUrl; // Armazena a função
+  } catch (e) {
+    console.error("Falha ao carregar utils.js", e);
+    // Fallback para usuário no localStorage se a importação falhar
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  }
+  // Se não houver usuário, redireciona para o login
+  if (!user) { window.location.href = 'login.html'; return; }
+
+  // Define a URL correta da API (apontando para a porta 3001)
+  const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('http://' + window.location.hostname + ':3001'));
+  const API_URL = `${API_BASE_URL}/api/registros`;
+
+  /**
+   * Função de fetch autenticado (COPIADA DE REPARO.JS)
+   */
+  async function fetchAutenticado(url, options = {}) {
+    const defaultHeaders = { 'Content-Type': 'application/json' };
+    options.headers = { ...defaultHeaders, ...options.headers };
+    options.credentials = options.credentials || 'include';
+    const response = await fetch(url, options);
+    if (response.status === 401 || response.status === 403) {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = 'login.html';
+      throw new Error('Token inválido ou expirado.');
+    }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' }));
+      throw new Error(errorData.error || `Erro na API: ${response.statusText}`);
+    }
+    if (response.status === 204) return null;
+    return response.json();
+  }
+
+  // =================================================================
+  // Lógica da Página (Restante do seu código original)
+  // =================================================================
 
   function renderTabela(registros) {
     if (!registros.length) {
@@ -34,13 +81,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.innerHTML = html;
   }
 
-  // Função de atualizar filtros removida
-
   let omSelecionada = '';
   function filtrarRegistros() {
     let regs = [...flatRegistros];
-    // Busca
-    const busca = (buscaInput.value || '').toLowerCase();
+    // Busca (O input de busca não existe no seu HTML, mas deixei a lógica caso adicione)
+    const busca = (buscaInput?.value || '').toLowerCase();
     if (busca) {
       regs = regs.filter(r => Object.values(r).some(v => ((v || '').toString().toLowerCase().includes(busca))));
     }
@@ -53,7 +98,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function exportarCSV() {
     let csv = 'OM,Cod. Alt,Serial,Designador,Defeito,Descrição,Data/Hora,Operador,Status do Reparo,Observações\n';
-    for (const r of flatRegistros) {
+    // Usa 'flatRegistros' para exportar tudo, independente do filtro
+    for (const r of flatRegistros) { 
       csv += `${r.om},${r.pn},${r.serial},${r.designador},${r.tipodefeito || r.defeito || ''},${r.descricao},${r.createdat ? new Date(r.createdat).toLocaleString('pt-BR') : '-'},${r.operador},${r.status ? (r.status.charAt(0).toUpperCase() + r.status.slice(1)) : ''},${r.obs || ''}\n`;
     }
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -63,25 +109,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     link.click();
   }
 
-  buscaInput.addEventListener('input', filtrarRegistros);
+  // O input 'buscaReparo' não está no HTML, o 'if' evita erro
+  if (buscaInput) {
+    buscaInput.addEventListener('input', filtrarRegistros);
+  }
   btnExportarCSV.addEventListener('click', exportarCSV);
   filtroOM.addEventListener('change', () => {
     omSelecionada = filtroOM.value;
     filtrarRegistros();
   });
 
-  // Garantir user via cookie
-  try {
-    const utils = await import('./utils.js');
-    await utils.ensureUser();
-  } catch (e) { /* ignore */ }
+  // Bloco de 'ensureUser' removido daqui, pois já foi feito no topo.
 
   // Busca dados
   container.innerHTML = '<div class="note">Carregando dados...</div>';
   try {
-    const resp = await fetch('/api/registros', { credentials: 'include' });
-    if (!resp.ok) throw new Error('Erro ao buscar dados');
-    const data = await resp.json();
+    // CORRIGIDO: Usa fetchAutenticado e a API_URL correta
+    const data = await fetchAutenticado(API_URL); 
+
     if (!Array.isArray(data) || data.length === 0) {
       container.innerHTML = '<div class="note">Nenhum registro encontrado.</div>';
       return;
@@ -102,8 +147,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Preencher opções de OM
     const oms = [...new Set(flatRegistros.map(r => r.om))];
     filtroOM.innerHTML = '<option value="">Filtrar por OM</option>' + oms.map(om => `<option value="${om}">${om}</option>`).join('');
-    filtrarRegistros();
+    filtrarRegistros(); // Renderiza a tabela com os dados
   } catch (e) {
+    // Agora, se o fetch falhar (ex: token expirado), o fetchAutenticado vai redirecionar
+    // Se for outro erro, ele será exibido
     container.innerHTML = `<div class="note">Erro: ${e.message}</div>`;
   }
 });

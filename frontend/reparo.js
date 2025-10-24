@@ -221,11 +221,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnLogout.addEventListener('click', async () => {
         if (user && user.role === 'admin') {
             try {
-                // Endpoint unificado de logout admin limpa DEMOs de registros e requisições
                 await fetchAutenticado(`${API_BASE_URL}/api/admin/logout`, { method: 'POST' });
             } catch (error) { console.error('Falha ao limpar dados de demo:', error); }
         }
         localStorage.clear(); sessionStorage.clear();
+        await fetchAutenticado(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' }).catch(()=>{});
         window.location.href = 'login.html';
     });
     [omFilter, statusFilter].forEach(el => el.addEventListener('change', renderTable));
