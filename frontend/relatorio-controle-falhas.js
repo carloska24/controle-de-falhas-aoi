@@ -1,4 +1,18 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  const btnExportarGraficos = document.getElementById('btnExportarGraficos');
+  function exportarGraficoComoImagem(canvas, nome) {
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nome + '.png';
+    link.click();
+  }
+
+  btnExportarGraficos.addEventListener('click', () => {
+    exportarGraficoComoImagem(graficoDefeitos, 'grafico_defeitos');
+    exportarGraficoComoImagem(graficoOMs, 'grafico_oms');
+    exportarGraficoComoImagem(graficoOperadores, 'grafico_operadores');
+  });
   const btnVerGraficos = document.getElementById('btnVerGraficos');
   const graficosPanel = document.getElementById('graficosPanel');
   const graficoDefeitos = document.getElementById('graficoDefeitos');
