@@ -257,12 +257,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
 
         try {
-            const raw = await fetchAutenticado(API_URL) || [];
+            let raw = await fetchAutenticado(API_URL);
+            if (!Array.isArray(raw)) raw = [];
             allRequisicoes = (user && user.role === 'admin') ? raw : raw.filter(r => !(r.om || '').startsWith('DEMO-'));
-            
             popularFiltroOM();
             renderTable();
-            checkNotificationStatus(); // <-- ADICIONADO: Verifica o status do sino após carregar
+            checkNotificationStatus();
         } catch (error) {
             console.error("Erro ao carregar requisições:", error);
             showToast(`Não foi possível carregar as requisições: ${error.message}`, 'error');
