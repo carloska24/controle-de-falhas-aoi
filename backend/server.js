@@ -26,6 +26,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const cookieParser = require('cookie-parser');
+const cache = require('./cache');
 
 // Logging gate: controla o que será impresso por console.log dependendo do ambiente
 const isProduction = process.env.NODE_ENV === 'production';
@@ -1187,6 +1188,11 @@ app.get('/api/relatorio-falhas', async (req, res) => {
     try {
         // Parâmetros de paginação e filtros
         const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
+        const cacheKey = JSON.stringify({ om, status, dataIni, dataFim, page, limit });
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
         let whereClauses = [];
         let queryParams = [];
 
@@ -1244,7 +1250,7 @@ app.get('/api/relatorio-falhas', async (req, res) => {
             });
         }
         // Retorna como array + metadados
-        res.json({
+        const result = {
             data: Object.values(porOM),
             meta: {
                 total,
@@ -1252,7 +1258,9 @@ app.get('/api/relatorio-falhas', async (req, res) => {
                 limit: limitNum,
                 totalPages: Math.ceil(total / limitNum)
             }
-        });
+        };
+        cache.set(cacheKey, result, 60000); // cache por 60s
+        res.json(result);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
