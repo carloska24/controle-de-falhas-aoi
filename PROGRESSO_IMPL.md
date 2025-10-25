@@ -1,10 +1,20 @@
+- [x] Gráficos interativos para análise visual
+  - Status: concluído
+  - Detalhes: Painel de gráficos (Chart.js) integrado ao relatório, permitindo análise por tipo de defeito, OM e operador, com dados filtrados em tempo real.
+
+- [x] Exportação dos gráficos como imagens PNG
+  - Status: concluído
+  - Detalhes: Botão de exportação permite baixar os gráficos do painel de análise visual diretamente como imagens PNG para uso em relatórios e apresentações.
+- 25/10/2025: Gráficos interativos para análise visual das falhas implementados e integrados ao frontend.
+- 25/10/2025: Exportação dos gráficos como imagens PNG concluída e disponível no painel de análise visual.
 # Progresso das Implementações
 
 Este arquivo registra o andamento das melhorias no sistema, servindo como referência única para retomada do trabalho, mesmo em caso de mudança de chat.
 
-
 ## Todo List
+
 - [x] Integração e melhorias no frontend
+
   - Status: concluído
   - Detalhes: Relatório de falhas agora possui paginação visual, filtros avançados (OM, data, operador, tipo de defeito) e experiência aprimorada para análise. Código atualizado e pronto para novas evoluções.
 
