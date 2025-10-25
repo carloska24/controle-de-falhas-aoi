@@ -586,36 +586,57 @@ app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res) => {
 // ================== INÍCIO DA ALTERAÇÃO ==================
 app.get('/api/registros', authenticateToken, async (req, res) => {
     try {
-        const { om } = req.query; // <<< NOVO: Captura o parâmetro ?om=
+        // Parâmetros de paginação e filtros
+        const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
         const isAdminUser = req.user && req.user.role === 'admin';
 
-        let queryBase = 'SELECT * FROM registros';
         let whereClauses = [];
         let queryParams = [];
 
-        // Lógica de segurança que já existia
         if (!isAdminUser) {
             whereClauses.push("om NOT LIKE 'DEMO-%'");
         }
-
-        // <<< NOVO: Adiciona o filtro de OM à consulta SQL
         if (om) {
             whereClauses.push("om = ?");
             queryParams.push(om);
         }
+        if (status) {
+            whereClauses.push("status = ?");
+            queryParams.push(status);
+        }
+        if (dataIni) {
+            whereClauses.push("createdat >= ?");
+            queryParams.push(dataIni);
+        }
+        if (dataFim) {
+            whereClauses.push("createdat <= ?");
+            queryParams.push(dataFim);
+        }
 
-        let query = queryBase;
+        // Monta consulta principal
+        let query = 'SELECT * FROM registros';
         if (whereClauses.length > 0) {
             query += ' WHERE ' + whereClauses.join(' AND ');
         }
         query += ' ORDER BY createdat DESC';
 
-        console.log(`[API /api/registros] Executando SQL: ${query}`, queryParams);
-        let registros = await dbAll(query, queryParams);
-        // Fim da lógica SQL
+        // Paginação
+        const pageNum = Math.max(1, parseInt(page, 10));
+        const limitNum = Math.max(1, Math.min(parseInt(limit, 10), 200));
+        const offset = (pageNum - 1) * limitNum;
+        query += ` LIMIT ${limitNum} OFFSET ${offset}`;
 
-        // O restante da sua função continua igual...
-        registros = registros.map(r => ({
+        // Consulta total de registros para metadados
+        let countQuery = 'SELECT COUNT(*) as total FROM registros';
+        if (whereClauses.length > 0) {
+            countQuery += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        const countRes = await dbGet(countQuery, queryParams);
+        const total = countRes ? (countRes.total || 0) : 0;
+
+        // Consulta paginada
+        const registros = await dbAll(query, queryParams);
+        const mapped = registros.map(r => ({
             id: r.id,
             om: r.om,
             qtdlote: r.qtdlote,
@@ -629,7 +650,15 @@ app.get('/api/registros', authenticateToken, async (req, res) => {
             status: r.status,
             operador: r.operador
         }));
-        res.json(registros);
+        res.json({
+            data: mapped,
+            meta: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ================== FIM DA ALTERAÇÃO ==================
@@ -853,19 +882,69 @@ app.post('/api/requisicoes', authenticateToken, validate(requisicoesCreateSchema
 
 app.get('/api/requisicoes', authenticateToken, async (req, res) => {
     try {
+        // Parâmetros de paginação e filtros
+        const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
         const isAdminUser = req.user && req.user.role === 'admin';
-        const sql = isAdminUser
-            ? 'SELECT * FROM requisicoes ORDER BY created_at DESC'
-            : "SELECT * FROM requisicoes WHERE om NOT LIKE 'DEMO-%' ORDER BY created_at DESC";
-        const requisicoes = await dbAll(sql);
-        // O campo 'items' é armazenado como TEXT/JSON, então precisamos fazer o parse.
+
+        let whereClauses = [];
+        let queryParams = [];
+
+        if (!isAdminUser) {
+            whereClauses.push("om NOT LIKE 'DEMO-%'");
+        }
+        if (om) {
+            whereClauses.push("om = ?");
+            queryParams.push(om);
+        }
+        if (status) {
+            whereClauses.push("status = ?");
+            queryParams.push(status);
+        }
+        if (dataIni) {
+            whereClauses.push("created_at >= ?");
+            queryParams.push(dataIni);
+        }
+        if (dataFim) {
+            whereClauses.push("created_at <= ?");
+            queryParams.push(dataFim);
+        }
+
+        // Monta consulta principal
+        let query = 'SELECT * FROM requisicoes';
+        if (whereClauses.length > 0) {
+            query += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        query += ' ORDER BY created_at DESC';
+
+        // Paginação
+        const pageNum = Math.max(1, parseInt(page, 10));
+        const limitNum = Math.max(1, Math.min(parseInt(limit, 10), 200));
+        const offset = (pageNum - 1) * limitNum;
+        query += ` LIMIT ${limitNum} OFFSET ${offset}`;
+
+        // Consulta total de registros para metadados
+        let countQuery = 'SELECT COUNT(*) as total FROM requisicoes';
+        if (whereClauses.length > 0) {
+            countQuery += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        const countRes = await dbGet(countQuery, queryParams);
+        const total = countRes ? (countRes.total || 0) : 0;
+
+        // Consulta paginada
+        const requisicoes = await dbAll(query, queryParams);
         const requisicoesComItems = requisicoes.map(r => ({
             ...r,
-            // Para PostgreSQL (JSON/JSONB), r.items já é um objeto.
-            // Para SQLite (TEXT), r.items é uma string que precisa de parse.
             items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items
         }));
-        res.json(requisicoesComItems);
+        res.json({
+            data: requisicoesComItems,
+            meta: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
     } catch (err) { res.status(500).json({ error: `Erro ao buscar requisições: ${err.message}` }); }
 });
 
