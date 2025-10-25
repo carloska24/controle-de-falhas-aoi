@@ -1365,7 +1365,14 @@ async function initApp() {
                 operador VARCHAR(255)
             );
         `);
-        console.log('Tabelas requisicoes, users e registros verificadas/criadas no PostgreSQL.');
+        // Índices para performance de filtros
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_registros_om ON registros (om);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_registros_status ON registros (status);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_registros_createdat ON registros (createdat DESC);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_requisicoes_om ON requisicoes (om);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_requisicoes_status ON requisicoes (status);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_requisicoes_created_at ON requisicoes (created_at DESC);`);
+        console.log('Tabelas e índices de performance verificadas/criadas no PostgreSQL.');
         // Purga automática de DEMO antigos (se configurado)
         const purgeDays = parseInt(process.env.DEMO_AUTO_PURGE_DAYS || '0', 10);
         if (!isNaN(purgeDays) && purgeDays > 0) {
