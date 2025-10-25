@@ -38,11 +38,21 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11L12 15L16 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         <span>Exportar CSV</span>
                     </button>
+                    <button id="btnVerGraficos" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 17V10M9 17V7M14 17V13M19 17V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Visualizar Gráficos</span>
+                    </button>
                 </div>
             </div>
 
             <div id="falhasReportContainer" style="overflow-x:auto;">
                 <div class="note">Carregando dados...</div>
+            </div>
+            <div id="graficosPanel" style="display:none; margin-top:32px;">
+                <h3 class="section-title"><i data-lucide="bar-chart-3" class="w-5 h-5 text-sky-400"></i> Análise Visual das Falhas</h3>
+                <canvas id="graficoDefeitos" style="max-width:600px; margin-bottom:32px;"></canvas>
+                <canvas id="graficoOMs" style="max-width:600px; margin-bottom:32px;"></canvas>
+                <canvas id="graficoOperadores" style="max-width:600px;"></canvas>
             </div>
 
             <div id="reportFooter" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #334155; text-align: right;">
