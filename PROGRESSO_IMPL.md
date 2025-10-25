@@ -2,7 +2,17 @@
 
 Este arquivo registra o andamento das melhorias no sistema, servindo como referência única para retomada do trabalho, mesmo em caso de mudança de chat.
 
+
 ## Todo List
+- [x] Integração e melhorias no frontend
+  - Status: concluído
+  - Detalhes: Relatório de falhas agora possui paginação visual, filtros avançados (OM, data, operador, tipo de defeito) e experiência aprimorada para análise. Código atualizado e pronto para novas evoluções.
+
+- [x] Gráficos interativos para análise visual
+  - Status: concluído
+  - Detalhes: Painel de gráficos (Chart.js) integrado ao relatório, permitindo análise por tipo de defeito, OM e operador, com dados filtrados em tempo real.
+- 25/10/2025: Integração e melhorias no frontend concluídas: paginação visual, filtros avançados, experiência aprimorada.
+- 25/10/2025: Gráficos interativos para análise visual das falhas implementados e integrados ao frontend.
 
 - [x] Paginação e Filtragem no Backend
 
