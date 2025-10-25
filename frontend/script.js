@@ -804,24 +804,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       // pré-filtrada pela OM (se `filtroOM` foi usado).
       // 'busca' (texto) filtra *dentro* do que já foi retornado (seja tudo ou uma OM).
       const f = (busca?.value || '').toLowerCase();
-      let rowsToRender = registros;
+      let rowsToRender = Array.isArray(registros) ? registros : [];
 
       if (f) {
-        rowsToRender = registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
+        rowsToRender = rowsToRender.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
       }
 
       // Ordenação
       const key = sortState.key;
       const dir = sortState.dir === 'asc' ? 1 : -1;
-      rowsToRender.sort((a,b) => {
-        let va = a[key] ?? '';
-        let vb = b[key] ?? '';
-        if (key === 'createdat') { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
-        else { va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase(); }
-        if (va < vb) return -1 * dir;
-        if (va > vb) return 1 * dir;
-        return 0;
-      });
+      if (Array.isArray(rowsToRender)) {
+        rowsToRender.sort((a,b) => {
+          let va = a[key] ?? '';
+          let vb = b[key] ?? '';
+          if (key === 'createdat') { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
+          else { va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase(); }
+          if (va < vb) return -1 * dir;
+          if (va > vb) return 1 * dir;
+          return 0;
+        });
+      }
 
       const empty = document.getElementById('emptyState');
       if (rowsToRender.length === 0) {
