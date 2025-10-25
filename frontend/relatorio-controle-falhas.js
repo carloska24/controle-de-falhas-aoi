@@ -2,10 +2,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('falhasReportContainer');
   const btnExportarCSV = document.getElementById('btnExportarCSV');
   const filtroOM = document.getElementById('filtroOMFalhas');
+  const filtroData = document.getElementById('filtroDataFalhas');
+  const filtroOperador = document.getElementById('filtroOperadorFalhas');
+  const filtroDefeito = document.getElementById('filtroDefeitoFalhas');
   const omTimeDisplay = document.getElementById('omTimeDisplay');
 
-  let allRegistros = [];
   let flatRegistros = [];
+  let currentPage = 1;
+  let totalPages = 1;
+  const limit = 50;
 
   // Helper para formatar o tempo de MS para HH:MM:SS
   function formatTimer(ms) {
@@ -83,19 +88,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         </tr>`;
     }
     html += '</tbody></table>';
+    // Paginação visual
+    html += `<div class='pagination'>
+      <button id='btnPrevPage' ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
+      <span>Página ${currentPage} de ${totalPages}</span>
+      <button id='btnNextPage' ${currentPage === totalPages ? 'disabled' : ''}>Próxima</button>
+    </div>`;
     container.innerHTML = html;
+    // Eventos de paginação
+    document.getElementById('btnPrevPage').onclick = () => {
+      if (currentPage > 1) {
+        currentPage--;
+        filtrarRegistros();
+      }
+    };
+    document.getElementById('btnNextPage').onclick = () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        filtrarRegistros();
+      }
+    };
   }
 
   function filtrarRegistros() {
     let regs = [...flatRegistros];
-    
     // Filtro por OM
     const omSelecionada = filtroOM.value;
     if (omSelecionada) {
       regs = regs.filter(r => r.om === omSelecionada);
     }
-    
-    renderTabela(regs);
+    // Filtro por data
+    const dataSelecionada = filtroData.value;
+    if (dataSelecionada) {
+      regs = regs.filter(r => {
+        if (!r.createdat) return false;
+        const dataReg = new Date(r.createdat);
+        const dataFiltro = new Date(dataSelecionada);
+        return dataReg.toDateString() === dataFiltro.toDateString();
+      });
+    }
+    // Filtro por operador
+    const operadorSelecionado = filtroOperador.value.trim();
+    if (operadorSelecionado) {
+      regs = regs.filter(r => r.operador && r.operador.toLowerCase().includes(operadorSelecionado.toLowerCase()));
+    }
+    // Filtro por tipo de defeito
+    const defeitoSelecionado = filtroDefeito.value.trim();
+    if (defeitoSelecionado) {
+      regs = regs.filter(r => (r.tipodefeito || r.defeito || '').toLowerCase().includes(defeitoSelecionado.toLowerCase()));
+    }
+    // Paginação
+    totalPages = Math.max(1, Math.ceil(regs.length / limit));
+    const startIdx = (currentPage - 1) * limit;
+    const paginados = regs.slice(startIdx, startIdx + limit);
+    renderTabela(paginados);
   }
 
   function popularFiltroOM() {
@@ -139,8 +185,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Eventos
   filtroOM.addEventListener('change', () => {
+    currentPage = 1;
     filtrarRegistros();
     fetchAndDisplayOmTime(filtroOM.value);
+  });
+  filtroData.addEventListener('change', () => {
+    currentPage = 1;
+    filtrarRegistros();
+  });
+  filtroOperador.addEventListener('input', () => {
+    currentPage = 1;
+    filtrarRegistros();
+  });
+  filtroDefeito.addEventListener('input', () => {
+    currentPage = 1;
+    filtrarRegistros();
   });
   btnExportarCSV.addEventListener('click', exportarCSV);
 
@@ -150,31 +209,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resp = await fetch('/api/relatorio-falhas');
     if (!resp.ok) throw new Error(`Erro ao buscar dados (${resp.status})`);
     const data = await resp.json();
-    
     if (!Array.isArray(data) || data.length === 0) {
       container.innerHTML = '<div class="note">Nenhum registro de falha encontrado no sistema.</div>';
       return;
     }
-    
-    allRegistros = data;
-    // Achata todos os registros em uma lista única para facilitar a filtragem
-    flatRegistros = allRegistros.flatMap(omGroup => 
-        omGroup.falhas.map(f => ({
-            om: omGroup.om,
-            qtdlote: omGroup.qtdlote,
-            pn: f.pn,
-            serial: f.serial,
-            designador: f.designador,
-            tipodefeito: f.tipodefeito,
-            descricao: f.descricao,
-            createdat: f.createdat,
-            operador: f.operador
-        }))
+    flatRegistros = data.flatMap(omGroup => 
+      omGroup.falhas.map(f => ({
+        om: omGroup.om,
+        qtdlote: omGroup.qtdlote,
+        pn: f.pn,
+        serial: f.serial,
+        designador: f.designador,
+        tipodefeito: f.tipodefeito,
+        descricao: f.descricao,
+        createdat: f.createdat,
+        operador: f.operador
+      }))
     );
-    
     popularFiltroOM();
     filtrarRegistros();
-
   } catch (e) {
     container.innerHTML = `<div class="note" style="color: #ef4444;"><b>Erro ao carregar relatório:</b> ${e.message}</div>`;
   }
