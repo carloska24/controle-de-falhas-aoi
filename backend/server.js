@@ -1185,8 +1185,48 @@ app.get('/api/om-time/:omNumber', async (req, res) => {
 // Endpoint para relatório completo de falhas agrupadas por OM
 app.get('/api/relatorio-falhas', async (req, res) => {
     try {
-        // Busca todos os registros de falhas com todos os campos necessários
-    const registros = await dbAll('SELECT om, qtdlote, serial, designador, tipoDefeito, pn, descricao, obs, createdAt, status, operador FROM registros ORDER BY om, createdAt');
+        // Parâmetros de paginação e filtros
+        const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
+        let whereClauses = [];
+        let queryParams = [];
+
+        if (om) {
+            whereClauses.push("om = ?");
+            queryParams.push(om);
+        }
+        if (status) {
+            whereClauses.push("status = ?");
+            queryParams.push(status);
+        }
+        if (dataIni) {
+            whereClauses.push("createdAt >= ?");
+            queryParams.push(dataIni);
+        }
+        if (dataFim) {
+            whereClauses.push("createdAt <= ?");
+            queryParams.push(dataFim);
+        }
+
+        // Consulta total para metadados
+        let countQuery = 'SELECT COUNT(*) as total FROM registros';
+        if (whereClauses.length > 0) {
+            countQuery += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        const countRes = await dbGet(countQuery, queryParams);
+        const total = countRes ? (countRes.total || 0) : 0;
+
+        // Consulta paginada
+        let query = 'SELECT om, qtdlote, serial, designador, tipoDefeito, pn, descricao, obs, createdAt, status, operador FROM registros';
+        if (whereClauses.length > 0) {
+            query += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        query += ' ORDER BY om, createdAt';
+        const pageNum = Math.max(1, parseInt(page, 10));
+        const limitNum = Math.max(1, Math.min(parseInt(limit, 10), 200));
+        const offset = (pageNum - 1) * limitNum;
+        query += ` LIMIT ${limitNum} OFFSET ${offset}`;
+
+        const registros = await dbAll(query, queryParams);
         // Agrupa por OM
         const porOM = {};
         for (const r of registros) {
@@ -1203,8 +1243,16 @@ app.get('/api/relatorio-falhas', async (req, res) => {
                 obs: r.obs
             });
         }
-        // Retorna como array
-        res.json(Object.values(porOM));
+        // Retorna como array + metadados
+        res.json({
+            data: Object.values(porOM),
+            meta: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
