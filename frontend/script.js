@@ -1116,7 +1116,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Adiciona o novo registro ao topo do array local e renderiza
       // Isso funciona mesmo se a tabela estiver filtrada por OM,
       // pois o novo registro terá a OM correta.
-      registros.unshift(data);
+  if (!Array.isArray(registros)) registros = [];
+  registros.unshift(data);
       render();
       resetForm();
     }
@@ -1203,7 +1204,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         const newRecords = await fetchAutenticado(`${API_URL}/batch`, { method: 'POST', body: JSON.stringify(demoRecords) });
-        registros.unshift(...newRecords);
+  if (!Array.isArray(registros)) registros = [];
+  registros.unshift(...newRecords);
         render();
         showToast(`15 novos registros de demonstração foram salvos no banco de dados.`, 'info');
     } catch (error) {
