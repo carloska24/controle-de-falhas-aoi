@@ -1,4 +1,71 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  const btnVerGraficos = document.getElementById('btnVerGraficos');
+  const graficosPanel = document.getElementById('graficosPanel');
+  const graficoDefeitos = document.getElementById('graficoDefeitos');
+  const graficoOMs = document.getElementById('graficoOMs');
+  const graficoOperadores = document.getElementById('graficoOperadores');
+  // Função para preparar dados e exibir gráficos
+  function mostrarGraficos() {
+    graficosPanel.style.display = 'block';
+    // Dados filtrados atuais
+    let regs = [...flatRegistros];
+    // Aplica todos os filtros atuais
+    const omSelecionada = filtroOM.value;
+    if (omSelecionada) regs = regs.filter(r => r.om === omSelecionada);
+    const dataSelecionada = filtroData.value;
+    if (dataSelecionada) {
+      regs = regs.filter(r => {
+        if (!r.createdat) return false;
+        const dataReg = new Date(r.createdat);
+        const dataFiltro = new Date(dataSelecionada);
+        return dataReg.toDateString() === dataFiltro.toDateString();
+      });
+    }
+    const operadorSelecionado = filtroOperador.value.trim();
+    if (operadorSelecionado) regs = regs.filter(r => r.operador && r.operador.toLowerCase().includes(operadorSelecionado.toLowerCase()));
+    const defeitoSelecionado = filtroDefeito.value.trim();
+    if (defeitoSelecionado) regs = regs.filter(r => (r.tipodefeito || r.defeito || '').toLowerCase().includes(defeitoSelecionado.toLowerCase()));
+
+    // Gráfico por tipo de defeito
+    const defeitos = {};
+    regs.forEach(r => {
+      const tipo = r.tipodefeito || r.defeito || 'N/A';
+      defeitos[tipo] = (defeitos[tipo] || 0) + 1;
+    });
+    const defeitoLabels = Object.keys(defeitos);
+    const defeitoData = Object.values(defeitos);
+    if (window.defeitoChart) window.defeitoChart.destroy();
+    window.defeitoChart = new window.Chart(graficoDefeitos, {
+      type: 'bar',
+      data: { labels: defeitoLabels, datasets: [{ label: 'Falhas por tipo', data: defeitoData, backgroundColor: '#38bdf8' }] },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Gráfico por OM
+    const oms = {};
+    regs.forEach(r => { oms[r.om] = (oms[r.om] || 0) + 1; });
+    const omLabels = Object.keys(oms);
+    const omData = Object.values(oms);
+    if (window.omChart) window.omChart.destroy();
+    window.omChart = new window.Chart(graficoOMs, {
+      type: 'bar',
+      data: { labels: omLabels, datasets: [{ label: 'Falhas por OM', data: omData, backgroundColor: '#34d399' }] },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Gráfico por operador
+    const operadores = {};
+    regs.forEach(r => { operadores[r.operador || 'N/A'] = (operadores[r.operador || 'N/A'] || 0) + 1; });
+    const operadorLabels = Object.keys(operadores);
+    const operadorData = Object.values(operadores);
+    if (window.operadorChart) window.operadorChart.destroy();
+    window.operadorChart = new window.Chart(graficoOperadores, {
+      type: 'bar',
+      data: { labels: operadorLabels, datasets: [{ label: 'Falhas por Operador', data: operadorData, backgroundColor: '#f59e42' }] },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+  }
+  btnVerGraficos.addEventListener('click', mostrarGraficos);
   const container = document.getElementById('falhasReportContainer');
   const btnExportarCSV = document.getElementById('btnExportarCSV');
   const filtroOM = document.getElementById('filtroOMFalhas');
