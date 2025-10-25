@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const API_URL = `${API_BASE_URL}/api/requisicoes`;
 
     let allRequisicoes = [];
+    // Função utilitária para garantir array
+    function safeArray(val) { return Array.isArray(val) ? val : []; }
     
     // REMOVIDO: 'hasPlayedSound' não é mais necessário aqui
 
@@ -177,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     function popularFiltroOM() {
-        const oms = [...new Set(allRequisicoes.map(r => r.om))];
+    const oms = [...new Set(safeArray(allRequisicoes).map(r => r.om))];
         filtroOM.innerHTML = `<option value="todos">Todas as OMs</option>`;
         oms.sort().forEach(om => {
             const option = document.createElement('option');
@@ -191,7 +193,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const omSelecionada = filtroOM.value;
         const statusSel = filtroStatus.value;
 
-        let dadosFiltrados = allRequisicoes.filter(r =>
+        let dadosFiltrados = safeArray(allRequisicoes).filter(r =>
             (omSelecionada === 'todos' || r.om === omSelecionada) &&
             (statusSel === 'todos' || r.status === statusSel)
         );
