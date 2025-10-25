@@ -26,6 +26,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const cookieParser = require('cookie-parser');
+const morgan = require('morgan');
 const cache = require('./cache');
 
 // Logging gate: controla o que será impresso por console.log dependendo do ambiente
@@ -55,6 +56,8 @@ console.log = function (...args) {
 console.log('Deploy forçado em 2025-10-07 para Render.');
 
 const app = express();
+// Middleware de logs HTTP
+app.use(morgan('combined'));
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
 const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
