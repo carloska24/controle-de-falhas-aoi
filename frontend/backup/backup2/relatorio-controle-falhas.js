@@ -1,4 +1,4 @@
-// relatorio-controle-falhas.js v3.2 (Corrigido)
+// relatorio-controle-falhas.js v3.0
 document.addEventListener('DOMContentLoaded', async () => {
   // Elementos
   const btnVerGraficos = document.getElementById('btnVerGraficos');
@@ -7,8 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const graficoDefeitos = document.getElementById('graficoDefeitos');
   const graficoPizzaFalhas = document.getElementById('graficoPizzaFalhas');
   const legendaPizzaFalhas = document.getElementById('legendaPizzaFalhas');
-  // --- ELEMENTO DO TÍTULO ADICIONADO ---
-  const graficoModalTitleText = document.getElementById('graficoModalTitle').querySelector('span');
   const container = document.getElementById('falhasReportContainer');
   const btnExportarCSV = document.getElementById('btnExportarCSV');
   const filtroOM = document.getElementById('filtroOMFalhas');
@@ -22,51 +20,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   let defeitoChart = null;
   let pizzaChart = null;
 
-  // Paleta neon (base)
+  // Paleta neon recomendada (varia para muitos itens)
   const CORES_NEON = [
     '#00f5d4', '#9b5de5', '#f15bb5', '#fee440', '#00bbf9', '#00f6ed',
     '#ff6b6b', '#ffd93d', '#6a4c93', '#80ed99', '#f72585', '#4895ef'
   ];
 
-  // --- NOVA FUNÇÃO PARA GERAR CORES ---
-  /**
-   * Gera cores distintas. Usa a paleta NEON se houver poucas,
-   * ou gera cores HSL distintas se houver muitas.
-   */
-  function getChartColors(numCores) {
-    // Se tiver cores suficientes na paleta, usa ela
-    if (numCores <= CORES_NEON.length) {
-      return CORES_NEON.slice(0, numCores);
-    }
-    
-    // Se não, gera cores dinâmicas
-    const cores = [];
-    // Usamos cores brilhantes (Saturação 90%, Luminosidade 65%)
-    const saturation = 90;
-    const lightness = 65; 
-    
-    for (let i = 0; i < numCores; i++) {
-      // Distribui o HUE (cor) uniformemente pelo círculo de 360 graus
-      const hue = Math.floor(i * (360 / numCores));
-      cores.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-    }
-    return cores;
-  }
-  // --- FIM DA NOVA FUNÇÃO ---
-
-
-  // ---------------- UI: modal (CORRIGIDO) ----------------
+  // ---------------- UI: modal ----------------
   btnVerGraficos.addEventListener('click', () => {
-    graficosOverlay.classList.remove('hidden');
+    graficosOverlay.style.display = 'flex';
     graficosOverlay.setAttribute('aria-hidden', 'false');
+    // pequena animação de entrada
+    setTimeout(() => document.querySelector('.modal').classList.add('active'), 30);
     mostrarGraficos();
   });
 
   btnFecharGraficos.addEventListener('click', () => {
-    graficosOverlay.classList.add('hidden');
+    document.querySelector('.modal').classList.remove('active');
     graficosOverlay.setAttribute('aria-hidden', 'true');
+    setTimeout(() => (graficosOverlay.style.display = 'none'), 320);
   });
-  // ---------------- FIM DA CORREÇÃO ----------------
 
   // ---------------- Funções utilitárias ----------------
   const formatTimer = ms => {
@@ -108,20 +81,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ---------------- Gráficos ----------------
   function mostrarGraficos() {
     let regs = [...flatRegistros];
-    
+    if (!regs.length) {
+      // limpa caso não tenha dados
+      if (defeitoChart) defeitoChart.destroy();
+      if (pizzaChart) pizzaChart.destroy();
+      legendaPizzaFalhas.innerHTML = '';
+      return;
+    }
+
     // Aplicar filtros
     const omSel = filtroOM.value;
     const dataSel = filtroData.value;
     const operadorSel = filtroOperador.value.trim().toLowerCase();
     const defeitoSel = filtroDefeito.value.trim().toLowerCase();
-
-    // --- ATUALIZAÇÃO DO TÍTULO ---
-    if (omSel) {
-        graficoModalTitleText.textContent = `Análise Visual: OM ${omSel}`;
-    } else {
-        graficoModalTitleText.textContent = `Análise Visual das Falhas`;
-    }
-    // --- FIM DA ATUALIZAÇÃO ---
 
     if (omSel) regs = regs.filter(r => r.om === omSel);
     if (dataSel) {
@@ -139,12 +111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     const labels = Object.keys(mapa);
     const data = Object.values(mapa);
-    
-    // --- GERAÇÃO DINÂMICA DE CORES ---
-    const numLabels = labels.length;
-    const coresGrafico = getChartColors(numLabels);
-    // --- FIM DA GERAÇÃO ---
-
 
     // Destroi gráficos anteriores com segurança
     if (defeitoChart) { try { defeitoChart.destroy(); } catch (e) {} }
@@ -153,13 +119,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Pizza (centralizada, com animação de escala)
     pizzaChart = new Chart(graficoPizzaFalhas, {
       type: 'pie',
-      data: { labels, datasets: [{ 
-          data, 
-          backgroundColor: coresGrafico // <-- MUDANÇA AQUI
-      }] },
+      data: { labels, datasets: [{ data, backgroundColor: CORES_NEON }] },
       options: {
         responsive: true,
-        maintainAspectRatio: false, // Permite que o CSS controle a altura
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: {
@@ -174,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     legendaPizzaFalhas.innerHTML = '';
     const total = data.reduce((a,b) => a+b, 0);
     labels.forEach((lab, i) => {
-      const cor = coresGrafico[i]; // <-- MUDANÇA AQUI (não usa mais o %)
+      const cor = CORES_NEON[i % CORES_NEON.length];
       const val = data[i];
       const perc = total ? ((val / total) * 100).toFixed(1) : '0.0';
       const el = document.createElement('div');
@@ -193,12 +155,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         datasets: [{
           label: 'Ocorrências',
           data,
-          backgroundColor: '#00bbf9' // Mantém uma cor única, fica mais limpo
+          backgroundColor: '#00bbf9'
         }]
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false, // Permite que o CSS controle a altura
         plugins: { legend: { display: false } },
         animation: { duration: 900, easing: 'easeOutQuart' },
         scales: {

@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           await pauseOM(); // Pausa a OM que estava ativa
         }
         // Reseta a UI (timer, botões, campos)
-        resetParaNovaOM(); // <<< JÁ RESETA OS CARDS DE QUALIDADE
+        resetParaNovaOM(); 
         // 'resetParaNovaOM' já limpa os filtros e chama render() com dados antigos.
         // Agora, recarregamos TUDO do zero.
         await carregarRegistros(); // Isso busca TUDO e chama render() novamente.
@@ -47,18 +47,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 2. SE O USUÁRIO SELECIONAR UMA OM
       
       // Garante que qualquer OM ativa no cliente seja pausada
-      if (localStorage.getItem('omEmAndamento')) {
+      if (omRunning) {
         console.warn("[OM] Trocando de OM sem pausar. Pausando OM ativa...");
         await pauseOM(); 
       }
       
-  // Limpa o estado do timer local
-  if (omTimer) clearInterval(omTimer);
-  omRunning = false;
-  omStart = null;
-  omPausedAt = null;
-  omTotalPaused = 0;
-  localStorage.removeItem('omEmAndamento');
+      // Limpa o estado do timer local
+      if (omTimer) clearInterval(omTimer);
+      omRunning = false;
+      omStart = null;
+      omPausedAt = null;
+      omTotalPaused = 0;
+      localStorage.removeItem('omEmAndamento'); 
 
       // Busca os dados completos da OM selecionada
       let omData;
@@ -66,28 +66,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           const resp = await fetch(`/api/om/${encodeURIComponent(omValue)}`);
           if (!resp.ok) throw new Error(`OM ${omValue} não encontrada na API.`);
           omData = await resp.json();
+          
           if (omData.status !== 'pausada') {
             showToast(`Esta OM (${omValue}) não está pausada. Status: ${omData.status}`, 'error');
             return;
-          }
-          // Buscar tempo real da OM no backend
-          try {
-            const timeResp = await fetchAutenticado(`/api/om-time/${encodeURIComponent(omData.omNumber)}`);
-            if (omDisplay && timeResp && typeof timeResp.elapsed === 'number') {
-              omDisplay.textContent = formatTimer(timeResp.elapsed);
-            }
-            // Restaurar variáveis locais para retomar corretamente
-            omStart = Date.now() - (timeResp.elapsed || 0);
-            omTotalPaused = (timeResp.endTime ? (timeResp.endTime - timeResp.startTime - timeResp.elapsed) : 0);
-            omPausedAt = Date.now();
-            omRunning = false;
-          } catch (e) {
-            // Fallback: usa dados locais se não conseguir buscar
-            omStart = omData.startTime || (Date.now() - (omData.elapsed || 0));
-            omTotalPaused = omData.pausedTime || 0;
-            omPausedAt = Date.now();
-            omRunning = false;
-            if (omDisplay) omDisplay.textContent = formatTimer(omData.elapsed || 0);
           }
       } catch (e) {
           showToast(`Erro ao carregar dados da OM ${omValue}: ${e.message}`, 'error');
@@ -100,29 +82,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       omInput.value = omData.omNumber;
       
       try {
-      // Busca SÓ os registros da OM selecionada
-      const regResp = await fetchAutenticado(`/api/registros?om=${encodeURIComponent(omData.omNumber)}`);
-      // Compatível com backend que retorna { data: [...] }
-      registros = Array.isArray(regResp?.data) ? regResp.data : (regResp || []);
+         // <<< AQUI ESTÁ A MÁGICA >>>
+         // Agora que o backend está corrigido, esta chamada buscará SÓ os registros da OM
+         const regResp = await fetchAutenticado(`/api/registros?om=${encodeURIComponent(omData.omNumber)}`);
+         registros = regResp || []; // Atualiza o array global SÓ com os registros filtrados
+         
+         if (busca) busca.value = ''; // <<< NOVO: Limpa o outro filtro (busca por texto)
+         
+         render(); // <<< NOVO: Renderiza a tabela SÓ com os registros filtrados
 
-      if (busca) busca.value = '';
-      render();
-
-      // Tenta pegar o qtdlote
-      if (omCacheData && omCacheData.qtdlote) {
-        qtdLoteInput.value = omCacheData.qtdlote;
-      } else if (registros.length > 0) {
-        qtdLoteInput.value = registros[0].qtdlote;
-      }
+         // Tenta pegar o qtdlote
+         if (omCacheData && omCacheData.qtdlote) {
+            qtdLoteInput.value = omCacheData.qtdlote;
+         } else if (registros.length > 0) {
+            qtdLoteInput.value = registros[0].qtdlote;
+         }
       } catch(e) { 
          showToast('Erro ao carregar registros da OM.', 'error');
       }
       lockOMFields(); // Trava os campos da OM
 
-  // Configura o estado do timer local para a OM carregada
-  localStorage.setItem('omEmAndamento', omData.omNumber);
-  // Timer já restaurado acima, não sobrescrever aqui!
-  // Não sobrescrever omStart, omTotalPaused, omPausedAt aqui!
+      // Configura o estado do timer local para a OM carregada
+      localStorage.setItem('omEmAndamento', omData.omNumber); 
+      omStart = Date.now() - (omData.elapsed || 0); 
+      omTotalPaused = omData.pausedTime || 0;
+      omRunning = false; 
+      omPausedAt = Date.now(); 
 
       // Atualiza a UI (botões e timer)
       ensureOMDisplay();
@@ -130,10 +115,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnPausarOM.style.display = '';
       btnFinalizarOM.style.display = '';
       btnNovaInspecao.style.display = ''; 
-
-      // <<< NOVO: Garante que a calculadora esteja visível ao carregar OM
-      if (qualidadeCalculadora) qualidadeCalculadora.style.display = 'block';
-      if (qualidadeSelo) qualidadeSelo.style.display = 'none';
 
       if (btnPausarOM) {
         btnPausarOM.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i><span class="btn-label">Retomar</span>';
@@ -149,6 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       filtroOM.value = ''; 
     });
     
+    // O popularFiltroOM() continua o mesmo
     popularFiltroOM();
   }
   // ================== FIM DA ALTERAÇÃO 1 ==================
@@ -254,14 +236,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     // Trava os campos ANTES de verificar, para evitar cliques duplos
-    lockOMFields();
-    updateNovaOMVisibility();
-
-    // <<< NOVO: Reseta o card de qualidade
-    if (qualidadeCalculadora) qualidadeCalculadora.style.display = 'block';
-    if (qualidadeSelo) qualidadeSelo.style.display = 'none';
-    if (totalInspec) totalInspec.value = '';
-    updateQuality();
+  lockOMFields();
+  updateNovaOMVisibility();
 
     // 1. Verifica se a OM já existe NO SERVIDOR (em memória)
     let existingOMData = null;
@@ -404,14 +380,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (omTimer) clearInterval(omTimer);
     const omValue = localStorage.getItem('omEmAndamento') || omInput.value;
     if (omValue) {
-      const resp = await fetchAutenticado(`/api/om/pause`, {
+      await fetchAutenticado(`/api/om/pause`, {
         method: 'PUT',
         body: JSON.stringify({ omNumber: omValue })
       });
-      // Atualiza o timer display com o tempo pausado retornado pelo backend
-      if (omDisplay && resp && typeof resp.elapsed === 'number') {
-        omDisplay.textContent = formatTimer(resp.elapsed);
-      }
       // Repopula o filtro de OMs pausadas após pausar
       await popularFiltroOM();
     }
@@ -423,24 +395,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     omTotalPaused += Date.now() - omPausedAt;
     omPausedAt = null;
     omRunning = true;
-    if (btnPausarOM) {
-      btnPausarOM.innerHTML = '<i data-lucide="pause" class="w-3.5 h-3.5"></i><span class="btn-label">Pausar</span>';
-      try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
+      if (btnPausarOM) {
+  btnPausarOM.innerHTML = '<i data-lucide="pause" class="w-3.5 h-3.5"></i><span class="btn-label">Pausar</span>';
+  try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
       btnPausarOM.setAttribute('title','Pausar Inspeção');
     }
     btnNovaInspecao.style.display = 'none';
+    omTimer = setInterval(updateOMTimer, 1000);
     const omValue = localStorage.getItem('omEmAndamento') || omInput.value;
     if (omValue) {
-      const resp = await fetchAutenticado(`/api/om/resume`, {
+      await fetchAutenticado(`/api/om/resume`, {
         method: 'PUT',
         body: JSON.stringify({ omNumber: omValue })
       });
-      // Atualiza o timer display e reinicia o timer local com o valor do backend
-      if (omDisplay && resp && typeof resp.elapsed === 'number') {
-        omDisplay.textContent = formatTimer(resp.elapsed);
-        omStart = Date.now() - (resp.elapsed || 0);
-      }
-      omTimer = setInterval(updateOMTimer, 1000);
     }
     updateNovaOMVisibility();
   }
@@ -453,17 +420,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let endTime = null;   // <<< NOVO
 
     const omValue = localStorage.getItem('omEmAndamento') || omInput.value;
-    
-    // <<< NOVO: Pega os dados de qualidade ANTES de finalizar
-    const totalInspecFinal = Number(totalInspec.value || 0);
-    const falhasFinal = getRowsForScope().length;
-    let goodPctFinal = 0;
-    if (totalInspecFinal > 0) {
-        const badPct = Math.min(100, Math.max(0, (falhasFinal / totalInspecFinal) * 100));
-        goodPctFinal = 100 - badPct;
-    }
-    // <<< FIM DA CAPTURA
-
     if (omValue) {
       try {
         const resp = await fetchAutenticado(`/api/om/finalizar`, {
@@ -501,21 +457,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     omTotalPaused = 0;
 
     if (omFinalTime) {
+      // <<< GRANDE MUDANÇA AQUI >>>
+      // Usamos innerHTML para permitir quebras de linha com <br>
       omFinalTime.innerHTML = `
         <strong>Início:</strong> ${formatTimestamp(startTime)}<br>
         <strong>Fim:</strong> ${formatTimestamp(endTime)}<br>
         <strong>Tempo Total: ${formatTimer(elapsed)}</strong>
       `;
       omFinalTime.style.display = ''; // Garante que está visível
-    }
-    
-    // <<< NOVO: Mostra o Selo de Qualidade
-    if (totalInspecFinal > 0) {
-        mostrarSeloDeQualidade(omValue, goodPctFinal, totalInspecFinal, falhasFinal);
-    } else {
-        // Se o usuário não informou o total, apenas reseta
-        if (qualidadeCalculadora) qualidadeCalculadora.style.display = 'block';
-        if (qualidadeSelo) qualidadeSelo.style.display = 'none';
+      // <<< FIM DA MUDANÇA >>>
     }
     
     showToast(`Tempo total de inspeção: ${formatTimer(elapsed)}`,'info');
@@ -527,19 +477,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
   // ================== BLOCO 4 (resetParaNovaOM) ATUALIZADO ==================
+  // Limpa o ESTADO DO CLIENTE para permitir iniciar uma nova OM.
+  // A OM pausada continua salva no backend.
   function resetParaNovaOM() {
     console.log('[OM] Resetando UI para nova OM.');
     
+    // 1. A OM atual JÁ DEVE estar pausada (o botão só aparece se estiver)
     if (omRunning) {
+        //showToast('Ação inesperada. A OM ainda está em execução.', 'error');
+        // Não bloqueia, apenas pausa
         pauseOM();
     }
+    // 2. Limpar o estado do timer do cliente
     if (omTimer) clearInterval(omTimer);
     omRunning = false;
     omStart = null;
     omPausedAt = null;
     omTotalPaused = 0;
+    // 3. Limpar o localStorage para que 'restaurarOM' não puxe a OM antiga
     localStorage.removeItem('omEmAndamento');
-    
     // 4. Resetar a UI do timer
     if (omDisplay) omDisplay.textContent = '00:00:00';
     if (omFinalTime) omFinalTime.style.display = 'none';
@@ -547,21 +503,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnPausarOM) btnPausarOM.style.display = 'none';
     if (btnFinalizarOM) btnFinalizarOM.style.display = 'none';
     if (btnNovaInspecao) btnNovaInspecao.style.display = 'none'; // Esconde o próprio botão
-
-    // <<< NOVO: Reseta os cards de qualidade
-    if (qualidadeCalculadora) qualidadeCalculadora.style.display = 'block';
-    if (qualidadeSelo) qualidadeSelo.style.display = 'none';
-    if (totalInspec) totalInspec.value = '';
-    updateQuality(); // Reseta a calculadora
-    
-    // 5. Resetar o formulário completamente
-    form.reset(); 
+    // 5. Resetar o formulário completamente (diferente do resetForm normal)
+    form.reset(); // Limpa OM, QtdLote, etc.
     form.dataset.editing = '';
     if (btnGravar) btnGravar.querySelector('.btn-text').textContent = 'Gravar';
     // 6. Limpar o filtro de busca
     if (busca) busca.value = '';
-    if (filtroOM) filtroOM.value = ''; 
+    if (filtroOM) filtroOM.value = ''; // <<< LINHA ADICIONADA
     
+    // 7. Renderizar a tabela (agora sem filtro)
+    // Não chama carregarRegistros() para não fazer requisição,
+    // apenas limpa o array local e renderiza.
     registros = [];
     render();
     
@@ -570,6 +522,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   // ================== FIM DA ALTERAÇÃO 4 ==================
 
+  // Restaurar timer da OM ao carregar a página
   async function restaurarOM() {
     const omValue = localStorage.getItem('omEmAndamento');
     console.log('[OM] [restaurarOM] Valor em localStorage:', omValue);
@@ -577,11 +530,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       unlockOMFields(); // Garante que os campos estão livres se não há OM
       return;
     }
-
-    // <<< NOVO: Garante que a calculadora esteja visível
-    if (qualidadeCalculadora) qualidadeCalculadora.style.display = 'block';
-    if (qualidadeSelo) qualidadeSelo.style.display = 'none';
-
     omInput.value = omValue;
     try {
       const resp = await fetch(`/api/om/${encodeURIComponent(omValue)}`);
@@ -596,10 +544,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('[OM] [restaurarOM] Dados recebidos:', data);
 
       // Carrega a QtdLote da OM (precisa de um fetch nos registros)
+      // Otimização: Tenta pegar dos registros já carregados se 'registros' já estiver populado
       let omRegs = [];
       if (registros && registros.length > 0) {
         omRegs = registros.filter(r => r.om === omValue);
       } else {
+        // Fallback: busca na API se os registros não estiverem prontos
+        // Usamos fetchAutenticado aqui para consistência
         const regResp = await fetchAutenticado(`${API_URL}?om=${encodeURIComponent(omValue)}`); // Busca SÓ os registros da OM
         registros = regResp || []; // Armazena os registros carregados
         omRegs = registros; // Todos os registros agora são dessa OM
@@ -609,6 +560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         qtdLoteInput.value = omRegs[0].qtdlote;
       }
       
+      // Renderiza a tabela com os registros da OM restaurada
       render();
 
       omStart = Date.now() - (data.elapsed || 0);
@@ -720,17 +672,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const API_BASE_URL = window.API_BASE_URL || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : ('')); // Base vazia para usar caminhos relativos
   const API_URL = `${API_BASE_URL}/api/registros`;
   let registros = [];
-  const DEMO_KEY = 'registrosDemo';
-
-  function getDemoRegistros() {
-    try {
-      return JSON.parse(localStorage.getItem(DEMO_KEY)) || [];
-    } catch { return []; }
-  }
-
-  function setDemoRegistros(arr) {
-    localStorage.setItem(DEMO_KEY, JSON.stringify(arr || []));
-  }
   let sortState = { key: 'createdat', dir: 'desc' }; // padrão: mais recentes primeiro
   let searchTimer;
   
@@ -741,6 +682,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnExcluir = document.querySelector('[data-action="exclude"]') || document.querySelector('#btnExcluir');
   const btnDemo = document.querySelector('[data-action="add-demo"]') || document.querySelector('#btnDemo');
   const btnGerarRequisicao = document.querySelector('[data-action="generate-request"]') || document.querySelector('#btnGerarRequisicao');
+  // const btnPDF = document.querySelector('[data-action="export-pdf"]') || document.querySelector('#btnPDF'); // Botão não existe no HTML
+  // const btnReqCSV = document.querySelector('[data-action="export-req-csv"]') || document.querySelector('#btnReqCSV'); // Botão não existe no HTML
   const selAll = document.querySelector('#selAll');
   const busca = document.querySelector('#busca');
   const tbody = document.querySelector('#tbody');
@@ -763,12 +706,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mTotal = document.querySelector('#mTotal');
   const mOMs = document.querySelector('#mOMs');
   const mDistrib = document.querySelector('#mDistrib');
-
-  // --- Seletores do Card de Qualidade (ATUALIZADO) ---
-  const qualidadeCalculadora = document.querySelector('#qualidadeCalculadora'); // Card "Face A"
-  const qualidadeSelo = document.querySelector('#qualidadeSelo');           // Card "Face B"
-  
-  // Itens da Calculadora
   const pie = document.querySelector('#pieChart');
   const pieCenter = document.querySelector('#pieCenter');
   const qualEmoji = document.querySelector('.quality-emoji');
@@ -777,15 +714,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const qualDetalhe = document.querySelector('#qualDetalhe');
   const totalInspec = document.querySelector('#totalInspec');
   const escopoQualidade = document.querySelector('#escopoQualidade');
-
-  // Itens do Selo (NOVOS)
-  const seloIcon = document.querySelector('#seloIcon');
-  const seloTitle = document.querySelector('#seloTitle');
-  const seloStatus = document.querySelector('#seloStatus');
-  const seloYield = document.querySelector('#seloYield');
-  const seloInspecionadas = document.querySelector('#seloInspecionadas');
-  const seloFalhas = document.querySelector('#seloFalhas');
-
   const loadingOverlay = document.querySelector('#loadingOverlay');
   const toastContainer = document.querySelector('#toastContainer');
   
@@ -851,21 +779,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (busca) busca.value = '';
       // Fim da adição
 
-  let apiRegs = await fetchAutenticado(API_URL);
-  console.log('[DEBUG] Conteúdo bruto da API /api/registros:', apiRegs);
-  // Se o backend retorna { data: [...] }, usa apiRegs.data
-  if (apiRegs && Array.isArray(apiRegs.data)) {
-    apiRegs = apiRegs.data;
-  }
-  if (!Array.isArray(apiRegs)) {
-    showToast('A resposta da API de registros não é uma lista. Verifique o backend.', 'error');
-    apiRegs = [];
-  }
-  const demoRegs = getDemoRegistros();
-  registros = [...apiRegs, ...demoRegs];
-  console.log('[DEBUG] Registros recebidos do backend + DEMO:', registros);
-  // Não exibe toast de erro se não houver registros
-  render();
+      registros = await fetchAutenticado(API_URL) || [];
+      console.log('[DEBUG] Registros recebidos do backend:', registros);
+      render();
     } catch (error) {
       console.error('Falha ao carregar registros:', error);
       showToast(`Falha ao carregar registros: ${error.message}`, 'error');
@@ -884,27 +800,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function render() {
+      // ATENÇÃO: A variável global 'registros' agora pode estar
+      // pré-filtrada pela OM (se `filtroOM` foi usado).
+      // 'busca' (texto) filtra *dentro* do que já foi retornado (seja tudo ou uma OM).
       const f = (busca?.value || '').toLowerCase();
-      let rowsToRender = Array.isArray(registros) ? registros : [];
+      let rowsToRender = registros;
 
       if (f) {
-        rowsToRender = rowsToRender.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
+        rowsToRender = registros.filter(r => Object.values(r).join(' ').toLowerCase().includes(f));
       }
 
       // Ordenação
       const key = sortState.key;
       const dir = sortState.dir === 'asc' ? 1 : -1;
-      if (Array.isArray(rowsToRender)) {
-        rowsToRender.sort((a,b) => {
-          let va = a[key] ?? '';
-          let vb = b[key] ?? '';
-          if (key === 'createdat') { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
-          else { va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase(); }
-          if (va < vb) return -1 * dir;
-          if (va > vb) return 1 * dir;
-          return 0;
-        });
-      }
+      rowsToRender.sort((a,b) => {
+        let va = a[key] ?? '';
+        let vb = b[key] ?? '';
+        if (key === 'createdat') { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
+        else { va = va.toString().toLowerCase(); vb = vb.toString().toLowerCase(); }
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return 0;
+      });
 
       const empty = document.getElementById('emptyState');
       if (rowsToRender.length === 0) {
@@ -955,6 +872,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
   }
+
+  // if (tbody) tbody.addEventListener('change', (e) => { ... }); // Movido para o IIFE
+  // if (selAll) selAll.addEventListener('change', () => { ... }); // Movido para o IIFE
   
   function getRowsForScope() {
     if (!escopoQualidade) return []; // Guarda
@@ -974,50 +894,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     return currentRegistros; // Retorna todos os registros da OM (ou todos, se nenhum filtro OM)
   }
-
-  // ================== BLOCO 6 (mostrarSeloDeQualidade) ADICIONADO ==================
-  function mostrarSeloDeQualidade(om, yieldPct, totalInspecionado, totalFalhas) {
-    if (!qualidadeSelo || !qualidadeCalculadora) return;
-
-    // 1. Define o status e o ícone
-    let status, icon, cssClass;
-    if (yieldPct >= 98) {
-        status = 'Aprovado';
-        icon = 'check-shield'; // Ícone de escudo com check
-        cssClass = 'status-aprovado';
-    } else if (yieldPct >= 90) {
-        status = 'Atenção';
-        icon = 'shield-alert'; // Ícone de escudo com alerta
-        cssClass = 'status-atencao';
-    } else {
-        status = 'Reprovado';
-        icon = 'shield-x'; // Ícone de escudo com X
-        cssClass = 'status-reprovado';
-    }
-
-    // 2. Preenche os elementos do "Selo"
-    if (seloTitle) seloTitle.textContent = `Lote Finalizado: ${om}`;
-    if (seloStatus) {
-        seloStatus.textContent = status;
-        seloStatus.className = `selo-status ${cssClass}`; // Aplica a classe de cor
-    }
-    if (seloIcon) {
-        seloIcon.innerHTML = `<i data-lucide="${icon}"></i>`;
-        seloIcon.className = `selo-icon ${cssClass}`; // Aplica a classe de cor
-    }
-    if (seloYield) seloYield.textContent = `${yieldPct.toFixed(1)}%`;
-    if (seloInspecionadas) seloInspecionadas.textContent = totalInspecionado;
-    if (seloFalhas) seloFalhas.textContent = totalFalhas;
-
-    // 3. Troca os cards
-    qualidadeCalculadora.style.display = 'none';
-    qualidadeSelo.style.display = 'block';
-
-    // 4. Renderiza o ícone do Lucide
-    try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}
-  }
-  // ================== FIM DA ALTERAÇÃO 6 ==================
-
 
   function updateQuality() {
       if (!pie) return;
@@ -1144,8 +1020,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (userDisplay && user) { userDisplay.textContent = user.name || user.username; }
 
     // --- Carregamento Inicial ---
-    await carregarRegistros();
-    await restaurarOM();
+    // Restaurar OM só deve acontecer DEPOIS de carregarRegistros
+    // Mas carregarRegistros() agora é chamado dentro de restaurarOM()
+    // se uma OM for encontrada, ou aqui se não for.
+    if (!localStorage.getItem('omEmAndamento')) {
+      await carregarRegistros();
+    }
+    await restaurarOM(); 
     
     // --- Event Listeners que dependem de 'render' ou 'updateQuality' ---
     if (tbody) {
@@ -1214,22 +1095,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     data.qtdlote = Number(qtdLoteInput.value); // Garante o valor do campo travado
 
     try {
-      if (editingId) {
-        const updateData = { om: data.om, qtdlote: data.qtdlote, serial: data.serial, designador: data.designador, tipodefeito: data.tipodefeito, pn: data.pn, descricao: data.descricao, obs: data.obs };
-        await fetchAutenticado(`${API_URL}/${editingId}`, { method: 'PUT', body: JSON.stringify(updateData) });
-        showToast('Registro atualizado com sucesso!');
-      } else {
-        data.id = uid();
-        data.createdat = new Date().toISOString();
-        data.status = 'aberto';
-        data.operador = user.name || user.username;
-        await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(data) });
-        showToast('Registro gravado com sucesso!');
-      }
-      await carregarRegistros();
+    if (editingId) {
+      const updateData = { om: data.om, qtdlote: data.qtdlote, serial: data.serial, designador: data.designador, tipodefeito: data.tipodefeito, pn: data.pn, descricao: data.descricao, obs: data.obs };
+      await fetchAutenticado(`${API_URL}/${editingId}`, { method: 'PUT', body: JSON.stringify(updateData) });
+      const index = registros.findIndex(r => r.id === editingId);
+      if (index !== -1) { registros[index] = { ...registros[index], ...updateData }; }
+      showToast('Registro atualizado com sucesso!');
       resetForm();
+      render();
+    } else {
+      data.id = uid();
+      data.createdat = new Date().toISOString();
+      data.status = 'aberto';
+      data.operador = user.name || user.username;
+      await fetchAutenticado(API_URL, { method: 'POST', body: JSON.stringify(data) });
+      showToast('Registro gravado com sucesso!');
+      
+      // Adiciona o novo registro ao topo do array local e renderiza
+      // Isso funciona mesmo se a tabela estiver filtrada por OM,
+      // pois o novo registro terá a OM correta.
+      registros.unshift(data);
+      render();
+      resetForm();
+    }
     } catch (error) {
-      showToast(`Erro ao salvar o registro: ${error.message}`, 'error');
+        showToast(`Erro ao salvar o registro: ${error.message}`, 'error');
     }
   });
 
@@ -1248,12 +1138,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!conf) return;
     try {
         await fetchAutenticado(API_URL, { method: 'DELETE', body: JSON.stringify({ ids: idsParaExcluir }) });
-  // Remove dos registros e do localStorage DEMO
-  registros = registros.filter(r => !idsParaExcluir.includes(r.id));
-  const demoRegs = getDemoRegistros().filter(r => !idsParaExcluir.includes(r.id));
-  setDemoRegistros(demoRegs);
-  showToast(`${idsParaExcluir.length} registro(s) excluído(s).`);
-  render();
+        registros = registros.filter(r => !idsParaExcluir.includes(r.id));
+        showToast(`${idsParaExcluir.length} registro(s) excluído(s).`);
+        render();
     } catch (error) {
         showToast(`Erro ao excluir registros: ${error.message}`, 'error');
     }
@@ -1282,6 +1169,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) { showToast(`Erro ao gerar requisição: ${error.message}`, 'error'); } finally { setLoading(false); }
   });
 
+  // if (tbody) tbody.addEventListener('dblclick', (e) => { ... }); // Movido para o IIFE
+
   if (btnDemo) btnDemo.addEventListener('click', async () => {
     if (!isAdmin) { showToast('Apenas administradores podem lançar dados de demonstração.', 'error'); return; }
     const allDefectTypes = [
@@ -1297,30 +1186,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const daysAgo = Math.floor(Math.random() * 30) + 1;
             demoDate.setDate(demoDate.getDate() - daysAgo);
 
-      demoRecords.push({
-        id: uid(),
-        om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`,
-        qtdlote: 150,
-        serial: `SN-DEMO-${Date.now() + i}`,
-        designador: `C${Math.floor(Math.random() * 500)}`,
-        tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
-        pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
-        descricao: 'Componente de Demonstração',
-        createdat: demoDate.toISOString(),
-        status: 'aberto',
-        operador: user.name || user.username,
-        demo: true
-      });
+            demoRecords.push({
+                id: uid(),
+                om: `DEMO-OM-${Math.floor(Math.random() * 3) + 1}`,
+                qtdlote: 150,
+                serial: `SN-DEMO-${Date.now() + i}`,
+                designador: `C${Math.floor(Math.random() * 500)}`,
+                tipodefeito: allDefectTypes[Math.floor(Math.random() * allDefectTypes.length)],
+                pn: `200-0${Math.floor(Math.random() * 900) + 100}`,
+                descricao: 'Componente de Demonstração',
+                createdat: demoDate.toISOString(),
+                status: 'aberto',
+                operador: user.name || user.username,
+            });
         }
         const newRecords = await fetchAutenticado(`${API_URL}/batch`, { method: 'POST', body: JSON.stringify(demoRecords) });
-  if (!Array.isArray(registros)) registros = [];
-  // Adiciona ao localStorage DEMO
-  const demoRegs = getDemoRegistros();
-  demoRegs.unshift(...newRecords);
-  setDemoRegistros(demoRegs);
-  registros.unshift(...newRecords);
-  render();
-  showToast(`15 novos registros de demonstração foram salvos no banco de dados.`, 'info');
+        registros.unshift(...newRecords);
+        render();
+        showToast(`15 novos registros de demonstração foram salvos no banco de dados.`, 'info');
     } catch (error) {
         showToast(`Erro ao criar dados de demonstração: ${error.message}`, 'error');
     } finally {
@@ -1360,4 +1243,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // if (tbody) { ... } // Movido para o IIFE
+  // if (selAll) { ... } // Movido para o IIFE
+
+  // Removemos as referências aos botões CSV e PDF que não existem no HTML
+  // if (btnReqCSV) { ... }
+  // if (btnPDF) { ... }
+  
+  // A chamada final para carregarRegistros() foi movida para dentro do IIFE de autenticação
+  // para garantir que 'user' esteja definido e 'restaurarOM' rode depois.
 });

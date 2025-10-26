@@ -1,0 +1,161 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Controle de Falhas AOI API",
+    "version": "1.0.0",
+    "description": "Documentação automática dos principais endpoints do backend."
+  },
+  "servers": [
+    { "url": "http://localhost:3001" }
+  ],
+  "paths": {
+    "/api/registros": {
+      "get": {
+        "summary": "Listar registros com paginação e filtros",
+        "parameters": [
+          { "name": "om", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "dataIni", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "dataFim", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista paginada de registros",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RegistrosResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requisicoes": {
+      "get": {
+        "summary": "Listar requisições com paginação e filtros",
+        "parameters": [
+          { "name": "om", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "dataIni", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "dataFim", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista paginada de requisições",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RequisicoesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/relatorio-falhas": {
+      "get": {
+        "summary": "Relatório de falhas com paginação e filtros",
+        "parameters": [
+          { "name": "om", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "dataIni", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "dataFim", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Relatório paginado de falhas",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RelatorioFalhasResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RegistrosResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Registro" } },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+        }
+      },
+      "Registro": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "om": { "type": "string" },
+          "qtdlote": { "type": "integer" },
+          "serial": { "type": "string" },
+          "designador": { "type": "string" },
+          "tipodefeito": { "type": "string" },
+          "pn": { "type": "string" },
+          "descricao": { "type": "string" },
+          "obs": { "type": "string" },
+          "createdat": { "type": "string", "format": "date-time" },
+          "status": { "type": "string" },
+          "operador": { "type": "string" }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "RequisicoesResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Requisicao" } },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+        }
+      },
+      "Requisicao": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "om": { "type": "string" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/RequisicaoItem" } },
+          "status": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "created_by": { "type": "string" }
+        }
+      },
+      "RequisicaoItem": {
+        "type": "object",
+        "properties": {
+          "pn": { "type": "string" },
+          "descricao": { "type": "string" },
+          "quantidade_requisitada": { "type": "integer" },
+          "quantidade_entregue": { "type": "integer" }
+        }
+      },
+      "RelatorioFalhasResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/RelatorioFalhaOM" } },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+        }
+      },
+      "RelatorioFalhaOM": {
+        "type": "object",
+        "properties": {
+          "om": { "type": "string" },
+          "qtdlote": { "type": "integer" },
+          "falhas": { "type": "array", "items": { "$ref": "#/components/schemas/Registro" } }
+        }
+      }
+    }
+  }
+}

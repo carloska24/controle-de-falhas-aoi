@@ -823,45 +823,6 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
     #tabelaRequisicoes td.actions-cell .action-wrap > button { min-width: 44px; flex: 1 1 auto; }
 }
 
-
-/* =====================================================================
-   INÍCIO DA NOVA MELHORIA - Aumentar filtros da toolbar
-   ===================================================================== */
-.toolbar .filters select,
-.toolbar .filters input[type="date"],
-.toolbar .filters input[type="text"] {
-    padding: 9px 15px; /* Mesmo padding dos botões */
-    font-size: 14px; /* Manter o padrão do body */
-    
-    /* Garantir o estilo dark-mode (copiado da regra .field) */
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: #0f172a;
-    color: var(--text);
-    outline: none;
-    transition: all 0.2s;
-    
-    /* Corrigir placeholder do input de data no Chrome */
-    color-scheme: dark;
-}
-
-/* Estilo de foco para os filtros */
-.toolbar .filters select:focus,
-.toolbar .filters input[type="date"]:focus,
-.toolbar .filters input[type="text"]:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
-}
-
-/* Ajuste para o ícone do calendário no input de data */
-.toolbar .filters input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.8); /* Deixa o ícone do calendário claro */
-}
-/* =============================
-   FIM DA NOVA MELHORIA
-   ============================= */
-
-
     /* =============================
        Modal de Gráficos Relatório de Falhas (NOVO)
        ============================= */
@@ -880,13 +841,12 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
         box-shadow: 0 10px 32px #0008;
         padding: 2.5rem 2.5rem 2rem 2.5rem;
         display: flex;
-        flex-direction: column; /* Alterado de 'row' para 'column' para melhor layout */
-        gap: 1.5rem; /* Ajustado o gap */
-        min-width: 0; /* Ajustado */
-        max-width: 900px; /* Aumentado para comportar os gráficos */
+        flex-direction: row;
+        gap: 2.5rem;
+        min-width: 700px;
+        max-width: 1100px;
         width: 90vw;
-        max-height: 90vh; /* Adicionado max-height */
-        overflow-y: auto; /* Adicionado overflow */
+        min-height: 420px;
         position: relative;
         animation: modalPop 0.22s cubic-bezier(.7,1.6,.5,1.1);
     }
@@ -894,27 +854,62 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
         from { transform: scale(.92) translateY(30px); opacity: 0; }
         to   { transform: scale(1) translateY(0); opacity: 1; }
     }
-    /* Esta classe foi removida pois o layout agora é column */
-    /* .relatorio-modal-charts { ... } */
-    
-    /* Esta classe foi removida pois o layout agora é column */
-    /* .relatorio-modal-legend { ... } */
-
+    .relatorio-modal-charts {
+        display: flex;
+        flex-direction: column;
+        gap: 2.2rem;
+        flex: 1 1 0;
+        min-width: 340px;
+        align-items: center;
+        justify-content: center;
+    }
     .relatorio-modal-title {
-        font-size: 1.5rem; /* Ajustado */
+        font-size: 2rem;
         font-weight: 700;
         color: #38bdf8;
-        margin-bottom: 0; /* Ajustado */
-        letter-spacing: 0.5px; /* Ajustado */
+        margin-bottom: 1.2rem;
+        letter-spacing: 1px;
         text-align: left;
     }
-
-    /* Removido - A legenda agora é gerada pelo JS e usa .legenda */
-    /* .relatorio-modal-legend-title { ... } */
-    /* .relatorio-modal-legend-list { ... } */
-    /* .relatorio-modal-legend-item { ... } */
-    /* .relatorio-modal-legend-color { ... } */
-
+    .relatorio-modal-legend {
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+        min-width: 220px;
+        max-width: 260px;
+        background: #232c3b;
+        border-radius: 14px;
+        padding: 1.5rem 1.2rem;
+        box-shadow: 0 2px 12px #0002;
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+    .relatorio-modal-legend-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: #fbbf24;
+        margin-bottom: 0.7rem;
+    }
+    .relatorio-modal-legend-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+    }
+    .relatorio-modal-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-size: 1.05rem;
+        font-weight: 500;
+        color: #e5e7eb;
+    }
+    .relatorio-modal-legend-color {
+        width: 22px; height: 22px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px #0002;
+        border: 2px solid #334155;
+        flex-shrink: 0;
+    }
     .relatorio-modal-close {
         position: absolute;
         top: 18px; right: 22px;
@@ -929,11 +924,24 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
     .relatorio-modal-close:hover {
         color: #38bdf8;
     }
-    
-    /* Removido - Os gráficos agora usam .pizza-area e .barra-area */
-    /* .relatorio-modal-chart { ... } */
-    /* .relatorio-modal-chart canvas { ... } */
-
+    .relatorio-modal-chart {
+        background: #232c3b;
+        border-radius: 14px;
+        box-shadow: 0 2px 12px #0002;
+        padding: 1.2rem 1.2rem 1.2rem 1.2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 320px;
+        min-height: 220px;
+        max-width: 420px;
+    }
+    .relatorio-modal-chart canvas {
+        width: 100% !important;
+        height: 220px !important;
+        max-width: 380px;
+        display: block;
+    }
     /* Responsivo para telas menores */
     @media (max-width: 900px) {
         .relatorio-modal-content {
@@ -945,10 +953,21 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
             gap: 1.2rem;
             min-height: 0;
         }
-        /* .relatorio-modal-charts { ... } */ /* Removido */
-        /* .relatorio-modal-legend { ... } */ /* Removido */
-        /* .relatorio-modal-chart { ... } */ /* Removido */
-        
+        .relatorio-modal-charts {
+            flex-direction: column;
+            gap: 1.2rem;
+            min-width: 0;
+        }
+        .relatorio-modal-legend {
+            min-width: 0;
+            max-width: 100vw;
+            padding: 1.1rem 0.7rem;
+        }
+        .relatorio-modal-chart {
+            min-width: 0;
+            max-width: 100vw;
+            padding: 0.7rem;
+        }
         .relatorio-modal-title {
             font-size: 1.3rem;
             margin-bottom: 0.7rem;
@@ -962,200 +981,3 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.1); }
         from { opacity: 0; }
         to   { opacity: 1; }
     }
-
-
-/* =====================================================================
-   INÍCIO DAS CORREÇÕES - ESTILOS FALTANTES PARA GRÁFICOS E LEGENDA
-   (Adicionados para fazer o modal de gráficos funcionar)
-   ===================================================================== */
-
-/* Layout do container dos gráficos dentro do modal */
-.grafico-container.vertical {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-    width: 100%;
-}
-
-/* Área do gráfico de pizza */
-.pizza-area {
-    display: flex;
-    flex-direction: row; /* Alterado para row */
-    align-items: center; /* Alterado para center */
-    gap: 1.5rem; /* Aumentado o gap */
-    width: 100%;
-    max-width: 100%; /* Removido max-width */
-    flex-wrap: wrap; /* Adicionado wrap */
-    justify-content: center; /* Adicionado center */
-}
-
-.pizza-area > canvas {
-    flex: 1 1 250px; /* Flex para o canvas */
-    max-width: 300px; /* Max-width para o canvas */
-}
-
-/* Área do gráfico de barras */
-.barra-area {
-    width: 100%;
-    max-width: 100%; /* Removido max-width */
-    min-height: 250px; /* Altura mínima */
-}
-
-/* Estilos para a legenda customizada gerada pelo JS */
-.legenda {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    color: var(--text);
-    max-height: 250px; /* Ajustada altura máxima */
-    overflow-y: auto;
-    padding: 0.75rem;
-    background: #232c3b; /* Fundo similar ao do modal */
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    flex: 1 1 300px; /* Flex para a legenda */
-}
-
-.legenda-item {
-    display: grid;
-    grid-template-columns: auto 1fr auto; /* Coluna da Cor | Label | Valor */
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.9rem;
-}
-
-.legenda-cor {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    flex-shrink: 0;
-}
-
-.legenda-label {
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* Evita que labels longos quebrem o layout */
-}
-
-.legenda-val {
-    font-weight: 600;
-    color: var(--text);
-    text-align: right;
-    white-space: nowrap;
-}
-
-/* Ajuste responsivo para a pizza-area */
-@media (max-width: 600px) {
-    .pizza-area {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    .legenda {
-        max-height: 200px;
-    }
-}
-
-/* =============================
-   FIM DAS CORREÇÕES
-   ============================= */
-
-/* =====================================================================
-   INÍCIO DOS ESTILOS DO SELO DE QUALIDADE (NOVO)
-   ===================================================================== */
-.selo-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 1rem 0 0.5rem; /* Ajustado padding */
-}
-
-.selo-icon {
-    width: 72px; /* Ajustado */
-    height: 72px; /* Ajustado */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    margin-bottom: 1rem;
-    background-color: var(--muted); /* Cor padrão */
-}
-
-.selo-icon svg, .selo-icon i[data-lucide] {
-    width: 40px; /* Ajustado */
-    height: 40px; /* Ajustado */
-    color: #fff;
-}
-
-.selo-title {
-    font-size: 1.15rem; /* Ajustado */
-    font-weight: 600;
-    color: var(--text-dim); /* Título mais suave */
-    margin-bottom: 0.25rem; /* Ajustado */
-}
-
-.selo-status {
-    font-size: 1.75rem; /* Ajustado */
-    font-weight: 800;
-    letter-spacing: 1px;
-    margin-bottom: 1.25rem; /* Ajustado */
-    text-transform: uppercase;
-}
-
-.selo-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    width: 100%;
-    background: #0f172a;
-    padding: 0.75rem 1rem; /* Ajustado */
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-
-.selo-metric {
-    display: flex;
-    flex-direction: column;
-}
-
-.selo-label {
-    font-size: 0.8rem; /* Ajustado */
-    color: var(--text-dim);
-    margin-bottom: 0.25rem;
-    text-transform: uppercase; /* Destaque */
-}
-
-.selo-metric strong {
-    font-size: 1.4rem; /* Ajustado */
-    font-weight: 700;
-    color: var(--text);
-}
-
-/* -- Variantes de Cor para o Selo -- */
-.selo-icon.status-aprovado {
-    background-color: var(--primary); /* verde */
-}
-.selo-status.status-aprovado {
-    color: var(--primary);
-}
-
-.selo-icon.status-atencao {
-    background-color: var(--warn); /* amarelo */
-}
-.selo-status.status-atencao {
-    color: var(--warn);
-}
-
-.selo-icon.status-reprovado {
-    background-color: var(--danger); /* vermelho */
-}
-.selo-status.status-reprovado {
-    color: var(--danger);
-}
-/* =============================
-   FIM DOS ESTILOS DO SELO
-   ============================= */

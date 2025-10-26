@@ -125,13 +125,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   container.innerHTML = '<div class="note">Carregando dados...</div>';
   try {
     // CORRIGIDO: Usa fetchAutenticado e a API_URL correta
-    const data = await fetchAutenticado(API_URL); 
-
-    if (!Array.isArray(data) || data.length === 0) {
+    let rawData = await fetchAutenticado(API_URL);
+    let dataArr = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : []);
+    if (!Array.isArray(dataArr) || dataArr.length === 0) {
       container.innerHTML = '<div class="note">Nenhum registro encontrado.</div>';
       return;
     }
-    flatRegistros = data.map(r => ({
+    flatRegistros = dataArr.map(r => ({
       om: r.om,
       qtdlote: r.qtdlote,
       pn: r.pn,

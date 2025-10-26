@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"label": "Iniciar servidor backend",
-			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; npm run start",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; $env:SILENCE_LOGS='true'; npm run start",
 			"type": "shell",
 			"problemMatcher": [
 				"$eslint-stylish"
@@ -39,7 +39,7 @@
 		},
 		{
 			"label": "Reiniciar backend (aplicar mudanças)",
-			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; node server.js",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; $env:SILENCE_LOGS='true'; node server.js",
 			"type": "shell",
 			"problemMatcher": [
 				"$eslint-stylish"
@@ -48,7 +48,7 @@
 		},
 		{
 			"label": "Recarregar backend (para filtro DEMO)",
-			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; node server.js",
+			"command": "cd c:\\Users\\joaob\\controle-de-falhas-aoi\\backend; $env:PORT=3001; $env:SILENCE_LOGS='true'; node server.js",
 			"type": "shell",
 			"problemMatcher": [
 				"$eslint-stylish"

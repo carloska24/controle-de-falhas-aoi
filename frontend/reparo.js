@@ -201,9 +201,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
 
         try {
-            const rawData = await fetchAutenticado(API_URL) || [];
-            allData = (user && user.role === 'admin') ? rawData : rawData.filter(d => !d.om.startsWith('DEMO-'));
-            
+            const rawData = await fetchAutenticado(API_URL) || { data: [] };
+            const registros = Array.isArray(rawData) ? rawData : (rawData.data || []);
+            allData = (user && user.role === 'admin') ? registros : registros.filter(d => !d.om?.startsWith('DEMO-'));
             const oms = ['all', ...new Set(allData.map(d => d.om))];
             omFilter.innerHTML = oms.map(om => `<option value="${om}">${om === 'all' ? 'Todas as OMs' : om}</option>`).join('');
             renderTable();

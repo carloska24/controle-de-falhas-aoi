@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Relatório de Controle de Falhas</title>
 
-  <link rel="stylesheet" href="./style.css?v=3.2"> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- CSS -->
+  <link rel="stylesheet" href="./style.css?v=3.0">
+
+  <!-- Chart.js e icons -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -43,35 +47,34 @@
         <div class="note">Carregando dados...</div>
       </div>
 
+      <!-- MODAL DE GRÁFICOS: layout B2 (pizza centralizada + barras abaixo) -->
+      <div id="graficosOverlay" class="overlay" aria-hidden="true" role="dialog" aria-label="Gráficos de Falhas">
+        <div class="modal" role="document">
+          <button id="btnFecharGraficos" class="btn-close" aria-label="Fechar gráficos">✖</button>
+
+          <h3 class="section-title"><i data-lucide="bar-chart-3"></i> Análise Visual das Falhas</h3>
+
+          <div class="grafico-container vertical">
+            <div class="pizza-area">
+              <canvas id="graficoPizzaFalhas" aria-label="Gráfico de pizza de falhas"></canvas>
+              <div id="legendaPizzaFalhas" class="legenda" aria-hidden="false"></div>
+            </div>
+
+            <div class="barra-area" style="width:100%;">
+              <canvas id="graficoDefeitos" aria-label="Gráfico de barras de defeitos"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <footer id="reportFooter">
         <div id="omTimeDisplay" class="om-final-time"></div>
       </footer>
     </section>
   </main>
 
-  <div id="graficosOverlay" class="relatorio-modal hidden" aria-hidden="true" role="dialog" aria-label="Gráficos de Falhas">
-    <div class="relatorio-modal-content" role="document">
-      <button id="btnFecharGraficos" class="relatorio-modal-close" aria-label="Fechar gráficos">✖</button>
-
-      <h3 class="section-title" id="graficoModalTitle" style="margin-bottom: 1.5rem;">
-        <i data-lucide="bar-chart-3"></i> 
-        <span>Análise Visual das Falhas</span> </h3>
-
-      <div class="grafico-container vertical">
-        
-        <div class="pizza-area">
-          <canvas id="graficoPizzaFalhas" aria-label="Gráfico de pizza de falhas" style="max-height: 250px;"></canvas>
-          <div id="legendaPizzaFalhas" class="legenda" aria-hidden="false"></div>
-        </div>
-
-        <div class="barra-area">
-          <canvas id="graficoDefeitos" aria-label="Gráfico de barras de defeitos"></canvas>
-        </div>
-
-      </div>
-    </div>
-  </div>
-  <script src="./relatorio-controle-falhas.js?v=3.2"></script>
+  <!-- JS principal (substitua pelo arquivo) -->
+  <script src="./relatorio-controle-falhas.js?v=3.0"></script>
 
   <script>
     // inicializa os ícones lucide (após carregar lucide)

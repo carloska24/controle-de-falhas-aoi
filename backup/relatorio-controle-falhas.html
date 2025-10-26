@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Controle de Falhas</title>
+    <link rel="stylesheet" href="./style.css?v=1.5">
+    <link rel="stylesheet" href="./react-examples/dist/output.css">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="app-header">
+        <div class="app-title">Relatório de Controle de Falhas</div>
+        <div class="user-info flex items-center gap-3">
+                                    <a href="index.html" data-action="back" class="back-btn" style="background:transparent; border:none; box-shadow:none;" title="Voltar">
+                                        <i data-lucide="arrow-big-left" class="w-6 h-6" style="color:#fff;"></i>
+                                    </a>
+            <span id="userDisplay" class="text-slate-200"></span>
+            <button id="btnLogout" data-action="logout" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-600 text-slate-200 hover:bg-slate-700/30">Sair</button>
+        </div>
+    </div>
+    <div class="container main-layout" style="display:flex; flex-direction:row; justify-content:center; align-items:flex-start; width:100vw; min-height:80vh;">
+        <section class="card" style="flex:1 1 0; max-width:1800px; width:100%; margin:32px 0;">
+            <h2 class="section-title"><i data-lucide="book-key" class="w-6 h-6 text-sky-400"></i> Relatório Completo de Registro de Falhas</h2>
+            
+            <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                <div class="filters" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <select id="filtroOMFalhas" class="select-om" style="padding: 8px 12px; border-radius: 8px; border: 1.5px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.95rem;">
+                        <option value="">Filtrar por OM</option>
+                    </select>
+                    <input type="date" id="filtroDataFalhas" style="padding: 8px 12px; border-radius: 8px; border: 1.5px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.95rem;" placeholder="Data">
+                    <input type="text" id="filtroOperadorFalhas" style="padding: 8px 12px; border-radius: 8px; border: 1.5px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.95rem;" placeholder="Operador">
+                    <input type="text" id="filtroDefeitoFalhas" style="padding: 8px 12px; border-radius: 8px; border: 1.5px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 0.95rem;" placeholder="Tipo de Defeito">
+                </div>
+
+                <div class="actions">
+                    <button id="btnExportarCSV" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11L12 15L16 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Exportar CSV</span>
+                    </button>
+                    <button id="btnVerGraficos" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 17V10M9 17V7M14 17V13M19 17V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Visualizar Gráficos</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="falhasReportContainer" style="overflow-x:auto;">
+                <div class="note">Carregando dados...</div>
+            </div>
+            <!-- Painel modal de gráficos -->
+            <div id="graficosOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(30,41,59,0.92); z-index:1000; justify-content:center; align-items:center;">
+                <div style="background:#1e293b; border-radius:18px; box-shadow:0 4px 32px #0008; padding:18px 18px 18px 18px; max-width:900px; width:98vw; margin:auto; position:relative; display:flex; flex-direction:row; gap:24px; align-items:flex-start; justify-content:center;">
+                    <button id="btnFecharGraficos" style="position:absolute; top:18px; right:18px; background:#334155; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:1.1em; cursor:pointer;">Fechar</button>
+                    <h3 class="section-title" style="margin-bottom:18px;"><i data-lucide="bar-chart-3" class="w-5 h-5 text-sky-400"></i> Análise Visual das Falhas</h3>
+                    <div style="position:absolute; top:18px; left:0; width:100%; text-align:center; z-index:2;">
+                        <h3 class="section-title" style="margin-bottom:8px; display:inline-flex; align-items:center; gap:8px; justify-content:center;"><i data-lucide="bar-chart-3" class="w-5 h-5 text-sky-400"></i> Análise Visual das Falhas</h3>
+                    </div>
+                    <div style="flex:2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; margin-top:38px;">
+                        <canvas id="graficoDefeitos" style="width:100%; height:280px; max-width:520px;"></canvas>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:12px;">
+                        <canvas id="graficoPizzaFalhas" style="width:160px; height:160px; margin-bottom:8px;"></canvas>
+                        <div id="legendaPizzaFalhas" style="width:100%; display:flex; flex-direction:column; gap:6px; align-items:flex-start;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reportFooter" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #334155; text-align: right;">
+                <div id="omTimeDisplay" class="om-final-time" style="font-size: 1.1em; text-align: left;"></div>
+                </div>
+        </section>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="./relatorio-controle-falhas.js?v=1.0"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>try { if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons(); } catch (e) {}</script>
+</body>
+</html>

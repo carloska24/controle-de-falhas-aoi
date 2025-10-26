@@ -229,16 +229,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userDisplay) userDisplay.textContent = user.name || user.username;
         
         try {
-            const rawData = await fetchAutenticado(API_URL) || [];
+            const rawData = await fetchAutenticado(API_URL) || { data: [] };
+            const registros = Array.isArray(rawData) ? rawData : (rawData.data || []);
             const urlParams = new URLSearchParams(window.location.search);
             const isDemoMode = urlParams.get('demo') === 'true';
 
             if (isDemoMode && user && user.role === 'admin') {
-                allData = rawData; // Em modo demo, mostra todos os dados
+                allData = registros;
                 document.querySelector('.app-title').textContent += ' (Modo Demo)';
             } else {
-                // Em modo normal (ou se não for admin), filtra os dados de demonstração
-                allData = rawData.filter(d => !d.om.startsWith('DEMO-'));
+                allData = registros.filter(d => !d.om?.startsWith('DEMO-'));
             }
 
             // Popular filtro de OM

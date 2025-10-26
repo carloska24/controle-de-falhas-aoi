@@ -258,8 +258,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             let raw = await fetchAutenticado(API_URL);
-            if (!Array.isArray(raw)) raw = [];
-            allRequisicoes = (user && user.role === 'admin') ? raw : raw.filter(r => !(r.om || '').startsWith('DEMO-'));
+            let requisicoesArr = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+            allRequisicoes = (user && user.role === 'admin') ? requisicoesArr : requisicoesArr.filter(r => !(r.om || '').startsWith('DEMO-'));
             popularFiltroOM();
             renderTable();
             checkNotificationStatus();

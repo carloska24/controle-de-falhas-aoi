@@ -150,7 +150,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Carregar e renderizar usuários
     async function carregarUsuarios() {
         try {
-            const users = await fetchAutenticado(USERS_API_URL) || [];
+            let rawUsers = await fetchAutenticado(USERS_API_URL);
+            let users = Array.isArray(rawUsers?.data) ? rawUsers.data : (Array.isArray(rawUsers) ? rawUsers : []);
             window.appUsers = users; // Armazena os usuários globalmente na janela para fácil acesso
             usersTbody.innerHTML = '';
             users.forEach(u => {

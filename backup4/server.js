@@ -26,7 +26,6 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const cookieParser = require('cookie-parser');
-const morgan = require('morgan');
 const cache = require('./cache');
 
 // Logging gate: controla o que será impresso por console.log dependendo do ambiente
@@ -53,73 +52,15 @@ console.log = function (...args) {
     }
 };
 
-// Também aplica filtros a outros métodos de console para reduzir ruído.
-const _origConsoleError = console.error.bind(console);
-const _origConsoleWarn = console.warn.bind(console);
-const _origConsoleInfo = console.info ? console.info.bind(console) : _origConsoleLog;
-const _origConsoleDebug = console.debug ? console.debug.bind(console) : _origConsoleLog;
-
-function _shouldLogByLevel(forceLevel, args) {
-    if (SILENCE_LOGS) return false;
-    // forceLevel: 'error'|'warn'|'info'|'debug' -> decide com base em LOG_LEVEL
-    const lvl = forceLevel || 'info';
-    return (_levelOrder[lvl] <= _currentLevel);
-}
-
-console.error = function (...args) {
-    try {
-        if (!_shouldLogByLevel('error', args)) return;
-        _origConsoleError(...args);
-    } catch (e) { _origConsoleError(...args); }
-};
-
-console.warn = function (...args) {
-    try {
-        if (!_shouldLogByLevel('warn', args)) return;
-        _origConsoleWarn(...args);
-    } catch (e) { _origConsoleWarn(...args); }
-};
-
-console.info = function (...args) {
-    try {
-        if (!_shouldLogByLevel('info', args)) return;
-        _origConsoleInfo(...args);
-    } catch (e) { _origConsoleInfo(...args); }
-};
-
-console.debug = function (...args) {
-    try {
-        if (!_shouldLogByLevel('debug', args)) return;
-        _origConsoleDebug(...args);
-    } catch (e) { _origConsoleDebug(...args); }
-};
-
 console.log('Deploy forçado em 2025-10-07 para Render.');
 
 const app = express();
-// Middleware de logs HTTP: registra morgan com um `skip` runtime que respeita
-// a variável de ambiente `SILENCE_LOGS` e o nível `LOG_LEVEL`.
-// Isso evita que acessos HTTP continuem sendo impressos mesmo que a env
-// não tenha sido propagada exatamente no momento do startup.
-app.use(morgan('combined', {
-    skip: (_req, _res) => {
-        // se SILENCE_LOGS=true, suprime logs de acesso
-        if (String(process.env.SILENCE_LOGS || '').toLowerCase() === 'true') return true;
-        // considera LOG_LEVEL: se for 'error' ou 'warn' (nível < info), suprime logs de acesso (que são info)
-        const envLevel = (process.env.LOG_LEVEL || LOG_LEVEL || 'debug').toLowerCase();
-        const lvlOrderLocal = { error: 0, warn: 1, info: 2, debug: 3 };
-        if (lvlOrderLocal[envLevel] !== undefined && lvlOrderLocal[envLevel] < 2) return true;
-        return false;
-    }
-}));
+// Logs HTTP completamente desativados: morgan removido
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-padrao';
 const DEV_SEED_KEY = process.env.DEV_SEED_KEY || 'local-dev-2024';
 
-// Log simples ao iniciar o servidor
-app.listen(PORT, () => {
-    console.log(`[Servidor rodando] Backend iniciado na porta ${PORT}`);
-});
+// Removido app.listen daqui. Inicialização do servidor ocorre apenas na função startServer.
 
 // Middleware para interpretar JSON deve vir antes de todas as rotas
 app.use(express.json());
@@ -1129,9 +1070,6 @@ function getElapsed(om) {
     if (om.status === 'finalizada') {
         return (om.endTime - om.startTime - (om.pausedTime || 0));
     }
-    if (om.status === 'pausada' && typeof om.elapsedAtPause === 'number') {
-        return om.elapsedAtPause;
-    }
     let now = Date.now();
     let paused = om.pausedTime || 0;
     if (om.status === 'pausada' && om.pauseStartedAt) {
@@ -1182,17 +1120,10 @@ app.put('/api/om/pause', (req, res) => {
     if (!om || om.status !== 'em_andamento') {
         return res.status(400).json({ error: 'OM não encontrada ou não está em andamento' });
     }
-    // Apenas marca o início da pausa, não soma nada a pausedTime aqui
-    if (!om.pausedTime) om.pausedTime = 0;
-    if (!om.pauseStartedAt) {
-        om.pauseStartedAt = Date.now();
-        om.status = 'pausada';
-        // Salva o tempo decorrido até o momento da pausa
-        om.elapsedAtPause = Date.now() - om.startTime - om.pausedTime;
-    }
-    const elapsed = getElapsed(om);
-    console.log(`[OM] Pausada: ${omNumber} | elapsed: ${elapsed} | startTime: ${om.startTime} | pausedTime: ${om.pausedTime}`);
-    res.json({ ...om, elapsed });
+    om.status = 'pausada';
+    om.pauseStartedAt = Date.now();
+    console.log(`[OM] Pausada: ${omNumber}`);
+    res.json({ ...om, elapsed: getElapsed(om) });
 });
 
 // PUT /api/om/resume
