@@ -1,0 +1,47 @@
+# Guia de Limpeza Manual do Banco de Dados
+
+Este guia descreve como utilizar os scripts criados para excluir OMs específicas ou limpar todo o banco de dados.
+
+## Requisitos
+
+- Acesse a pasta do backend no terminal:
+  ```powershell
+  cd c:\Workspace\controle-de-falhas-aoi\backend
+  ```
+
+## 1. Excluir uma OM Específica
+
+Para apagar completamente uma OM, incluindo seus registros de falhas, requisições de reparo e status de pausa/finalização, execute o comando abaixo substituindo `<NUMERO_DA_OM>` pelo número da OM real (ex: `12345` ou `OM-999`).
+
+```powershell
+npm run clean:om -- <NUMERO_DA_OM>
+```
+
+**Exemplo:**
+```powershell
+npm run clean:om -- 12345
+```
+
+> **Nota:** O `--` é necessário para passar o argumento para o script.
+
+---
+
+## 2. Limpar TODO o Banco de Dados
+
+Para apagar **TODOS** os dados de produção (Registros, Requisições, OMs Pausadas, OMs Finalizadas), execute:
+
+```powershell
+npm run clean:all
+```
+
+O script pedirá uma confirmação [(s/N)](file:///c:/Workspace/controle-de-falhas-aoi/backend/src/config/database.js#250-253). Digite `s` e pressione Enter para confirmar.
+
+> **Importante:** Isso **NÃO** apaga os usuários (Admins/Operadores) para evitar que você fique trancado fora do sistema. Apenas os dados operacionais são removidos.
+
+## Resolução de Problemas
+
+Se o banco estiver "travado" (arquivo locked), certifique-se de parar o servidor backend antes de rodar a limpeza:
+
+1. No terminal do backend, pressione `Ctrl + C` para parar o servidor.
+2. Execute o comando de limpeza.
+3. Digite `npm start` para iniciar o servidor novamente.

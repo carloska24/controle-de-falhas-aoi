@@ -1,0 +1,427 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =================================================================
+   Scrollbar Customizada (NeonForge Style)
+   ================================================================= */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+  border-left: 1px solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155; /* Slate 700 */
+  border-radius: 5px;
+  border: 2px solid var(--bg-dark); /* Padding visual */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* Slate 600 */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 var(--bg-dark);
+}
+
+:root {
+  --bg-dark: #0f172a;
+  --panel: #1e293b;
+  --text: #e5e7eb;
+  --text-dim: #94a3b8;
+  --primary: #22c55e;
+  --border-color: #334155;
+  --metal-contact: #aeb2b5;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =================================================================
+   Componentes SMD Animados (Background da página de login)
+   ================================================================= */
+
+/* Container de animação */
+.smd-component {
+  position: absolute;
+  top: -50px;
+  opacity: 0.55;
+  animation-name: smd-fall;
+  /* Linear: movimento totalmente constante sem aceleração/desaceleração */
+  /* Isso evita qualquer sensação de "colisão" ou "esbarro" */
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: none; /* Para animações infinitas, não precisa de fill-mode */
+  border-radius: 2px;
+  will-change: transform;
+  pointer-events: none;
+  /* Garantir que componentes não saiam dos limites visuais */
+  transform-origin: center center;
+}
+
+/* Animação de queda com movimento totalmente linear e constante */
+/* Movimento uniforme sem aceleração/desaceleração para evitar sensação de colisão */
+@keyframes smd-fall {
+  0% {
+    transform: translateY(0px) translateX(0px) rotate(var(--start-rot, 0deg));
+    opacity: var(--opacity-start, 0.55);
+  }
+  100% {
+    /* Final - movimento linear até completamente fora da tela */
+    /* Todas as transformações são proporcionais ao tempo (0% a 100%) */
+    transform: translateY(calc(100vh + 100px)) translateX(var(--drift, 0px))
+      rotate(var(--end-rot, 360deg));
+    opacity: var(--opacity-start, 0.55);
+  }
+}
+
+/* Base dos componentes com pads */
+.smd-resistor,
+.smd-capacitor,
+.smd-diode {
+  position: relative;
+  /* Sombra sutil para profundidade */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Corpo dos componentes - cores realistas baseadas em componentes SMD reais */
+.smd-resistor {
+  background-color: #2a2a2a; /* Preto padrão (resistor filme de carbono) */
+  border-radius: 1px; /* Bordas ligeiramente arredondadas */
+}
+
+.smd-resistor.beige {
+  background-color: #f0e6d6; /* Bege claro (resistor cerâmico/thick film) */
+  border-radius: 1px;
+}
+
+.smd-resistor.dark {
+  background-color: #1a1a1a; /* Preto profundo (resistor filme fino) */
+  border-radius: 1px;
+}
+
+.smd-capacitor {
+  background-color: #8b4513; /* Marrom padrão (capacitor cerâmico) */
+  border-radius: 1px;
+}
+
+.smd-capacitor.blue {
+  background-color: #2563eb; /* Azul vibrante (capacitor tantalum) */
+  border-radius: 1px;
+}
+
+.smd-capacitor.tan {
+  background-color: #d4a574; /* Bege bronzeado (capacitor cerâmico) */
+  border-radius: 1px;
+}
+
+.smd-led {
+  background-color: #22c55e; /* Verde padrão */
+}
+
+.smd-led.red {
+  background-color: #ef4444;
+}
+
+.smd-led.green {
+  background-color: #22c55e;
+}
+
+.smd-led.blue {
+  background-color: #3b82f6;
+}
+
+.smd-led.yellow {
+  background-color: #fbbf24;
+}
+
+.smd-led.white {
+  background-color: #d4d4c4; /* Branco mais escuro/realista (não tão brilhante) */
+}
+
+.smd-diode {
+  background-color: #1a1a1a; /* Preto profundo */
+  border-radius: 1px;
+}
+
+.smd-ic {
+  background-color: #111827; /* Preto quase sólido */
+  border-radius: 2px; /* ICs têm bordas mais arredondadas */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Sombra mais pronunciada para profundidade */
+}
+
+.smd-ic.gray {
+  background-color: #374151; /* Cinza escuro */
+  border-radius: 2px;
+}
+
+/* Pads (terminações metálicas) — sempre em ambas as extremidades */
+/* Proporção realista: pads ocupam ~15-20% da largura do componente */
+.smd-resistor::before,
+.smd-resistor::after,
+.smd-capacitor::before,
+.smd-capacitor::after,
+.smd-diode::before,
+.smd-diode::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(2px, 18%, 7px); /* Ajustado para melhor visibilidade */
+  min-width: 2px; /* Garantir visibilidade mesmo em componentes pequenos */
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.95) 0%,
+    #d4d8db 20%,
+    #c7cbce 40%,
+    #aeb2b5 60%,
+    #8f9396 80%,
+    rgba(255, 255, 255, 0.85) 100%
+  );
+  /* Brilho metálico realista */
+  box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.3),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2), 0 0 1px rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+  z-index: 1; /* Garantir que pads fiquem acima do corpo */
+}
+
+/* LEDs não têm pads visíveis (são muito pequenos) */
+.smd-led::before,
+.smd-led::after {
+  display: none; /* LEDs SMD são muito pequenos e não mostram pads claramente */
+}
+
+.smd-resistor::before,
+.smd-capacitor::before,
+.smd-diode::before {
+  left: 0;
+}
+
+.smd-resistor::after,
+.smd-capacitor::after,
+.smd-diode::after {
+  right: 0;
+}
+
+/* Detalhe do diodo: faixa de marcação do catodo (mais visível) */
+.smd-diode {
+  background-image: linear-gradient(
+    to right,
+    transparent 68%,
+    rgba(255, 255, 255, 0.4) 68%,
+    rgba(255, 255, 255, 0.4) 72%,
+    transparent 72%
+  );
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* CI com pinos nas bordas */
+.smd-ic {
+  position: relative;
+  background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      var(--metal-contact, #aeb2b5) 2px,
+      var(--metal-contact, #aeb2b5) 4px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      var(--metal-contact, #aeb2b5) 2px,
+      var(--metal-contact, #aeb2b5) 4px
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent 2px,
+      var(--metal-contact, #aeb2b5) 2px,
+      var(--metal-contact, #aeb2b5) 4px
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent 2px,
+      var(--metal-contact, #aeb2b5) 2px,
+      var(--metal-contact, #aeb2b5) 4px
+    ),
+    linear-gradient(#37474f, #37474f);
+  background-size: 3px 100%, 3px 100%, 100% 3px, 100% 3px, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: right top, left top, left bottom, left top, center;
+}
+
+.smd-ic::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20%;
+  height: 20%;
+  max-width: 4px;
+  max-height: 4px;
+  background-color: #546e7a;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* Acessibilidade: reduz movimento se o usuário preferir */
+@media (prefers-reduced-motion: reduce) {
+  .smd-component {
+    animation: none !important;
+  }
+}
+
+/* =================================================================
+   Estilos do Logo SVG (Login Page)
+   ================================================================= */
+.logo-svg-container {
+  margin: 0 auto 8px auto;
+  width: clamp(140px, 35vw, 200px);
+  text-align: center;
+}
+
+.logo-svg-container .icon-shape {
+  fill: var(--panel, #1e293b);
+  stroke: var(--primary, #22c55e);
+  stroke-width: 8;
+  filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.4));
+  transition: all 0.3s ease;
+}
+
+.logo-svg-container:hover .icon-shape {
+  stroke-width: 10;
+  filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.6));
+}
+
+.logo-svg-container .icon-code {
+  stroke: var(--primary, #22c55e);
+  filter: drop-shadow(0 0 8px hsla(145, 63%, 49%, 0.6));
+}
+
+.logo-svg-container .logo-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.logo-svg-container .logo-text .dev-part {
+  font-weight: 700;
+  fill: var(--text, #e5e7eb);
+}
+
+.logo-svg-container .logo-text .pratica-part {
+  font-weight: 400;
+  fill: var(--primary, #22c55e);
+}
+
+/* Logo no footer */
+.logo-text-external {
+  font-size: 16px;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.logo-text-external .dev-part {
+  font-family: 'Roboto Mono', monospace;
+  color: var(--text, #e5e7eb);
+  font-weight: 500;
+}
+
+.logo-text-external .pratica-part {
+  font-family: 'Poppins', sans-serif;
+  color: var(--primary, #22c55e);
+  font-weight: 400;
+}
+
+/* Utilitários */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Forçar fundo escuro em inputs e selects do ProForm */
+@layer components {
+  input[class*='!bg-[#0f1a2b]'],
+  select[class*='!bg-[#0f1a2b]'],
+  textarea[class*='!bg-[#0f1a2b]'] {
+    background-color: #0f1a2b !important;
+  }
+
+  /* Corrige fundo branco nos campos com autofill */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 30px #0f1a2b inset !important;
+    -webkit-text-fill-color: #eaf0ff !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}
+
+/* Animação de shimmer para o timer PRO */
+@keyframes timerShine {
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Animação de shimmer para skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}

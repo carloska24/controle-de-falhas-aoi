@@ -4,11 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "node -r dotenv/config server.js",
-  "dev": "nodemon -r dotenv/config --ext js,json,env server.js",
-  "export:sqlite": "node scripts/export_sqlite.js",
-  "test:auth": "node tests/auth_cookie_flow.test.js",
-  "test": "jest"
+    "start": "node -r dotenv/config server.js",
+    "dev": "nodemon -r dotenv/config --ext js,json,env server.js",
+    "export:sqlite": "node scripts/export_sqlite.js",
+    "test:auth": "node tests/auth_cookie_flow.test.js",
+    "clean:om": "node scripts/clean_db.js om",
+    "clean:all": "node scripts/clean_db.js all",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -16,25 +18,28 @@
   "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "cookie-parser": "^1.4.6",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
     "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
     "node-fetch": "^2.7.0",
     "pg": "^8.16.3",
     "sqlite3": "^5.1.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
     "jest": "^29.0.0",
+    "nodemon": "^3.1.10",
     "supertest": "^6.3.3"
   },
   "jest": {
     "testEnvironment": "node",
     "testTimeout": 20000,
-    "testMatch": ["**/?(*.)+(spec).js"]
+    "testMatch": [
+      "**/?(*.)+(spec).js"
+    ]
   }
 }

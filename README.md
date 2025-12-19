@@ -1,169 +1,170 @@
-# Controle de Falhas AOI
+# 🏭 Controle de Falhas AOI
 
-Aplicação full-stack para registro de defeitos AOI, gestão de usuários e fluxo de requisições de almoxarifado.
+Sistema completo de controle de falhas em produção com autenticação, dashboards e relatórios em tempo real.
 
-## Stack
-- Backend: Node.js, Express 5, JWT, bcrypt
-- DB: PostgreSQL (produção) / SQLite (dev) com auto-provisionamento
-- Frontend: HTML/CSS/JS puro
+## 📋 Sobre o Projeto
 
-## Rodar localmente (Windows PowerShell)
+Sistema desenvolvido para controlar falhas em produção com duas versões:
 
-1) Backend
-- Copie `.env.example` para `backend/.env` e ajuste se necessário.
-- Se quiser usar SQLite (mais simples), deixe `DATABASE_URL` vazio.
-- Se for usar PostgreSQL local, defina `DATABASE_URL` (ex.: `postgres://user:pass@localhost:5432/aoi`).
+- **Legado:** HTML + CSS + JavaScript (pasta `frontend/`)
+- **Nova:** Next.js + React + TypeScript (pasta `nextjs-frontend/`)
 
-## Sequência ideal (PowerShell):
+Ambas compartilham o mesmo **backend Express** na porta 3001.
 
-- Verifique a versão do Node/NPM (Node v18+ recomendado):
+## 🚀 Início Rápido
 
-```powershell
-node -v
-npm -v
-```
+### Instalação
 
-- Instale dependências do backend (executar a partir da raiz do repo):
+```bash
+# Clonar repositório
+cd C:\Workspace\controle-de-falhas-aoi
 
-```powershell
-npm --prefix .\backend install
-```
+# Instalar dependências do backend
+cd backend
+npm install
 
-- Inicie o backend em modo dev (nível de desenvolvimento):
-
-```powershell
-npm --prefix .\backend run dev
-```
-
-- O servidor local usa por padrão SQLite em dev e normalmente sobe na porta 3001.
-	Após iniciar, verifique o healthcheck:
-
-```powershell
-# Testa health endpoint
-Invoke-RestMethod -Uri http://localhost:3001/health
-```
-
-Em primeiro run, as tabelas são criadas automaticamente.
-- Em SQLite, um admin local é semeado automaticamente: `DevAdmin` / `123456`.
-- Em PostgreSQL local, se não houver usuários, também é criado.
-
-2) Frontend
-
-Servir a pasta `frontend` em http://127.0.0.1:5500:
-
-```powershell
-npx http-server "c:\Users\joaob\controle-de-falhas-aoi\frontend" -p 5500 -c-1
-```
-
-Acesse `http://127.0.0.1:5500/login.html` e entre com:
-- Usuário: `DevAdmin`
-- Senha: `123456`
-
-## Deploy (Render + Netlify)
-
-Este repo está pronto para:
-- Backend (API) no Render (Node Service)
-- Frontend (estático) no Netlify (deploy de `frontend/`)
-
-### Netlify (frontend)
-1. Conecte o repo no Netlify e selecione o branch `main`.
-2. O arquivo `netlify.toml` já define:
-	- `publish = "frontend"`
-	- `command = ""` (SPA estática, sem build)
-3. Com “Auto publishing” ON, todo push em `main` publica automaticamente.
-
-### Render (backend)
-1. Crie um serviço “Web Service” Node e conecte a este repositório (branch `main`).
-2. Defina variáveis de ambiente (em Settings → Environment):
-	- `NODE_ENV=production`
-	- `JWT_SECRET` (obrigatório)
-	- `CORS_ORIGIN=https://SEU-SITE.netlify.app` (adicione múltiplos separados por vírgula)
-	- `DATABASE_URL` (PostgreSQL do Render)
-	- (Opcional) `DEMO_AUTO_PURGE_DAYS=7` para purga automática de DEMO antigos
-3. Habilite “Auto Deploy” para que cada push publique automaticamente.
-4. Teste saúde em: `https://SEU-SERVICO.onrender.com/health`.
-
-### Após um push
-- Netlify: acompanhe Deploys até ficar “Published”.
-- Render: verifique se o novo deploy foi feito (ou clique em “Manual Deploy”).
-- Teste o fluxo: abra o site do Netlify, faça login e confira chamadas para a API do Render sem erro de CORS.
-
-### Dicas de produção
-- Em produção, `JWT_SECRET` não pode usar o valor padrão.
-- Garanta que todos os domínios clientes estejam em `CORS_ORIGIN`.
-- Para limpar dados DEMO ao deslogar admin, o frontend chama `POST /api/admin/logout`.
-
-## Configurações importantes
-- Em produção (`NODE_ENV=production`), o servidor exige `JWT_SECRET` e um `CORS_ORIGIN` válido.
-- Rotas de emergência ficam desativadas por padrão e nunca habilitam em produção.
-
-## Scripts backend
-- `npm run start` — inicia server
-- `npm run dev` — inicia com nodemon e dotenv/config
-
-## Build do CSS Tailwind (frontend/react-examples) — PowerShell
-
-Se você quiser gerar o CSS localmente (útil para desenvolvimento do demo de botões):
-
-1. Abra PowerShell e entre na pasta `frontend/react-examples`:
-
-```powershell
-cd C:\Users\joaob\OneDrive\Documentos\BRANCH\controle-de-falhas-aoi\frontend\react-examples
-```
-
-2. Instale dependências (se ainda não instalou):
-
-```powershell
+# Instalar dependências do frontend (Next.js)
+cd ../nextjs-frontend
 npm install
 ```
 
-3. Gerar o CSS uma vez:
+### Executar o Sistema
 
-```powershell
-npm run build:css
+#### Backend (Express)
+
+```bash
+cd backend
+npm start
+# ou
+npm run dev
 ```
 
-4. Para desenvolvimento em tempo real (recompila ao salvar):
+#### Frontend Next.js (Recomendado)
 
-```powershell
-npm run watch:css
+```bash
+cd nextjs-frontend
+npm run dev
 ```
 
-O arquivo gerado ficará em `frontend/react-examples/dist/output.css`. O demo `frontend/tailwind-buttons.html` já está apontando para esse arquivo local.
+#### Frontend Legado
 
-## Melhorias sugeridas
-- Rate limiting em autenticação
-- Validação de entrada com Zod/express-validator
-- Logs estruturados e auditoria de alterações
-- Testes automatizados (unit/integration)
-
-## Logs e Debug
-
-Por padrão, os logs do servidor (stdout/stderr) não devem ser expostos publicamente. Em desenvolvimento, pode ser útil visualizar logs para debug, mas recomenda-se sempre proteger ou desativar a exposição em ambientes acessíveis.
-
-Como bloquear acesso público a arquivos de log
-
-1. No backend, existe uma rota estática que serve a pasta `frontend/`. Para evitar que arquivos `.log` sejam lidos via HTTP, adicione um middleware rápido no `backend/server.js` (antes de `app.use(express.static(frontendDir))`) para retornar 404 para URLs que terminem em `.log`.
-
-Como habilitar exposição temporária para teste (apenas em dev)
-
-1. Defina a variável de ambiente `EXPOSE_LOGS=true` ao iniciar o servidor (somente em dev). Exemplos (PowerShell):
-
-```powershell
-# Inicia o backend expondo logs (apenas para testes locais)
-$env:EXPOSE_LOGS = "true"; npm --prefix .\backend run dev
+```bash
+# Abra frontend/index.html no navegador ou use um servidor local
 ```
 
-2. Com `EXPOSE_LOGS=true` você pode criar uma rota controlada no backend que retorna o conteúdo de `server.out.log` (apenas para o host local). IMPORTANTE: não habilite isso em produção.
+## 📁 Estrutura do Projeto
 
-Como desfazer / testar se está sendo impresso
-
-- Para testar se o servidor está imprimindo logs no arquivo `server.out.log` (PowerShell):
-
-```powershell
-Get-Content .\backend\server.out.log -Tail 50 -Wait
+```
+controle-de-falhas-aoi/
+├── backend/           # API Express + SQLite
+│   ├── server.js      # Servidor principal
+│   ├── database.js    # Configuração do SQLite
+│   └── queries/       # Queries de banco de dados
+├── frontend/          # Frontend legado (HTML/CSS/JS)
+├── nextjs-frontend/   # Frontend moderno (Next.js)
+└── Comandos Windows10/ # Scripts de otimização do Windows
 ```
 
-- Para reverter a exposição (recomendado): remova `EXPOSE_LOGS` ou reinicie o servidor sem essa variável.
+## 🔐 Autenticação
 
-Se quiser, eu aplico agora um middleware no `backend/server.js` que bloqueia qualquer request que tente acessar arquivos `.log` publicamente; depois você pode ativar uma rota de teste protegida quando quiser verificar se algo está sendo impresso.
+- **Login:** `/login`
+- **Roles:** admin, operator, reparo, qualidade, almoxarifado
+- **Backend:** https://controle-de-falhas-aoi.onrender.com
+
+### Credenciais de Desenvolvimento
+
+- **Login:** DevNaPratica
+- **Senha:** 123456
+- **Role:** Administrador
+
+## 📚 Documentação
+
+- **Status do Projeto:** `STATUS-PROJETO.md`
+- **Comandos do Cursor:** `Instrucoes Cursor/`
+- **Backend:** `backend/README.md`
+- **Next.js:** `nextjs-frontend/README.md`
+
+## 🛠️ Tecnologias
+
+### Backend
+
+- Node.js + Express
+- SQLite3
+- JWT Authentication
+- PM2 / NSSM (serviço Windows)
+
+### Frontend Legado
+
+- HTML5 + CSS3
+- JavaScript Vanilla
+- Chart.js
+
+### Frontend Next.js
+
+- Next.js 16
+- React 18
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+
+## 🌐 Deploy
+
+### Netlify (Frontend)
+
+https://stately-fairy-2fee40.netlify.app
+
+### Render (Backend)
+
+https://controle-de-falhas-aoi.onrender.com
+
+## 📝 Deploy Local
+
+```bash
+# Pasta principal
+cd C:\Users\cad02\Desktop\projeto-aoi
+git add .
+git commit -m "DESCRIÇÃO"
+git push
+```
+
+## 📊 Funcionalidades
+
+- ✅ Autenticação e autorização
+- ✅ Lançamento de falhas
+- ✅ Dashboard com métricas
+- ✅ Relatórios de qualidade
+- ✅ Gestão de usuários (admin)
+- ✅ Exportação de dados
+- ✅ Timer de OM com shimmer effect
+- ✅ Animações com Framer Motion
+
+## 🔧 Scripts Úteis
+
+### Sistema AOI
+
+- `INICIAR-AMBOS-SERVIDORES.bat` - Inicia backend e frontend
+- `instalar-servico.ps1` - Instala como serviço Windows
+- `parar-servico.ps1` - Para o serviço
+- `limpar-sistema.ps1` - Limpa logs e cache
+
+### Otimização do Windows
+
+- **`Comandos Windows10/EXECUTAR-OTIMIZACAO.bat`** ← Otimizar Windows
+- `Comandos Windows10/otimizar-windows.ps1` - Script interativo
+- `Comandos Windows10/otimizar-windows-auto.ps1` - Script automático
+
+📖 Veja mais em: [`Comandos Windows10/README-OTIMIZACAO.md`](Comandos%20Windows10/README-OTIMIZACAO.md)
+
+## 🆘 Suporte
+
+Para informações detalhadas, consulte:
+
+- `STATUS-PROJETO.md` - Status completo do projeto
+- `Instrucoes Cursor/` - Guias de desenvolvimento
+- `docs/` - Documentação adicional
+
+---
+
+**Desenvolvido para:** Controle de Falhas em Produção AOI  
+**Versão:** 1.0  
+**Última atualização:** Novembro 2025

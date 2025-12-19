@@ -15,6 +15,12 @@ Thumbs.db
 # Ignore log files
 log_backend.txt
 backend/log_backend.txt
+*.log
+backend/*.log
+backend/logs/
+backend/nssm-*.log
+backend/server-*.log
+backend/debug_*.log
 
 # Ignore utilitários e scripts removidos
 backend/auth.test.js
@@ -42,3 +48,20 @@ backend/aoi.db-wal
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignore backup files
+*.bak
+package-*.bak
+*.bak.*
+
+# Ignore VS Code user settings (local configurations)
+.vscode/settings.json
+.vscode/extensions.json
+
+# Ignore local configuration folders
+CONFIGURACOES-PC-EMPRESA/
+Instrucoes Cursor/
+
+# Ignore test and temporary files
+test-api.html
+frontend.script-pro.js

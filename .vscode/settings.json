@@ -1,3 +1,293 @@
 {
-    "liveServer.settings.port": 5501
+  // ============================================
+  // CONFIGURAÇÕES DO CURSOR/VS CODE
+  // Controle de Falhas AOI - Tema Escuro
+  // APLICAR APENAS NO PC DA EMPRESA
+  // ============================================
+  
+  // Tema e Aparência
+  "workbench.colorTheme": "Default Dark+",
+  "workbench.iconTheme": "vs-seti",
+  
+  // Cores customizadas do editor para combinar com o sistema
+  "workbench.colorCustomizations": {
+    // Fundo principal (slate-900)
+    "editor.background": "#0f172a",
+    "sideBar.background": "#0f172a",
+    "activityBar.background": "#0f172a",
+    "statusBar.background": "#0f172a",
+    
+    // Painéis (slate-800)
+    "panel.background": "#1e293b",
+    "editorGroupHeader.tabsBackground": "#1e293b",
+    "tab.activeBackground": "#1e293b",
+    
+    // Texto (slate-200/300)
+    "editor.foreground": "#e5e7eb",
+    "sideBarTitle.foreground": "#e5e7eb",
+    
+    // Texto secundário (slate-400)
+    "editorLineNumber.foreground": "#94a3b8",
+    "tab.inactiveForeground": "#94a3b8",
+    
+    // Bordas (slate-700)
+    "panel.border": "#334155",
+    "sideBar.border": "#334155",
+    "editorGroupHeader.tabsBorder": "#334155",
+    
+    // Destaque (verde/primary do sistema)
+    "statusBar.foreground": "#22c55e",
+    "activityBar.activeBorder": "#22c55e",
+    
+    // Seleção e foco (purple-500/cyan-500 - usado no sistema)
+    "editor.selectionBackground": "#8b5cf640",
+    "editor.selectionHighlightBackground": "#06b6d440",
+    "editor.wordHighlightBackground": "#8b5cf630",
+    
+    // Linha ativa
+    "editor.lineHighlightBackground": "#1e293b",
+    "editorCursor.foreground": "#8b5cf6",
+    
+    // Inputs e campos
+    "input.background": "#0f1a2b",
+    "input.foreground": "#eaf0ff",
+    "input.border": "#2a3d5c",
+    "inputOption.activeBorder": "#06b6d4",
+    
+    // Botões
+    "button.background": "#8b5cf6",
+    "button.foreground": "#ffffff",
+    "button.hoverBackground": "#7c3aed",
+    
+    // Listas e dropdowns
+    "list.activeSelectionBackground": "#1e3a5f60",
+    "list.activeSelectionForeground": "#06b6d4",
+    "list.hoverBackground": "#1a253560",
+    
+    // Scrollbar
+    "scrollbar.shadow": "#00000000",
+    "scrollbarSlider.background": "#33415580",
+    "scrollbarSlider.hoverBackground": "#47556980",
+    "scrollbarSlider.activeBackground": "#64748b80",
+    
+    // Status bar
+    "statusBar.noFolderBackground": "#0f172a",
+    "statusBar.debuggingBackground": "#dc2626"
+  },
+  
+  // Configurações do Editor
+  "editor.fontFamily": "'Inter', 'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+  "editor.fontSize": 14,
+  "editor.fontLigatures": true,
+  "editor.lineHeight": 1.6,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.minimap.enabled": false,
+  "editor.minimap.maxColumn": 120,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  "editor.guides.highlightActiveIndentation": true,
+  
+  // Cores de sintaxe personalizadas
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": ["comment", "punctuation.definition.comment"],
+        "settings": {
+          "foreground": "#64748b",
+          "fontStyle": "italic"
+        }
+      },
+      {
+        "scope": ["string", "string.quoted"],
+        "settings": {
+          "foreground": "#86efac"
+        }
+      },
+      {
+        "scope": ["keyword", "storage.type", "storage.modifier"],
+        "settings": {
+          "foreground": "#a78bfa",
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": ["entity.name.function", "entity.name.method"],
+        "settings": {
+          "foreground": "#06b6d4"
+        }
+      },
+      {
+        "scope": ["variable", "variable.other"],
+        "settings": {
+          "foreground": "#e5e7eb"
+        }
+      },
+      {
+        "scope": ["constant.numeric", "constant.language"],
+        "settings": {
+          "foreground": "#f59e0b"
+        }
+      },
+      {
+        "scope": ["entity.name.class", "entity.name.type"],
+        "settings": {
+          "foreground": "#22d3ee",
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": ["entity.name.tag"],
+        "settings": {
+          "foreground": "#34d399"
+        }
+      },
+      {
+        "scope": ["entity.other.attribute-name"],
+        "settings": {
+          "foreground": "#06b6d4"
+        }
+      }
+    ]
+  },
+  
+  // Terminal
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.fontSize": 13,
+  "terminal.integrated.fontFamily": "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.minimumContrastRatio": 4.5,
+  
+  // Terminal - Cores customizadas (slate theme)
+  "terminal.integrated.theme": "custom",
+  "terminal.integrated.background": "#0f172a",
+  "terminal.integrated.foreground": "#e5e7eb",
+  "terminal.integrated.cursorColor": "#8b5cf6",
+  "terminal.integrated.selectionBackground": "#1e3a5f",
+  
+  // Extensões recomendadas
+  "extensions.ignoreRecommendations": false,
+  
+  // Arquivos e pastas
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/.next": true,
+    "**/node_modules": true
+  },
+  
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true,
+    "**/build/**": true
+  },
+  
+  // Search
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.git": true
+  },
+  
+  // TypeScript/JavaScript
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.preferences.quoteStyle": "single",
+  "javascript.preferences.quoteStyle": "single",
+  
+  // Emmet
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+  
+  // Formatação
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  
+  // Prettier
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "es5",
+  "prettier.tabWidth": 2,
+  "prettier.semi": true,
+  "prettier.printWidth": 100,
+  "prettier.bracketSpacing": true,
+  "prettier.arrowParens": "avoid",
+  
+  // Outras configurações úteis
+  "editor.wordWrap": "on",
+  "editor.wordWrapColumn": 120,
+  "editor.rulers": [],
+  "editor.renderWhitespace": "boundary",
+  "editor.suggestSelection": "first",
+  "editor.snippetSuggestions": "top",
+  "editor.acceptSuggestionOnCommitCharacter": true,
+  "editor.tabCompletion": "on",
+  "editor.suggest.showWords": false,
+  "editor.suggest.showSnippets": true,
+  "editor.suggest.showClasses": true,
+  "editor.suggest.showFunctions": true,
+  "editor.suggest.showVariables": true,
+  
+  // Auto Save
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  
+  // Encoding
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  
+  // Breadcrumbs
+  "breadcrumbs.enabled": true,
+  "breadcrumbs.filePath": "on",
+  
+  // Git
+  "git.enabled": true,
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.decorations.enabled": true,
+  
+  // Problemas e erros
+  "problems.showCurrentInStatus": true,
+  
+  // Workbench
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.closeOnFileDelete": true,
+  "workbench.startupEditor": "none",
+  
+  // Telemetria (opcional)
+  "telemetry.telemetryLevel": "off"
 }
+
