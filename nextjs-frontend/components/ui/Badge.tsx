@@ -9,14 +9,22 @@ interface BadgeProps {
   className?: string;
 }
 
-export default function Badge({ children, variant = 'default', size = 'md', className }: BadgeProps) {
+export default function Badge({
+  children,
+  variant = 'default',
+  size = 'md',
+  className,
+}: BadgeProps) {
   const variants = {
-    default: 'bg-slate-700 text-slate-200',
-    success: 'bg-green-500/20 text-green-400 border border-green-500/30',
-    warning: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-    danger: 'bg-red-500/20 text-red-400 border border-red-500/30',
-    info: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-    secondary: 'bg-slate-600/30 text-slate-300 border border-slate-500/30',
+    default: 'bg-slate-700/50 text-slate-200 border border-slate-600/50',
+    success:
+      'bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_12px_-3px_rgba(74,222,128,0.2)]',
+    warning:
+      'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_12px_-3px_rgba(251,191,36,0.2)]',
+    danger:
+      'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_12px_-3px_rgba(248,113,113,0.2)]',
+    info: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_12px_-3px_rgba(34,211,238,0.2)]',
+    secondary: 'bg-slate-800/50 text-slate-400 border border-slate-700/50',
   };
 
   const sizes = {
@@ -38,4 +46,3 @@ export default function Badge({ children, variant = 'default', size = 'md', clas
     </span>
   );
 }
-

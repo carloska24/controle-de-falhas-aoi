@@ -396,10 +396,6 @@ export default function ReparoPage() {
   // Logout
   const handleLogout = async () => {
     try {
-      // Se for admin, limpar dados demo antes do logout
-      if (user?.role === 'admin') {
-        await fetchAutenticado('/api/admin/logout', { method: 'POST' });
-      }
       await fetchAutenticado('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -784,181 +780,186 @@ export default function ReparoPage() {
                   badgeBorder: 'border-red-500/30',
                   badgeText: 'text-red-400',
                 },
-              ].map(col => (
-                <motion.div
-                  key={col.status}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className={`bg-gradient-to-br from-slate-800/90 to-slate-900/90 border ${col.borderColor} rounded-xl p-4 min-h-[500px] shadow-xl`}
-                >
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
-                    <h3 className="text-lg font-bold text-white">{col.title}</h3>
-                    <span
-                      className={`${col.badgeBg} ${col.badgeBorder} border px-3 py-1 rounded-full text-sm font-bold ${col.badgeText}`}
-                    >
-                      {
-                        filteredData.filter(d => {
-                          const itemStatus = (d.status || 'aberto').toLowerCase().trim();
-                          // Normalizar status: 'requisição_gerada' e 'pendente' -> 'aberto'
-                          let normalizedStatus =
-                            itemStatus === 'requisição_gerada' || itemStatus === 'pendente'
-                              ? 'aberto'
-                              : itemStatus;
-                          normalizedStatus = normalizedStatus.toLowerCase().trim();
-                          const colStatusNormalized = col.status.toLowerCase().trim();
-                          return normalizedStatus === colStatusNormalized;
-                        }).length
-                      }
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {(() => {
-                      // Filtrar por status usando filteredData (não paginatedData)
-                      // O kanban deve mostrar todos os itens de cada status, não apenas os da página atual
-                      // Normalizar status: tratar null/undefined como 'aberto' e garantir comparação correta
-                      const statusItems = filteredData.filter(d => {
-                        const itemStatus = (d.status || 'aberto').toLowerCase().trim();
-                        // Normalizar status: 'requisição_gerada' e 'pendente' -> 'aberto'
-                        let normalizedStatus =
-                          itemStatus === 'requisição_gerada' || itemStatus === 'pendente'
-                            ? 'aberto'
-                            : itemStatus;
-                        // Garantir que está em minúsculas e sem espaços
-                        normalizedStatus = normalizedStatus.toLowerCase().trim();
-                        const colStatusNormalized = col.status.toLowerCase().trim();
-                        return normalizedStatus === colStatusNormalized;
-                      });
-                      // Limitar a 20 itens por coluna para não sobrecarregar
-                      return statusItems.length > 0 ? (
-                        statusItems.slice(0, 20).map(item => {
-                          const getPriorityVariant = (
-                            prioridade?: string
-                          ): 'danger' | 'warning' | 'info' | 'secondary' => {
-                            if (prioridade === 'urgente') return 'danger';
-                            if (prioridade === 'alta') return 'warning';
-                            if (prioridade === 'media') return 'info';
-                            return 'secondary';
-                          };
+              ].map(col => {
+                // Função helper para normalizar status especificamente para o Kanban
+                const getKanbanStatus = (status?: string | null) => {
+                  if (!status) return 'aberto';
+                  const s = status.toLowerCase().trim();
 
-                          return (
-                            <motion.div
-                              key={item.id}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              whileHover={{ scale: 1.02 }}
-                              className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-purple-500/30 rounded-xl p-4 cursor-pointer hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/10 transition-all"
-                            >
-                              {/* Header com OM e Prioridade */}
-                              <div className="flex items-start justify-between mb-3">
-                                <h4 className="font-bold text-white text-lg">{item.om}</h4>
-                                <Badge variant={getPriorityVariant(item.prioridade)} size="sm">
-                                  {getPriorityLabel(item.prioridade)}
-                                </Badge>
-                              </div>
+                  // Mapeamentos
+                  if (
+                    ['aberto', 'pendente', 'requisição_gerada', 'requisicao_gerada'].some(v =>
+                      s.includes(v)
+                    )
+                  )
+                    return 'aberto';
+                  if (s.includes('andamento')) return 'em_andamento';
+                  if (s.includes('reparado') || s.includes('concluido') || s.includes('concluído'))
+                    return 'reparado';
+                  if (s.includes('cancelado')) return 'cancelado';
 
-                              {/* Informações do Item */}
-                              <div className="space-y-2 mb-4">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-slate-500 font-semibold min-w-[75px]">
-                                    Designador:
-                                  </span>
-                                  <span className="text-slate-100 font-bold font-mono bg-purple-500/20 px-2 py-1 rounded border border-purple-500/30">
-                                    {item.designador || 'N/A'}
-                                  </span>
+                  return 'aberto'; // Fallback: qualquer outro status desconhecido vai para "Abertos"
+                };
+
+                const colStatus = col.status; // já é 'aberto', 'em_andamento', etc.
+
+                // Itens desta coluna
+                const columnItems = filteredData.filter(
+                  d => getKanbanStatus(d.status) === colStatus
+                );
+
+                return (
+                  <motion.div
+                    key={col.status}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className={`bg-gradient-to-br from-slate-800/90 to-slate-900/90 border ${col.borderColor} rounded-xl p-4 min-h-[500px] shadow-xl`}
+                  >
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
+                      <h3 className="text-lg font-bold text-white">{col.title}</h3>
+                      <span
+                        className={`${col.badgeBg} ${col.badgeBorder} border px-3 py-1 rounded-full text-sm font-bold ${col.badgeText}`}
+                      >
+                        {columnItems.length}
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {(() => {
+                        // Limitar a 20 itens por coluna para não sobrecarregar
+                        return columnItems.length > 0 ? (
+                          columnItems.slice(0, 20).map(item => {
+                            const getPriorityVariant = (
+                              prioridade?: string
+                            ): 'danger' | 'warning' | 'info' | 'secondary' => {
+                              if (prioridade === 'urgente') return 'danger';
+                              if (prioridade === 'alta') return 'warning';
+                              if (prioridade === 'media') return 'info';
+                              return 'secondary';
+                            };
+
+                            return (
+                              <motion.div
+                                key={item.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                whileHover={{ scale: 1.02 }}
+                                className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-purple-500/30 rounded-xl p-4 cursor-pointer hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/10 transition-all"
+                              >
+                                {/* Header com OM e Prioridade */}
+                                <div className="flex items-start justify-between mb-3">
+                                  <h4 className="font-bold text-white text-lg">{item.om}</h4>
+                                  <Badge variant={getPriorityVariant(item.prioridade)} size="sm">
+                                    {getPriorityLabel(item.prioridade)}
+                                  </Badge>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-slate-500 font-semibold min-w-[75px]">
-                                    Serial:
-                                  </span>
-                                  <span className="text-slate-300 font-mono">
-                                    {item.serial || 'N/A'}
-                                  </span>
-                                </div>
-                                {item.pn && (
+
+                                {/* Informações do Item */}
+                                <div className="space-y-2 mb-4">
                                   <div className="flex items-center gap-2 text-sm">
                                     <span className="text-slate-500 font-semibold min-w-[75px]">
-                                      PN:
+                                      Designador:
                                     </span>
-                                    <span className="text-slate-300 font-mono">{item.pn}</span>
+                                    <span className="text-slate-100 font-bold font-mono bg-purple-500/20 px-2 py-1 rounded border border-purple-500/30">
+                                      {item.designador || 'N/A'}
+                                    </span>
                                   </div>
-                                )}
-                                {item.tipodefeito && (
                                   <div className="flex items-center gap-2 text-sm">
                                     <span className="text-slate-500 font-semibold min-w-[75px]">
-                                      Defeito:
+                                      Serial:
                                     </span>
-                                    <span className="text-slate-300">{item.tipodefeito}</span>
+                                    <span className="text-slate-300 font-mono">
+                                      {item.serial || 'N/A'}
+                                    </span>
                                   </div>
-                                )}
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-slate-500 font-semibold min-w-[75px]">
-                                    Operador:
-                                  </span>
-                                  <span className="text-slate-300">{item.operador || 'N/A'}</span>
+                                  {item.pn && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <span className="text-slate-500 font-semibold min-w-[75px]">
+                                        PN:
+                                      </span>
+                                      <span className="text-slate-300 font-mono">{item.pn}</span>
+                                    </div>
+                                  )}
+                                  {item.tipodefeito && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <span className="text-slate-500 font-semibold min-w-[75px]">
+                                        Defeito:
+                                      </span>
+                                      <span className="text-slate-300">{item.tipodefeito}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-slate-500 font-semibold min-w-[75px]">
+                                      Operador:
+                                    </span>
+                                    <span className="text-slate-300">{item.operador || 'N/A'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-slate-500 font-semibold min-w-[75px]">
+                                      Data:
+                                    </span>
+                                    <span className="text-slate-300">
+                                      {formatDate(item.createdat)}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-slate-500 font-semibold min-w-[75px]">
-                                    Data:
-                                  </span>
-                                  <span className="text-slate-300">
-                                    {formatDate(item.createdat)}
-                                  </span>
-                                </div>
-                              </div>
 
-                              {/* Botões de Ação */}
-                              <div className="flex gap-2">
-                                {(() => {
-                                  const itemStatus = (item.status || 'aberto').toLowerCase().trim();
-                                  // Normalizar status: 'requisição_gerada' e 'pendente' -> 'aberto'
-                                  const normalizedStatus =
-                                    itemStatus === 'requisição_gerada' || itemStatus === 'pendente'
-                                      ? 'aberto'
-                                      : itemStatus;
-                                  return normalizedStatus === 'aberto';
-                                })() && (
+                                {/* Botões de Ação */}
+                                <div className="flex gap-2">
+                                  {(() => {
+                                    const itemStatus = (item.status || 'aberto')
+                                      .toLowerCase()
+                                      .trim();
+                                    // Normalizar status: 'requisição_gerada' e 'pendente' -> 'aberto'
+                                    const normalizedStatus =
+                                      itemStatus === 'requisição_gerada' ||
+                                      itemStatus === 'pendente'
+                                        ? 'aberto'
+                                        : itemStatus;
+                                    return normalizedStatus === 'aberto';
+                                  })() && (
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleReparar(item.id)}
+                                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-2"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                      Reparar
+                                    </motion.button>
+                                  )}
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleReparar(item.id)}
-                                    className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-2"
+                                    onClick={() => handleCancelar(item.id)}
+                                    className="w-10 h-10 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 text-red-400 rounded-lg transition-all flex items-center justify-center"
+                                    title="Cancelar"
                                   >
-                                    <CheckCircle className="w-4 h-4" />
-                                    Reparar
+                                    <XCircle className="w-5 h-5" />
                                   </motion.button>
-                                )}
-                                <motion.button
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleCancelar(item.id)}
-                                  className="w-10 h-10 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 text-red-400 rounded-lg transition-all flex items-center justify-center"
-                                  title="Cancelar"
-                                >
-                                  <XCircle className="w-5 h-5" />
-                                </motion.button>
-                                <motion.button
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleExcluir(item.id)}
-                                  className="w-10 h-10 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/30 hover:border-slate-600/50 text-slate-300 rounded-lg transition-all flex items-center justify-center"
-                                  title="Excluir"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </motion.button>
-                              </div>
-                            </motion.div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-center py-8 text-slate-500 text-sm">
-                          Nenhum item nesta coluna
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </motion.div>
-              ))}
+                                  <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => handleExcluir(item.id)}
+                                    className="w-10 h-10 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/30 hover:border-slate-600/50 text-slate-300 rounded-lg transition-all flex items-center justify-center"
+                                    title="Excluir"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </motion.button>
+                                </div>
+                              </motion.div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-center py-8 text-slate-500 text-sm">
+                            Nenhum item nesta coluna
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
 
             {/* Nota: Paginação removida do Kanban - exibindo todos os itens filtrados por status (limitado a 20 por coluna) */}
@@ -966,131 +967,367 @@ export default function ReparoPage() {
         )}
 
         {currentView === 'table' && (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl overflow-hidden">
+          <section className="bg-gradient-to-b from-[#16243a] to-[#112137] border border-[#314566] rounded-2xl p-6 shadow-2xl">
+            {/* Header da Tabela */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#314566]">
+              <h3 className="text-lg font-bold text-[#b5c6e3] flex items-center gap-2">
+                <TableIcon className="w-5 h-5 text-purple-400" />
+                Registros de Reparo
+              </h3>
+              {selectedItems.size > 0 && (
+                <span className="text-sm text-cyan-400 flex items-center gap-2">
+                  <span className="text-green-400">✓</span>
+                  {selectedItems.size} selecionado(s)
+                </span>
+              )}
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-900 border-b border-slate-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left">
+              <table className="w-full border-collapse" role="table">
+                <thead>
+                  <tr className="bg-slate-900/40 text-left">
+                    <th className="p-4 text-left w-12">
                       <input
                         type="checkbox"
-                        checked={selectedItems.size === filteredData.length}
+                        checked={
+                          selectedItems.size === paginatedData.length && paginatedData.length > 0
+                        }
                         onChange={e => {
                           if (e.target.checked) {
-                            setSelectedItems(new Set(filteredData.map(d => d.id)));
+                            setSelectedItems(new Set(paginatedData.map(d => d.id)));
                           } else {
                             setSelectedItems(new Set());
                           }
                         }}
-                        className="rounded border-slate-600"
+                        className={`rounded border-2 transition-all cursor-pointer ${
+                          selectedItems.size === paginatedData.length && paginatedData.length > 0
+                            ? 'border-cyan-400 bg-cyan-500/20 checked:bg-cyan-500'
+                            : 'border-[#2a3d5c] bg-[#0f1a2b]'
+                        }`}
+                        aria-label="Selecionar todos"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">OM</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Designador
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Cod. Alt
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Serial
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Descrição
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Defeito
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Prioridade
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Data/Hora
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Operador
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
+                    {[
+                      { key: 'om', label: 'OM' },
+                      { key: 'designador', label: 'Designador' },
+                      { key: 'partnumber', label: 'Cod. Alt' }, // supondo partnumber ou pn
+                      { key: 'serial', label: 'Serial' },
+                      { key: 'descricao', label: 'Descrição' },
+                      { key: 'tipodefeito', label: 'Defeito' },
+                      { key: 'prioridade', label: 'Prioridade' },
+                      { key: 'createdat', label: 'Data/Hora' },
+                      { key: 'status', label: 'Status' },
+                      { key: 'operador', label: 'Operador' },
+                    ].map(col => (
+                      <th
+                        key={col.key}
+                        onClick={() => {
+                          if (sortKey === col.key) {
+                            setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortKey(col.key);
+                            setSortDir('asc');
+                          }
+                        }}
+                        className="px-3 py-3 text-xs font-bold text-slate-300 uppercase tracking-wide cursor-pointer hover:text-white hover:bg-white/5 transition-colors select-none group"
+                      >
+                        <div className="flex items-center gap-1">
+                          {col.label}
+                          {sortKey === col.key && (
+                            <span className="text-cyan-400">
+                              {sortDir === 'asc' ? (
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 15l7-7 7 7"
+                                  />
+                                </svg>
+                              ) : (
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                              )}
+                            </span>
+                          )}
+                          {sortKey !== col.key && (
+                            <svg
+                              className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                    <th className="px-3 py-3 text-xs font-bold text-slate-300 uppercase tracking-wide text-right pr-6">
                       Ações
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedData.map(item => (
-                    <tr
-                      key={item.id}
-                      className="border-b border-slate-700 hover:bg-slate-900/50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.has(item.id)}
-                          onChange={e => {
-                            const newSelected = new Set(selectedItems);
-                            if (e.target.checked) {
-                              newSelected.add(item.id);
-                            } else {
-                              newSelected.delete(item.id);
-                            }
-                            setSelectedItems(newSelected);
-                          }}
-                          className="rounded border-slate-600"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-slate-200">{item.om}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-slate-100 font-bold font-mono bg-purple-500/20 px-2 py-1 rounded border border-purple-500/30">
-                          {item.designador || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200 font-mono">{item.pn || ''}</td>
-                      <td className="px-4 py-3 text-slate-200 font-mono">{item.serial || ''}</td>
-                      <td className="px-4 py-3 text-slate-200">{item.descricao || ''}</td>
-                      <td className="px-4 py-3 text-slate-200">{item.tipodefeito || ''}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={getPriorityClass(item.prioridade)}>
-                          {getPriorityLabel(item.prioridade)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200">{formatDate(item.createdat)}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={getStatusClass(item.status)}>
-                          {getStatusLabel(item.status)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200">{item.operador || ''}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          {(() => {
-                            const itemStatus = (item.status || 'aberto').toLowerCase().trim();
-                            const normalizedStatus =
-                              itemStatus === 'requisição_gerada' || itemStatus === 'pendente'
-                                ? 'aberto'
-                                : itemStatus;
-                            return normalizedStatus === 'aberto';
-                          })() && (
-                            <button
-                              onClick={() => handleReparar(item.id)}
-                              className="text-green-400 hover:text-green-300 transition-colors"
-                              title="Marcar como Reparado"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleExcluir(item.id)}
-                            className="text-red-400 hover:text-red-300 transition-colors"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                  {paginatedData.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="text-center p-8 text-slate-500">
+                        Nenhum registro encontrado.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    paginatedData.map((item, index) => (
+                      <motion.tr
+                        key={item.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        className={`border-b border-white/5 transition-all duration-200 group cursor-pointer ${
+                          selectedItems.has(item.id)
+                            ? 'bg-cyan-500/10 shadow-[inset_3px_0_0_0_#22d3ee] border-cyan-500/20'
+                            : index % 2 === 0
+                            ? 'bg-white/[0.02] hover:bg-cyan-500/5 hover:border-cyan-500/30'
+                            : 'bg-transparent hover:bg-cyan-500/5 hover:border-cyan-500/30'
+                        }`}
+                        onClick={() => {
+                          const newSelected = new Set(selectedItems);
+                          if (newSelected.has(item.id)) {
+                            newSelected.delete(item.id);
+                          } else {
+                            newSelected.add(item.id);
+                          }
+                          setSelectedItems(newSelected);
+                        }}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedItems.has(item.id)}
+                              onChange={e => {
+                                e.stopPropagation();
+                                const newSelected = new Set(selectedItems);
+                                if (e.target.checked) {
+                                  newSelected.add(item.id);
+                                } else {
+                                  newSelected.delete(item.id);
+                                }
+                                setSelectedItems(newSelected);
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              className={`rounded border-2 transition-all ${
+                                selectedItems.has(item.id)
+                                  ? 'border-cyan-400 bg-cyan-500/20 checked:bg-cyan-500'
+                                  : 'border-[#2a3d5c] bg-[#0f1a2b]'
+                              }`}
+                            />
+                            {selectedItems.has(item.id) && (
+                              <span className="text-cyan-400 text-xs">✓</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`font-mono text-base font-bold tracking-wide whitespace-nowrap ${
+                              selectedItems.has(item.id) ? 'text-cyan-300' : 'text-white'
+                            }`}
+                          >
+                            {item.om}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {/* Designadores com cores por tipo de componente - mesmo tamanho do defeito */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.designador
+                              ?.split(/[,\s]+/)
+                              .filter(Boolean)
+                              .map((des, i) => {
+                                const prefix = des.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() || '';
+                                const colorMap: Record<string, string> = {
+                                  R: 'bg-emerald-500/25 text-emerald-200 border-emerald-500/50',
+                                  C: 'bg-blue-500/25 text-blue-200 border-blue-500/50',
+                                  U: 'bg-purple-500/25 text-purple-200 border-purple-500/50',
+                                  Q: 'bg-orange-500/25 text-orange-200 border-orange-500/50',
+                                  D: 'bg-yellow-500/25 text-yellow-200 border-yellow-500/50',
+                                  L: 'bg-pink-500/25 text-pink-200 border-pink-500/50',
+                                  J: 'bg-cyan-500/25 text-cyan-200 border-cyan-500/50',
+                                  Y: 'bg-red-500/25 text-red-200 border-red-500/50',
+                                  FL: 'bg-teal-500/25 text-teal-200 border-teal-500/50',
+                                  F: 'bg-amber-500/25 text-amber-200 border-amber-500/50',
+                                  SW: 'bg-indigo-500/25 text-indigo-200 border-indigo-500/50',
+                                  LED: 'bg-lime-500/25 text-lime-200 border-lime-500/50',
+                                };
+                                const colorClass =
+                                  colorMap[prefix] ||
+                                  'bg-slate-500/25 text-slate-200 border-slate-500/50';
+                                return (
+                                  <span
+                                    key={`${des}-${i}`}
+                                    className={`inline-flex items-center px-3 py-1.5 text-sm font-bold font-mono rounded-lg border shadow-sm ${colorClass}`}
+                                    title={`Componente: ${des}`}
+                                  >
+                                    {des}
+                                  </span>
+                                );
+                              }) || <span className="text-slate-500 text-sm">—</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="font-mono text-base font-bold text-amber-300 tracking-wide whitespace-nowrap">
+                            {item.pn || '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className="font-mono text-xs px-2 py-1 rounded bg-slate-800/80 border border-slate-600/50 text-cyan-200 tracking-wider uppercase cursor-help whitespace-nowrap block w-fit"
+                            style={{ letterSpacing: '0.15em' }}
+                            title={item.serial ? `Serial: ${item.serial}` : ''}
+                          >
+                            {item.serial
+                              ? item.serial.length > 8
+                                ? `...${item.serial.slice(-8)}`
+                                : item.serial
+                              : '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className="text-sm text-slate-400 italic max-w-[150px] truncate block"
+                            title={item.descricao}
+                          >
+                            {item.descricao || '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex items-center px-3 py-1.5 text-sm font-bold rounded-lg border shadow-sm whitespace-nowrap ${(() => {
+                              const def = (item.tipodefeito || '').toLowerCase();
+                              if (def.includes('curto') || def.includes('solder ball'))
+                                return 'bg-rose-500/20 text-rose-200 border-rose-500/40 shadow-rose-500/20';
+                              if (
+                                def.includes('ausente') ||
+                                def.includes('danificado') ||
+                                def.includes('invertido') ||
+                                def.includes('incorreta')
+                              )
+                                return 'bg-amber-500/20 text-amber-200 border-amber-500/40 shadow-amber-500/20';
+                              if (
+                                def.includes('solda') ||
+                                def.includes('levantado') ||
+                                def.includes('tombstone')
+                              )
+                                return 'bg-blue-500/20 text-blue-200 border-blue-500/40 shadow-blue-500/20';
+                              return 'bg-purple-500/20 text-purple-200 border-purple-500/40 shadow-purple-500/20';
+                            })()}`}
+                          >
+                            {(() => {
+                              const def = item.tipodefeito || '—';
+                              const map: Record<string, string> = {
+                                'Insuficiência de Solda': 'Insuf. Solda',
+                                'Excesso de Solda': 'Exces. Solda',
+                                'Terminal Levantado': 'Term. Levant.',
+                                'Polaridade Incorreta': 'Polar. Incorr.',
+                                'Solder Ball': 'Solder Ball',
+                              };
+                              return map[def] || def;
+                            })()}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            variant={
+                              item.prioridade === 'urgente'
+                                ? 'danger'
+                                : item.prioridade === 'alta'
+                                ? 'warning'
+                                : item.prioridade === 'media'
+                                ? 'info'
+                                : 'secondary'
+                            }
+                            size="lg"
+                          >
+                            {getPriorityLabel(item.prioridade)}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="font-mono text-sm text-slate-300 tabular-nums">
+                            {formatDate(item.createdat)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            variant={
+                              normalizeStatus(item.status) === 'reparado'
+                                ? 'success'
+                                : normalizeStatus(item.status) === 'cancelado'
+                                ? 'danger'
+                                : normalizeStatus(item.status) === 'em_andamento'
+                                ? 'warning'
+                                : 'info'
+                            }
+                            size="lg"
+                          >
+                            {getStatusLabel(normalizeStatus(item.status))}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="text-sm text-slate-300 font-medium whitespace-nowrap">
+                            {item.operador || '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap pr-6">
+                          <div
+                            className="flex gap-2 justify-end"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {['aberto', 'pendente', 'requisição_gerada'].includes(
+                              (item.status || '').toLowerCase().trim()
+                            ) && (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleReparar(item.id)}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-400 transition-all shadow-lg shadow-green-500/10"
+                                title="Marcar como Reparado"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </motion.button>
+                            )}
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleExcluir(item.id)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 transition-all shadow-lg shadow-red-500/10"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </motion.button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1104,7 +1341,11 @@ export default function ReparoPage() {
               itemsPerPage={itemsPerPage}
               showInfo={true}
             />
-          </div>
+
+            <div className="mt-4 text-xs text-slate-500 text-center">
+              Dica: Clique em uma linha para selecionar.
+            </div>
+          </section>
         )}
 
         {currentView === 'timeline' && (

@@ -51,17 +51,51 @@ async function createRequisicao(req, res) {
   try {
     // Validação: buscar registros
     const placeholders = registroIds.map(() => '?').join(',');
-    const registros = await database.dbAll(
+    const registrosRaw = await database.dbAll(
       `SELECT * FROM registros WHERE id IN (${placeholders})`,
       registroIds
     );
 
+    // Normalizar casing das colunas (SQLite/DB Drivers podem variar)
+    const registros = registrosRaw.map(r => ({
+      ...r,
+      tipodefeito: r.tipodefeito || r.tipoDefeito || '', // Garante acesso consistente
+      pn: r.pn || r.PN || '', // Por garantia
+    }));
+
     if (registros.length === 0)
       return res.status(400).json({ error: 'Nenhum registro encontrado.' });
 
+    console.log('--- DEBUG REQUISICAO ---');
+    console.log('IDs recebidos:', registroIds);
+    console.log(
+      'Registros encontrados:',
+      registros.map(r => ({ id: r.id, tipo: r.tipodefeito }))
+    );
+
+    // Filtrar apenas defeitos que exigem requisição de componente
+    const DEFEITOS_REQUISICAO = ['Ausente', 'Danificado', 'Incorreto'];
+
+    // Normalizar para comparação segura (trim)
+    const registrosValidos = registros.filter(r => {
+      const tipo = r.tipodefeito ? r.tipodefeito.trim() : '';
+      console.log(
+        `Verificando registro ${r.id}: Tipo="${tipo}" Valido=${DEFEITOS_REQUISICAO.includes(tipo)}`
+      );
+      return DEFEITOS_REQUISICAO.includes(tipo);
+    });
+
+    if (registrosValidos.length === 0) {
+      return res.status(400).json({
+        error:
+          'Nenhum dos registros selecionados necessita de requisição de componente. Apenas "Ausente", "Danificado" ou "Incorreto" podem gerar requisição.',
+      });
+    }
+
+    // Usar apenas os validos daqui pra frente
     // Agrupar registros por OM
     const registrosPorOM = {};
-    for (const r of registros) {
+    for (const r of registrosValidos) {
       if (!registrosPorOM[r.om]) {
         registrosPorOM[r.om] = [];
       }

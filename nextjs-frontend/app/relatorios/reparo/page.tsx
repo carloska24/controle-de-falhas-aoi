@@ -452,7 +452,10 @@ export default function RelatorioReparoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+    <div
+      id="rel-reparo-dashboard"
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white"
+    >
       {/* Header */}
       <div className="bg-slate-900/60 border-b border-slate-800 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -767,34 +770,34 @@ export default function RelatorioReparoPage() {
           ) : (
             <>
               <div className="overflow-x-auto rounded-lg border border-slate-700/50">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border-b border-slate-700">
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                    <tr className="bg-slate-900/40 text-left border-b border-slate-700">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         OM
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         PN
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Serial
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Designador
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Tipo Defeito
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Status
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Prioridade
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Operador
                       </th>
-                      <th className="text-left py-3 px-4 text-slate-300 font-semibold text-xs uppercase tracking-wider">
+                      <th className="py-4 px-5 text-slate-400 font-bold text-sm uppercase tracking-widest">
                         Data Criação
                       </th>
                     </tr>
@@ -802,28 +805,75 @@ export default function RelatorioReparoPage() {
                   <tbody>
                     {filteredData.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-10 text-slate-400">
-                          Nenhum registro encontrado
+                        <td colSpan={9} className="text-center py-12 text-slate-400">
+                          <div className="flex flex-col items-center gap-3">
+                            <Wrench className="w-12 h-12 opacity-20" />
+                            <p>Nenhum registro encontrado</p>
+                          </div>
                         </td>
                       </tr>
                     ) : (
                       paginatedData.map((registro, idx) => (
                         <tr
                           key={registro.id || idx}
-                          className={`border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors ${
+                          className={`border-b border-slate-700/50 hover:bg-slate-800/60 transition-colors ${
                             idx % 2 === 0 ? 'bg-slate-800/20' : 'bg-transparent'
                           }`}
                         >
-                          <td className="py-3 px-4 text-white font-medium">{registro.om || '-'}</td>
-                          <td className="py-3 px-4 text-slate-200">{registro.pn || '-'}</td>
-                          <td className="py-3 px-4 text-slate-200 font-mono text-sm">
-                            {registro.serial || '-'}
+                          <td className="py-4 px-5">
+                            <span className="font-mono text-base font-bold text-cyan-400 bg-cyan-950/30 px-3 py-1.5 rounded border border-cyan-500/20 inline-block shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+                              {registro.om || '-'}
+                            </span>
                           </td>
-                          <td className="py-3 px-4 text-slate-200">{registro.designador || '-'}</td>
-                          <td className="py-3 px-4 text-slate-200">
-                            {registro.tipodefeito || '-'}
+                          <td className="py-4 px-5">
+                            <span className="font-mono text-base font-bold text-amber-300">
+                              {registro.pn || '-'}
+                            </span>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-4 px-5">
+                            <span
+                              className="font-mono text-xs px-2 py-1 rounded bg-slate-800/80 border border-slate-600/50 text-cyan-200 tracking-wider uppercase cursor-help whitespace-nowrap block w-fit shadow-sm"
+                              style={{ letterSpacing: '0.15em' }}
+                              title={registro.serial ? `Serial: ${registro.serial}` : ''}
+                            >
+                              {registro.serial
+                                ? registro.serial.length > 8
+                                  ? `...${registro.serial.slice(-8)}`
+                                  : registro.serial
+                                : '—'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5">
+                            <span className="font-mono text-sm font-bold text-purple-300 bg-purple-900/20 px-2 py-1 rounded inline-block">
+                              {registro.designador || '-'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5">
+                            <span
+                              className={`inline-flex items-center px-3 py-1.5 text-sm font-bold rounded-lg border shadow-sm whitespace-nowrap ${(() => {
+                                const def = (registro.tipodefeito || '').toLowerCase();
+                                if (def.includes('curto') || def.includes('solder ball'))
+                                  return 'bg-rose-500/20 text-rose-200 border-rose-500/40 shadow-rose-500/20';
+                                if (
+                                  def.includes('ausente') ||
+                                  def.includes('danificado') ||
+                                  def.includes('invertido') ||
+                                  def.includes('incorreta')
+                                )
+                                  return 'bg-amber-500/20 text-amber-200 border-amber-500/40 shadow-amber-500/20';
+                                if (
+                                  def.includes('solda') ||
+                                  def.includes('levantado') ||
+                                  def.includes('tombstone')
+                                )
+                                  return 'bg-blue-500/20 text-blue-200 border-blue-500/40 shadow-blue-500/20';
+                                return 'bg-purple-500/20 text-purple-200 border-purple-500/40 shadow-purple-500/20';
+                              })()}`}
+                            >
+                              {registro.tipodefeito || '-'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5">
                             <Badge
                               variant={
                                 registro.status === 'reparado'
@@ -836,11 +886,13 @@ export default function RelatorioReparoPage() {
                                   ? 'danger'
                                   : 'default'
                               }
+                              size="md"
+                              className="px-3 py-1 font-bold shadow-sm"
                             >
                               {registro.status || '-'}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-4 px-5">
                             {registro.prioridade && (
                               <Badge
                                 variant={
@@ -852,14 +904,35 @@ export default function RelatorioReparoPage() {
                                     ? 'info'
                                     : 'secondary'
                                 }
+                                size="md"
+                                className="px-3 py-1 font-bold shadow-sm"
                               >
                                 {registro.prioridade}
                               </Badge>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-slate-300">{registro.operador || '-'}</td>
-                          <td className="py-3 px-4 text-sm text-slate-400">
-                            {new Date(registro.createdat).toLocaleDateString('pt-BR')}
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-300 font-bold border border-slate-600 shadow-sm">
+                                {(registro.operador || 'S')[0].toUpperCase()}
+                              </div>
+                              <span className="text-sm font-medium text-slate-300">
+                                {registro.operador || '-'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-5">
+                            <div className="flex flex-col">
+                              <span className="font-mono text-sm text-slate-300 font-medium">
+                                {new Date(registro.createdat).toLocaleDateString('pt-BR')}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {new Date(registro.createdat).toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
                           </td>
                         </tr>
                       ))

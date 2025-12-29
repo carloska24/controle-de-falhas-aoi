@@ -2,12 +2,13 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef, useTransition } from 'react';
 import Skeleton from '@/components/ui/Skeleton';
-import { Trash2, FilePlus, Loader2, Search, X } from 'lucide-react';
+import { Trash2, FilePlus, Loader2, Search, X, Edit3, Save } from 'lucide-react';
 import { Registro } from '@/types/index';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import Dialog from '@/components/ui/Dialog';
 import { format, isValid } from 'date-fns';
 import OMTimeSummary from './OMTimeSummary';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -17,6 +18,7 @@ interface ProTableProps {
   onDelete: (ids: string[]) => Promise<void>;
   onGenerateRequest: (ids: string[]) => Promise<void>;
   onAddDemo: () => Promise<void>;
+  onEdit?: (id: string, data: Partial<Registro>) => Promise<void>;
   isLoading?: boolean;
   omTimeSummary?: {
     startTime: number | null;
@@ -30,6 +32,7 @@ export default function ProTable({
   onDelete,
   onGenerateRequest,
   onAddDemo,
+  onEdit,
   isLoading = false,
   omTimeSummary,
 }: ProTableProps) {
@@ -39,6 +42,11 @@ export default function ProTable({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isRequesting, setIsRequesting] = useState(false);
   const [globalFilter, setGlobalFilter] = useState('');
+
+  // Estado para edição
+  const [editingRegistro, setEditingRegistro] = useState<Registro | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<Registro>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // useTransition para operações de ordenação não-bloqueantes
   const [isPending, startTransition] = useTransition();
@@ -301,6 +309,38 @@ export default function ProTable({
     }
   };
 
+  // Handler para duplo clique - abre modal de edição
+  const handleDoubleClick = useCallback((registro: Registro) => {
+    setEditingRegistro(registro);
+    setEditFormData({
+      pn: registro.pn || '',
+      serial: registro.serial || '',
+      designador: registro.designador || '',
+      tipodefeito: registro.tipodefeito || '',
+      descricao: registro.descricao || '',
+      prioridade: registro.prioridade || 'media',
+    });
+  }, []);
+
+  // Handler para salvar edição
+  const handleSaveEdit = async () => {
+    if (!editingRegistro || !onEdit) return;
+    setIsSaving(true);
+    try {
+      await onEdit(editingRegistro.id, editFormData);
+      setEditingRegistro(null);
+      setEditFormData({});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Fechar modal de edição
+  const handleCloseEdit = () => {
+    setEditingRegistro(null);
+    setEditFormData({});
+  };
+
   // Navegação por teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -529,10 +569,14 @@ export default function ProTable({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full" role="table" aria-label="Tabela de registros de falhas">
+        <table
+          className="w-full border-collapse"
+          role="table"
+          aria-label="Tabela de registros de falhas"
+        >
           <thead>
-            <tr className="border-b border-[#314566] bg-[#0a1320]/40">
-              <th className="text-left p-3 text-xs font-extrabold text-[#8aa0c2] uppercase tracking-wider">
+            <tr className="bg-slate-900/40 text-left">
+              <th className="p-4 text-left w-12">
                 <input
                   type="checkbox"
                   checked={
@@ -560,7 +604,7 @@ export default function ProTable({
               ).map(field => (
                 <th
                   key={field}
-                  className="text-left p-3 text-xs font-extrabold text-[#8aa0c2] uppercase tracking-wider cursor-pointer hover:text-white transition-colors relative select-none"
+                  className="p-4 text-sm font-bold text-slate-300 uppercase tracking-wide text-left cursor-pointer hover:text-white transition-colors relative select-none"
                   onClick={e => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -637,12 +681,12 @@ export default function ProTable({
                   </div>
                 </th>
               ))}
-              <th className="text-left p-3 text-xs font-extrabold text-[#8aa0c2] uppercase tracking-wider">
+              <th className="p-4 text-sm font-bold text-slate-300 uppercase tracking-wide text-left">
                 Prioridade
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="">
             {isLoading ? (
               // Skeleton loaders melhorados durante carregamento
               Array.from({ length: perPage }).map((_, idx) => (
@@ -698,18 +742,22 @@ export default function ProTable({
                 {paginatedRegistros.map((registro, index) => (
                   <tr
                     key={registro.id}
-                    className={`border-b border-[#314566]/50 cursor-pointer group ${
+                    className={`border-b border-white/5 transition-all duration-200 group cursor-pointer ${
                       selectedIds.has(registro.id)
-                        ? 'bg-[#1e3a5f]/60 hover:bg-[#1e3a5f]/80'
+                        ? 'bg-cyan-500/10 shadow-[inset_3px_0_0_0_#22d3ee] border-cyan-500/20'
                         : index % 2 === 0
-                        ? 'bg-[#0f1a2b]/30 hover:bg-[#1a2535]/60'
-                        : 'bg-[#0a1320]/40 hover:bg-[#1a2535]/60'
+                        ? 'bg-white/[0.02] hover:bg-cyan-500/5 hover:border-cyan-500/30'
+                        : 'bg-transparent hover:bg-cyan-500/5 hover:border-cyan-500/30'
                     }`}
                     onClick={e => {
                       // Usar startTransition para não bloquear UI
                       startTransition(() => {
                         toggleSelect(registro.id);
                       });
+                    }}
+                    onDoubleClick={e => {
+                      e.stopPropagation();
+                      handleDoubleClick(registro);
                     }}
                     role="row"
                     aria-selected={selectedIds.has(registro.id)}
@@ -726,7 +774,7 @@ export default function ProTable({
                       selectedIds.has(registro.id) ? ' - Selecionado' : ''
                     }`}
                   >
-                    <td className="p-3">
+                    <td className="p-4">
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -750,27 +798,133 @@ export default function ProTable({
                         )}
                       </div>
                     </td>
-                    <td className="p-3">
+                    <td className="p-4">
+                      {/* OM - Fonte monoespaçada com destaque maior */}
                       <span
-                        className={`text-sm font-medium ${
-                          selectedIds.has(registro.id) ? 'text-cyan-300' : 'text-[#eaf0ff]'
+                        className={`font-mono text-base font-bold tracking-wide whitespace-nowrap ${
+                          selectedIds.has(registro.id) ? 'text-cyan-300' : 'text-white'
                         }`}
                       >
                         {registro.om}
                       </span>
                     </td>
-                    <td className="p-3 text-sm text-[#eaf0ff]">{registro.pn || '—'}</td>
-                    <td className="p-3 text-sm text-[#eaf0ff]">{registro.serial || '—'}</td>
-                    <td className="p-3 text-sm text-[#eaf0ff]">{registro.designador}</td>
-                    <td className="p-3 text-sm text-[#eaf0ff]">{registro.tipodefeito}</td>
-                    <td className="p-3 text-sm text-[#9aa7bd]">{registro.descricao || '—'}</td>
-                    <td className="p-3 text-sm text-[#9aa7bd]">
-                      {(() => {
-                        const date = new Date(registro.createdat);
-                        return isValid(date) ? format(date, 'dd/MM/yyyy HH:mm') : '—';
-                      })()}
+                    <td className="p-4">
+                      {/* COD.ALT/PN - Destaque maior */}
+                      <span className="font-mono text-base font-bold text-amber-300 tracking-wide whitespace-nowrap">
+                        {registro.pn || '—'}
+                      </span>
                     </td>
-                    <td className="p-3">
+                    <td className="p-4">
+                      {/* Serial - Estilo de código de placa industrial */}
+                      <span
+                        className="font-mono text-xs px-2 py-1 rounded bg-slate-800/80 border border-slate-600/50 text-cyan-200 tracking-wider uppercase cursor-help whitespace-nowrap block w-fit"
+                        style={{ letterSpacing: '0.15em' }}
+                        title={registro.serial ? `Serial: ${registro.serial}` : ''}
+                      >
+                        {registro.serial
+                          ? registro.serial.length > 8
+                            ? `...${registro.serial.slice(-8)}`
+                            : registro.serial
+                          : '—'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {/* Designadores com destaque colorido por tipo de componente */}
+                      <div className="flex flex-wrap gap-0.5">
+                        {registro.designador
+                          ?.split(/[,\s]+/)
+                          .filter(Boolean)
+                          .map((des, i) => {
+                            // Identificar tipo de componente pelo prefixo
+                            const prefix = des.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() || '';
+
+                            // Cores por tipo de componente (padrão IPC)
+                            const colorMap: Record<string, string> = {
+                              R: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40', // Resistor
+                              C: 'bg-blue-500/20 text-blue-400 border-blue-500/40', // Capacitor
+                              U: 'bg-purple-500/20 text-purple-400 border-purple-500/40', // IC/Chip
+                              Q: 'bg-orange-500/20 text-orange-400 border-orange-500/40', // Transistor
+                              D: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40', // Diodo
+                              L: 'bg-pink-500/20 text-pink-400 border-pink-500/40', // Indutor
+                              J: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40', // Conector
+                              Y: 'bg-red-500/20 text-red-400 border-red-500/40', // Cristal
+                              FL: 'bg-teal-500/20 text-teal-400 border-teal-500/40', // Filtro
+                              F: 'bg-amber-500/20 text-amber-400 border-amber-500/40', // Fusível
+                              SW: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40', // Switch
+                              LED: 'bg-lime-500/20 text-lime-400 border-lime-500/40', // LED
+                            };
+
+                            const colorClass =
+                              colorMap[prefix] ||
+                              'bg-slate-500/20 text-slate-300 border-slate-500/40';
+
+                            return (
+                              <span
+                                key={`${des}-${i}`}
+                                className={`inline-flex items-center px-1 py-px text-[10px] font-medium rounded border ${colorClass}`}
+                                title={`Componente: ${des}`}
+                              >
+                                {des}
+                              </span>
+                            );
+                          })}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      {/* Tipo de Defeito - Badge maior e mais visível */}
+                      <span
+                        className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-lg border shadow-sm whitespace-nowrap ${(() => {
+                          const def = (registro.tipodefeito || '').toLowerCase();
+                          if (def.includes('curto') || def.includes('solder ball'))
+                            return 'bg-rose-500/20 text-rose-200 border-rose-500/40 shadow-rose-500/20';
+                          if (
+                            def.includes('ausente') ||
+                            def.includes('danificado') ||
+                            def.includes('invertido') ||
+                            def.includes('incorreta')
+                          )
+                            return 'bg-amber-500/20 text-amber-200 border-amber-500/40 shadow-amber-500/20';
+                          if (
+                            def.includes('solda') ||
+                            def.includes('levantado') ||
+                            def.includes('tombstone')
+                          )
+                            return 'bg-blue-500/20 text-blue-200 border-blue-500/40 shadow-blue-500/20';
+                          return 'bg-purple-500/20 text-purple-200 border-purple-500/40 shadow-purple-500/20';
+                        })()}`}
+                      >
+                        {(() => {
+                          const def = registro.tipodefeito || '';
+                          const map: Record<string, string> = {
+                            'Insuficiência de Solda': 'Insuf. Solda',
+                            'Excesso de Solda': 'Exces. Solda',
+                            'Terminal Levantado': 'Term. Levant.',
+                            'Polaridade Incorreta': 'Polar. Incorr.',
+                            'Solder Ball': 'Solder Ball', // Já curto
+                          };
+                          return map[def] || def;
+                        })()}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {/* Descrição - Texto maior */}
+                      <span
+                        className="text-sm text-slate-400 italic max-w-[180px] truncate block"
+                        title={registro.descricao}
+                      >
+                        {registro.descricao || '—'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {/* Data/Hora - Fonte monoespaçada maior */}
+                      <span className="font-mono text-sm text-slate-300 tabular-nums">
+                        {(() => {
+                          const date = new Date(registro.createdat);
+                          return isValid(date) ? format(date, 'dd/MM/yyyy HH:mm') : '—';
+                        })()}
+                      </span>
+                    </td>
+                    <td className="p-4">
                       {registro.prioridade ? (
                         <Badge
                           variant={
@@ -782,13 +936,13 @@ export default function ProTable({
                               ? 'default'
                               : 'info'
                           }
-                          size="sm"
+                          size="lg"
                         >
                           {registro.prioridade.charAt(0).toUpperCase() +
                             registro.prioridade.slice(1)}
                         </Badge>
                       ) : (
-                        <Badge variant="default" size="sm">
+                        <Badge variant="default" size="lg">
                           Média
                         </Badge>
                       )}
@@ -826,6 +980,158 @@ export default function ProTable({
       <div className="mt-4 text-xs text-slate-500 text-center">
         Dica: Duplo clique em uma linha para editar.
       </div>
+
+      {/* Modal de Edição */}
+      <Dialog
+        open={!!editingRegistro}
+        onClose={handleCloseEdit}
+        title="Editar Registro"
+        size="lg"
+        icon={<Edit3 className="w-5 h-5 text-purple-400" />}
+      >
+        {editingRegistro && (
+          <div className="space-y-6">
+            {/* Info do registro */}
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-xs text-slate-500">OM</span>
+                  <p className="font-mono text-lg font-bold text-white">{editingRegistro.om}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-slate-500">Criado em</span>
+                  <p className="text-sm text-slate-300">
+                    {isValid(new Date(editingRegistro.createdat))
+                      ? format(new Date(editingRegistro.createdat), 'dd/MM/yyyy HH:mm')
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Formulário */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">
+                  Código Alternativo (PN)
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.pn || ''}
+                  onChange={e => setEditFormData(prev => ({ ...prev, pn: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                  placeholder="Ex: A50423"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Serial</label>
+                <input
+                  type="text"
+                  value={editFormData.serial || ''}
+                  onChange={e => setEditFormData(prev => ({ ...prev, serial: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 font-mono"
+                  placeholder="Ex: 6880161825112584CA29"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">
+                Designador(es)
+              </label>
+              <input
+                type="text"
+                value={editFormData.designador || ''}
+                onChange={e => setEditFormData(prev => ({ ...prev, designador: e.target.value }))}
+                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 font-mono"
+                placeholder="Ex: R34, C21, U15"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">
+                  Tipo de Defeito
+                </label>
+                <select
+                  value={editFormData.tipodefeito || ''}
+                  onChange={e =>
+                    setEditFormData(prev => ({ ...prev, tipodefeito: e.target.value }))
+                  }
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                >
+                  <option value="">Selecione...</option>
+                  <optgroup label="Defeitos de Solda">
+                    <option value="Curto">Curto</option>
+                    <option value="Solda Fria">Solda Fria</option>
+                    <option value="Excesso de Solda">Excesso de Solda</option>
+                    <option value="Insuficiência de Solda">Insuficiência de Solda</option>
+                    <option value="Tombstone">Tombstone</option>
+                    <option value="Bilboard">Bilboard</option>
+                    <option value="Solder Ball">Solder Ball</option>
+                    <option value="Terminal Levantado">Terminal Levantado</option>
+                  </optgroup>
+                  <optgroup label="Defeitos de Posicionamento">
+                    <option value="Ausente">Ausente</option>
+                    <option value="Danificado">Danificado</option>
+                    <option value="Deslocado">Deslocado</option>
+                    <option value="Incorreto">Incorreto</option>
+                    <option value="Invertido">Invertido</option>
+                    <option value="Polaridade Incorreta">Polaridade Incorreta</option>
+                    <option value="Levantado">Levantado</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Prioridade</label>
+                <select
+                  value={editFormData.prioridade || 'media'}
+                  onChange={e => setEditFormData(prev => ({ ...prev, prioridade: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                >
+                  <option value="baixa">Baixa</option>
+                  <option value="media">Média</option>
+                  <option value="alta">Alta</option>
+                  <option value="urgente">Urgente</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">
+                Descrição / Observações
+              </label>
+              <textarea
+                value={editFormData.descricao || ''}
+                onChange={e => setEditFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                rows={3}
+                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 resize-none"
+                placeholder="Observações adicionais..."
+              />
+            </div>
+
+            {/* Botões */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+              <Button variant="ghost" onClick={handleCloseEdit} disabled={isSaving}>
+                Cancelar
+              </Button>
+              <Button variant="success" onClick={handleSaveEdit} disabled={isSaving || !onEdit}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Alterações
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </section>
   );
 }

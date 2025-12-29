@@ -129,40 +129,9 @@ async function populateDemoData(req, res) {
         prioridade,
       ]);
 
-      // 2. Inserir Requisição (se status for relevante ou aleatório)
-      // Vamos criar requisições para 40% dos casos para variar
-      if (Math.random() > 0.6) {
-        const reqId = `DEMO-REQ-${Date.now()}-${i}`;
-        const reqData = data; // Mesma data do registro
-        const reqItems = [
-          {
-            pn: componente.pn,
-            descricao: componente.desc,
-            quantidade_requisitada: getRandomInt(1, 10),
-            quantidade_entregue: 0,
-            designadores: [`R${getRandomInt(1, 999)}`, `R${getRandomInt(1, 999)}`],
-            status: 'pendente',
-          },
-          // Item extra ocasional
-          ...(Math.random() > 0.7
-            ? [
-                {
-                  pn: COMPONENTES[getRandomInt(0, COMPONENTES.length - 1)].pn,
-                  descricao: COMPONENTES[getRandomInt(0, COMPONENTES.length - 1)].desc,
-                  quantidade_requisitada: getRandomInt(1, 5),
-                  quantidade_entregue: 0,
-                  designadores: [`C${getRandomInt(1, 999)}`],
-                  status: 'pendente',
-                },
-              ]
-            : []),
-        ];
-
-        queries.push(
-          `INSERT INTO requisicoes (om, items, status, created_at, created_by) VALUES (?, ?, ?, ?, ?)`
-        );
-        paramsList.push([omNumber, JSON.stringify(reqItems), 'pendente', reqData, 'Sistema']);
-      }
+      // 2. Inserir Requisição - REMOVIDO
+      // O usuário solicitou que o Demo NÃO gere requisições automaticamente.
+      // As requisições devem ser criadas apenas manualmente via botão "Requisitar".
     }
 
     await database.dbTransaction(async run => {

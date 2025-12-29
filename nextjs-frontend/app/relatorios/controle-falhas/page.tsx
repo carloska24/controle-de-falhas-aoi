@@ -63,6 +63,7 @@ const DEFEITOS_POSICIONAMENTO = [
   'Danificado',
   'Deslocado',
   'Incorreto',
+  'Valor Incorreto',
   'Invertido',
   'Polaridade Incorreta',
   'Levantado',
@@ -518,9 +519,12 @@ export default function ControleFalhasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-      {/* Header */}
-      <div className="bg-slate-900/60 border-b border-slate-800 sticky top-0 z-50">
+    <div
+      id="falhas-dashboard"
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white"
+    >
+      {/* Header - não aparece no PDF */}
+      <div className="bg-slate-900/60 border-b border-slate-800 sticky top-0 z-50 no-export">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.div
@@ -638,11 +642,11 @@ export default function ControleFalhasPage() {
           </motion.div>
         )}
 
-        {/* Filtros */}
+        {/* Filtros - não aparece no PDF */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6 mb-6"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6 mb-6 no-export"
         >
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
@@ -865,60 +869,120 @@ export default function ControleFalhasPage() {
                 <tbody>
                   {filteredData
                     .flatMap(grupo => grupo.falhas.map(falha => ({ ...falha, om: grupo.om })))
-                    .map((falha, idx) => (
-                      <tr
-                        key={idx}
-                        className={`border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors ${
-                          idx % 2 === 0 ? 'bg-slate-800/20' : 'bg-transparent'
-                        }`}
-                      >
-                        <td className="py-3 px-4 text-white font-medium">{falha.om}</td>
-                        <td className="py-3 px-4 text-slate-200">{falha.pn || '-'}</td>
-                        <td className="py-3 px-4 text-slate-200 font-mono text-sm">
-                          {falha.serial || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-slate-200">{falha.designador || '-'}</td>
-                        <td className="py-3 px-4 text-slate-200">{falha.tipodefeito || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300">{falha.operador || '-'}</td>
-                        <td className="py-3 px-4">
-                          <Badge
-                            variant={
-                              falha.status === 'reparado'
-                                ? 'success'
-                                : falha.status === 'aberto'
-                                ? 'warning'
-                                : falha.status === 'em_andamento'
-                                ? 'info'
-                                : falha.status === 'cancelado'
-                                ? 'danger'
-                                : 'default'
-                            }
-                          >
-                            {falha.status || '-'}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          {falha.prioridade && (
+                    .map((falha, idx) => {
+                      // Lógica de cores para Defeitos (similar ao ReparoPage)
+                      const tipoDefeito = falha.tipodefeito || '';
+                      const isSoldagem = DEFEITOS_SOLDAGEM.includes(tipoDefeito);
+                      const isPosicionamento = DEFEITOS_POSICIONAMENTO.includes(tipoDefeito);
+
+                      let defeitoColorClass = 'bg-slate-700/50 text-slate-300 border-slate-600';
+                      if (isSoldagem)
+                        defeitoColorClass =
+                          'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_10px_-4px_rgba(244,63,94,0.3)]';
+                      if (isPosicionamento)
+                        defeitoColorClass =
+                          'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_-4px_rgba(251,191,36,0.3)]';
+
+                      return (
+                        <tr
+                          key={idx}
+                          className={`border-b border-slate-800/50 hover:bg-slate-800/80 transition-all duration-200 group ${
+                            idx % 2 === 0 ? 'bg-slate-800/20' : 'bg-transparent'
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold text-cyan-400 bg-cyan-950/30 px-2 py-1 rounded border border-cyan-500/20">
+                              {falha.om}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-300 font-medium">
+                            {falha.pn || <span className="text-slate-600">—</span>}
+                          </td>
+                          <td className="py-3 px-4">
+                            {falha.serial ? (
+                              <span
+                                className="font-mono text-xs text-slate-300 bg-slate-900/50 px-2 py-1 rounded border border-slate-700/50 cursor-help whitespace-nowrap block w-fit"
+                                title={falha.serial}
+                              >
+                                {falha.serial.length > 8
+                                  ? `...${falha.serial.slice(-8)}`
+                                  : falha.serial}
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {falha.designador ? (
+                              <span className="font-mono text-xs font-bold text-indigo-300 bg-indigo-900/20 px-2 py-1 rounded border border-indigo-500/20">
+                                {falha.designador}
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {falha.tipodefeito ? (
+                              <span
+                                className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md border ${defeitoColorClass}`}
+                              >
+                                {falha.tipodefeito}
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-400 text-sm">
+                            {falha.operador || <span className="text-slate-600">—</span>}
+                          </td>
+                          <td className="py-3 px-4">
                             <Badge
                               variant={
-                                falha.prioridade === 'urgente'
-                                  ? 'danger'
-                                  : falha.prioridade === 'alta'
+                                falha.status === 'reparado'
+                                  ? 'success'
+                                  : falha.status === 'aberto' || falha.status === 'pendente'
                                   ? 'warning'
-                                  : falha.prioridade === 'media'
+                                  : falha.status === 'em_andamento'
                                   ? 'info'
-                                  : 'secondary'
+                                  : falha.status === 'cancelado' || falha.status === 'sucata'
+                                  ? 'danger'
+                                  : 'default'
                               }
+                              className="bg-opacity-10 border bg-transparent"
                             >
-                              {falha.prioridade}
+                              {falha.status === 'pendente' ? 'Aberto' : falha.status}
                             </Badge>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-slate-400">
-                          {new Date(falha.createdat).toLocaleDateString('pt-BR')}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-3 px-4">
+                            {falha.prioridade && (
+                              <Badge
+                                variant={
+                                  falha.prioridade === 'urgente'
+                                    ? 'danger'
+                                    : falha.prioridade === 'alta'
+                                    ? 'warning'
+                                    : falha.prioridade === 'media'
+                                    ? 'info'
+                                    : 'secondary'
+                                }
+                                className="uppercase text-[10px] tracking-wider font-bold"
+                              >
+                                {falha.prioridade}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-xs text-slate-500 font-mono">
+                            {new Date(falha.createdat).toLocaleString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   {/* Linha de Finalização da OM */}
                   {omTimeData && omFilter !== 'all' && omTimeData.endTime && (
                     <tr className="bg-gradient-to-r from-purple-500/10 via-purple-600/5 to-transparent border-t-2 border-purple-500/30">

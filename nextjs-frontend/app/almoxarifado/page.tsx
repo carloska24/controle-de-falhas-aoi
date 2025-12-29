@@ -273,10 +273,7 @@ export default function AlmoxarifadoPage() {
 
   const handleLogout = async () => {
     try {
-      // Se for admin, limpar dados demo antes do logout
-      if (user?.role === 'admin') {
-        await fetchAutenticado('/api/admin/logout', { method: 'POST' });
-      }
+      // Se for admin, a limpeza é feita automaticamente no backend no endpoint /auth/logout
       await fetchAutenticado('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -800,86 +797,140 @@ export default function AlmoxarifadoPage() {
         {currentView === 'table' && (
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-900 border-b border-slate-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">OM</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-900/40 text-left">
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
+                      ID
+                    </th>
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
+                      OM
+                    </th>
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
                       Data
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
                       Solicitante
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
                       Tempo
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
+                    <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-widest text-left">
                       Ações
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredData.map(req => (
-                    <tr
-                      key={req.id}
-                      className={`border-b border-slate-700 hover:bg-slate-900/50 transition-colors ${
-                        isUrgente(req.created_at) ? 'bg-red-500/5' : ''
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-slate-200">#{req.id}</td>
-                      <td className="px-4 py-3 text-slate-200">{req.om}</td>
-                      <td className="px-4 py-3 text-slate-200">{formatDate(req.created_at)}</td>
-                      <td className="px-4 py-3 text-slate-200">{req.created_by || 'N/A'}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={getStatusClass(req.status)}>
-                          {getStatusLabel(req.status)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200">{formatElapsed(req.created_at)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openModal(req)}
-                            className="text-blue-400 hover:text-blue-300 transition-colors p-2 rounded-lg hover:bg-blue-500/10 flex items-center justify-center"
-                            title="Ver Itens"
+                <tbody className="">
+                  {filteredData.map((req, index) => {
+                    const urgente = isUrgente(req.created_at);
+                    const statusClass = getStatusClass(req.status);
+
+                    return (
+                      <tr
+                        key={req.id}
+                        className={`group border-b border-slate-700/50 hover:bg-slate-800/60 transition-all duration-200 ${
+                          index % 2 === 0 ? 'bg-slate-800/20' : 'bg-transparent'
+                        }`}
+                      >
+                        <td className="p-5">
+                          <span className="font-mono text-base font-bold text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded border border-slate-700">
+                            #{req.id}
+                          </span>
+                        </td>
+                        <td className="p-5">
+                          <p className="font-mono text-base font-bold text-cyan-400 bg-cyan-950/30 px-3 py-1.5 rounded border border-cyan-500/20 inline-block">
+                            {req.om}
+                          </p>
+                        </td>
+                        <td className="p-5">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-mono text-sm text-slate-300 font-medium">
+                              {new Date(req.created_at).toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="text-xs text-slate-500 font-mono">
+                              {new Date(req.created_at).toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm text-slate-300 font-bold border border-slate-600">
+                              {(req.created_by || 'S')[0].toUpperCase()}
+                            </div>
+                            <span className="text-base text-slate-400 group-hover:text-slate-200 transition-colors font-medium">
+                              {req.created_by || 'Sistema'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-5">
+                          <Badge
+                            className={`${statusClass} shadow-sm border border-white/5 text-sm px-3 py-1`}
                           >
-                            <Eye className="w-6 h-6" />
-                          </button>
-                          {req.status === 'pendente' && (
+                            {getStatusLabel(req.status)}
+                          </Badge>
+                        </td>
+                        <td className="p-5 align-middle">
+                          <span
+                            className={`flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full w-fit ${
+                              urgente
+                                ? 'text-red-300 bg-red-900/30 border border-red-500/30 animate-pulse'
+                                : 'text-slate-400 bg-slate-800/50 border border-slate-700'
+                            }`}
+                          >
+                            <Clock
+                              className={`w-4 h-4 ${urgente ? 'text-red-400' : 'text-slate-500'}`}
+                            />
+                            {formatElapsed(req.created_at)}
+                          </span>
+                        </td>
+                        <td className="p-5">
+                          <div className="flex gap-2">
                             <button
-                              onClick={() => handleStatusUpdate(req.id, 'parcialmente_entregue')}
-                              className="text-green-400 hover:text-green-300 transition-colors"
-                              title="Atender"
+                              onClick={() => openModal(req)}
+                              className="text-blue-400 hover:text-white hover:bg-blue-600 transition-all p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-sm hover:shadow-blue-500/20"
+                              title="Ver Itens"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <Eye className="w-5 h-5" />
                             </button>
-                          )}
-                          {req.status === 'parcialmente_entregue' && (
-                            <button
-                              onClick={() => handleStatusUpdate(req.id, 'entregue')}
-                              className="text-green-400 hover:text-green-300 transition-colors"
-                              title="Finalizar"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {req.status === 'entregue' && (
-                            <button
-                              onClick={() => handleDeleteClick(req)}
-                              className="text-red-400 hover:text-red-300 transition-colors p-2 rounded-lg hover:bg-red-500/10 flex items-center justify-center"
-                              title="Excluir Requisição"
-                            >
-                              <Trash2 className="w-6 h-6" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {req.status === 'pendente' && (
+                              <button
+                                onClick={() => handleStatusUpdate(req.id, 'parcialmente_entregue')}
+                                className="text-yellow-400 hover:text-white hover:bg-yellow-600 transition-all p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shadow-sm hover:shadow-yellow-500/20"
+                                title="Iniciar Separação"
+                              >
+                                <Package className="w-5 h-5" />
+                              </button>
+                            )}
+                            {(req.status === 'pendente' ||
+                              req.status === 'parcialmente_entregue') && (
+                              <button
+                                onClick={() => handleStatusUpdate(req.id, 'entregue')}
+                                className="text-green-400 hover:text-white hover:bg-green-600 transition-all p-2.5 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center shadow-sm hover:shadow-green-500/20"
+                                title="Finalizar Entrega"
+                              >
+                                <CheckCircle2 className="w-5 h-5" />
+                              </button>
+                            )}
+                            {req.status === 'entregue' && (
+                              <button
+                                onClick={() => handleDeleteClick(req)}
+                                className="text-red-400 hover:text-white hover:bg-red-600 transition-all p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shadow-sm hover:shadow-red-500/20"
+                                title="Arquivar/Excluir"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -983,9 +1034,41 @@ export default function AlmoxarifadoPage() {
                               {groupedItem.pn}
                             </p>
                             {designadoresStr && (
-                              <span className="text-cyan-100 font-bold font-mono bg-cyan-900/30 px-2 py-1 rounded border border-cyan-500/30 text-xs tracking-wider">
-                                {designadoresStr}
-                              </span>
+                              <div className="flex flex-wrap gap-0.5">
+                                {designadoresStr
+                                  .split(/[,\s]+/)
+                                  .filter(Boolean)
+                                  .map((des, i) => {
+                                    const prefix =
+                                      des.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() || '';
+                                    const colorMap: Record<string, string> = {
+                                      R: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+                                      C: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
+                                      U: 'bg-purple-500/20 text-purple-400 border-purple-500/40',
+                                      Q: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
+                                      D: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
+                                      L: 'bg-pink-500/20 text-pink-400 border-pink-500/40',
+                                      J: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
+                                      Y: 'bg-red-500/20 text-red-400 border-red-500/40',
+                                      FL: 'bg-teal-500/20 text-teal-400 border-teal-500/40',
+                                      F: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
+                                      SW: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40',
+                                      LED: 'bg-lime-500/20 text-lime-400 border-lime-500/40',
+                                    };
+                                    const colorClass =
+                                      colorMap[prefix] ||
+                                      'bg-slate-500/20 text-slate-300 border-slate-500/40';
+                                    return (
+                                      <span
+                                        key={`${des}-${i}`}
+                                        className={`inline-flex items-center px-1 py-px text-[10px] font-medium rounded border ${colorClass}`}
+                                        title={`Componente: ${des}`}
+                                      >
+                                        {des}
+                                      </span>
+                                    );
+                                  })}
+                              </div>
                             )}
                           </div>
                           {descricaoLimpa && (
@@ -1003,7 +1086,7 @@ export default function AlmoxarifadoPage() {
                       <div className="mb-3">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-xs text-slate-400">Progresso</span>
-                          <span className="text-xs font-semibold text-slate-300">
+                          <span className="text-sm font-bold text-slate-200">
                             {qtdEntregue} / {groupedItem.quantidade_requisitada}
                           </span>
                         </div>

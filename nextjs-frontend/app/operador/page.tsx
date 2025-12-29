@@ -356,16 +356,7 @@ export default function IndexPage() {
 
   const handleLogout = async () => {
     try {
-      // Se for admin, limpar dados demo antes do logout
-      if (user?.role === 'admin') {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/admin/logout`,
-          {
-            method: 'POST',
-            credentials: 'include',
-          }
-        );
-      }
+      // Se for admin, a limpeza é feita automaticamente no backend no endpoint /auth/logout
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
@@ -747,6 +738,19 @@ export default function IndexPage() {
                   await loadData(); // Recarrega a tabela
                 } catch (error: any) {
                   showToast(error.message || 'Erro ao gerar dados de demonstração', 'error');
+                }
+              }}
+              onEdit={async (id: string, data: Partial<Registro>) => {
+                try {
+                  await fetchAutenticado(`/api/registros/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data),
+                  });
+                  showToast('Registro atualizado com sucesso!', 'success');
+                  await loadData(); // Recarrega os dados
+                } catch (error: any) {
+                  showToast(error.message || 'Erro ao atualizar registro', 'error');
+                  throw error;
                 }
               }}
             />

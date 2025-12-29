@@ -34,17 +34,22 @@ const registroBase = {
 };
 
 const registroCreateSchema = z.object(registroBase);
+
+// Schema de Update relaxado (todos opcionais, sem min(1) nos campos de texto para permitir payload parcial limpo mesmo que não devia)
 const registroUpdateSchema = z.object({
-  om: z.string().min(1),
-  qtdlote: z.coerce.number().int().min(1),
+  om: z.string().optional(),
+  qtdlote: z.coerce.number().int().optional(),
+
+  // Strings opcionais: permitimos string vazia/null/undefined
   serial: z.string().optional().nullable(),
-  designador: z.string().min(1),
-  tipodefeito: z.string().min(1),
+  designador: z.string().optional(),
+  tipodefeito: z.string().optional(),
   pn: z.string().optional().nullable(),
   descricao: z.string().optional().nullable(),
   obs: z.string().optional().nullable(),
   prioridade: z.string().optional().nullable(),
 });
+
 const registroBatchItemSchema = z.object({
   id: z.string().optional(),
   om: z.string().min(1),
@@ -85,6 +90,8 @@ function validate(schema, source = 'body') {
     const result = schema.safeParse(data);
     if (!result.success) {
       const issues = result.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }));
+      console.error('Validation Error for data:', JSON.stringify(data, null, 2));
+      console.error('Issues:', JSON.stringify(issues, null, 2));
       return res.status(400).json({ error: 'Dados inválidos', details: issues });
     }
     // Substitui pelo objeto validado/coercido

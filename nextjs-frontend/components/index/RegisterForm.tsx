@@ -49,6 +49,7 @@ const TIPOS_DEFEITO = [
       { value: 'Danificado', label: 'Danificado' },
       { value: 'Deslocado', label: 'Deslocado' },
       { value: 'Incorreto', label: 'Incorreto' },
+      { value: 'Valor Incorreto', label: 'Valor Incorreto' },
       { value: 'Invertido', label: 'Invertido' },
       { value: 'Polaridade Incorreta', label: 'Polaridade Incorreta' },
       { value: 'Levantado', label: 'Levantado' },
@@ -139,9 +140,7 @@ export default function RegisterForm({
   // Flatten options para o Select
   const defectOptions = [
     { value: '', label: '— Selecione —' },
-    ...TIPOS_DEFEITO.flatMap((group) =>
-      group.options ? group.options : []
-    ),
+    ...TIPOS_DEFEITO.flatMap(group => (group.options ? group.options : [])),
   ];
 
   return (
@@ -160,7 +159,7 @@ export default function RegisterForm({
           <Input
             label="OM (Ordem de Montagem) *"
             value={formData.om}
-            onChange={(e) => setFormData({ ...formData, om: e.target.value })}
+            onChange={e => setFormData({ ...formData, om: e.target.value })}
             disabled={isOMLocked}
             required
             placeholder="Ex: OM001"
@@ -171,9 +170,7 @@ export default function RegisterForm({
             type="number"
             min="1"
             value={formData.qtdlote || ''}
-            onChange={(e) =>
-              setFormData({ ...formData, qtdlote: parseInt(e.target.value) || 0 })
-            }
+            onChange={e => setFormData({ ...formData, qtdlote: parseInt(e.target.value) || 0 })}
             disabled={isOMLocked}
             required
             placeholder="Ex: 100"
@@ -182,16 +179,14 @@ export default function RegisterForm({
           <Input
             label="Serial Number da Placa"
             value={formData.serial}
-            onChange={(e) => setFormData({ ...formData, serial: e.target.value })}
+            onChange={e => setFormData({ ...formData, serial: e.target.value })}
             placeholder="Ex: SN12345"
           />
 
           <Input
             label="Designador *"
             value={formData.designador}
-            onChange={(e) =>
-              setFormData({ ...formData, designador: e.target.value })
-            }
+            onChange={e => setFormData({ ...formData, designador: e.target.value })}
             required
             placeholder="Ex: R1"
           />
@@ -201,9 +196,7 @@ export default function RegisterForm({
           <Select
             label="Tipo de Defeito *"
             value={formData.tipodefeito}
-            onChange={(e) =>
-              setFormData({ ...formData, tipodefeito: e.target.value })
-            }
+            onChange={e => setFormData({ ...formData, tipodefeito: e.target.value })}
             options={defectOptions}
             required
           />
@@ -211,26 +204,22 @@ export default function RegisterForm({
           <Input
             label="Cod. Alt (Código Alternativo)"
             value={formData.pn}
-            onChange={(e) => setFormData({ ...formData, pn: e.target.value })}
+            onChange={e => setFormData({ ...formData, pn: e.target.value })}
             placeholder="Ex: ALT123"
           />
 
           <Input
             label="Descrição do Componente"
             value={formData.descricao}
-            onChange={(e) =>
-              setFormData({ ...formData, descricao: e.target.value })
-            }
+            onChange={e => setFormData({ ...formData, descricao: e.target.value })}
             placeholder="Ex: Resistor 10kΩ"
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Observações
-            </label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Observações</label>
             <textarea
               value={formData.obs}
-              onChange={(e) => setFormData({ ...formData, obs: e.target.value })}
+              onChange={e => setFormData({ ...formData, obs: e.target.value })}
               className="w-full px-4 py-3 rounded-lg border border-slate-700 bg-slate-900/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
               placeholder="Observações adicionais..."
               rows={3}
@@ -274,4 +263,3 @@ export default function RegisterForm({
     </motion.div>
   );
 }
-
