@@ -128,7 +128,8 @@ export default function AdminPage() {
               u.role === 'operator' ||
               u.role === 'reparo' ||
               u.role === 'qualidade' ||
-              u.role === 'almoxarifado'
+              u.role === 'almoxarifado' ||
+              u.role === 'lider_smt'
           ).length,
         });
       });

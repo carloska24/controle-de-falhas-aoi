@@ -7,13 +7,15 @@ const userCreateSchema = z.object({
   name: z.string().min(1),
   username: z.string().min(1),
   password: z.string().min(1),
-  role: z.enum(['admin', 'operator', 'reparo', 'qualidade', 'almoxarifado']).default('operator'),
+  role: z
+    .enum(['admin', 'operator', 'reparo', 'qualidade', 'almoxarifado', 'lider_smt'])
+    .default('operator'),
 });
 
 const userUpdateSchema = z.object({
   name: z.string().min(1),
   username: z.string().min(1),
-  role: z.enum(['admin', 'operator', 'reparo', 'qualidade', 'almoxarifado']),
+  role: z.enum(['admin', 'operator', 'reparo', 'qualidade', 'almoxarifado', 'lider_smt']),
   password: z.string().min(1).optional(),
 });
 

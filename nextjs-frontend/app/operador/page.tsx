@@ -116,8 +116,12 @@ export default function IndexPage() {
     try {
       const data = await fetchAutenticado('/api/registros');
       const registrosList = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      // Filtra registros marcados como 'Alternativo' (foram aceitos pelo SMT)
+      const visibleRegistros = registrosList.filter(
+        (r: Registro) => r.tipodefeito !== 'Alternativo'
+      );
       startTransition(() => {
-        setRegistros(Array.isArray(registrosList) ? registrosList : []);
+        setRegistros(visibleRegistros);
       });
       setIsDataLoading(false);
     } catch (error: any) {

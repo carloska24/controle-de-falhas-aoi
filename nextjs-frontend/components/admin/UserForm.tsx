@@ -30,6 +30,7 @@ const roleOptions = [
   { value: 'reparo', label: 'Operador Reparo' },
   { value: 'qualidade', label: 'Analista de Qualidade' },
   { value: 'almoxarifado', label: 'Almoxarifado' },
+  { value: 'lider_smt', label: 'Líder SMD' },
   { value: 'admin', label: 'Administrador' },
 ];
 
@@ -116,7 +117,7 @@ export default function UserForm({
         <Input
           label="Nome Completo"
           value={formData.name}
-          onChange={(e) => {
+          onChange={e => {
             setFormData({ ...formData, name: e.target.value });
             if (errors.name) setErrors({ ...errors, name: '' });
           }}
@@ -129,7 +130,7 @@ export default function UserForm({
         <Input
           label="Nome de Usuário"
           value={formData.username}
-          onChange={(e) => {
+          onChange={e => {
             setFormData({ ...formData, username: e.target.value.toLowerCase() });
             if (errors.username) setErrors({ ...errors, username: '' });
           }}
@@ -145,7 +146,7 @@ export default function UserForm({
           label="Senha Provisória"
           type="password"
           value={formData.password}
-          onChange={(e) => {
+          onChange={e => {
             setFormData({ ...formData, password: e.target.value });
             if (errors.password) setErrors({ ...errors, password: '' });
           }}
@@ -160,7 +161,7 @@ export default function UserForm({
       <Select
         label="Função do Usuário"
         value={formData.role}
-        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+        onChange={e => setFormData({ ...formData, role: e.target.value })}
         options={roleOptions}
       />
 
@@ -171,7 +172,11 @@ export default function UserForm({
             Cancelar
           </Button>
         )}
-        <Button type="submit" isLoading={loading} variant={mode === 'create' ? 'primary' : 'success'}>
+        <Button
+          type="submit"
+          isLoading={loading}
+          variant={mode === 'create' ? 'primary' : 'success'}
+        >
           {mode === 'create' ? (
             <>
               <UserPlus className="w-4 h-4 mr-2" />
@@ -188,4 +193,3 @@ export default function UserForm({
     </motion.form>
   );
 }
-

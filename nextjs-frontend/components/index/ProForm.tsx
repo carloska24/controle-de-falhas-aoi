@@ -510,6 +510,7 @@ export default function ProForm({
               <option value="Danificado">Danificado</option>
               <option value="Deslocado">Deslocado</option>
               <option value="Incorreto">Incorreto</option>
+              <option value="Possível Incorreto">Possível Incorreto</option>
               <option value="Valor Incorreto">Valor Incorreto</option>
               <option value="Invertido">Invertido</option>
               <option value="Polaridade Incorreta">Polaridade Incorreta</option>

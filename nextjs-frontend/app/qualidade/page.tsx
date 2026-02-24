@@ -57,6 +57,7 @@ const DEFEITOS_POSICIONAMENTO = [
   'Danificado',
   'Deslocado',
   'Incorreto',
+  'Possível Incorreto',
   'Valor Incorreto',
   'Invertido',
   'Polaridade Incorreta',

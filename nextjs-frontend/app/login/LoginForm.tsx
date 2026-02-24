@@ -70,7 +70,13 @@ export default function LoginForm() {
 
           // Redireciona diretamente - o cookie foi definido pelo servidor
           // Se houver problema, a página de destino vai detectar e tratar
-          const redirectPath = data.user.role === 'admin' ? '/admin' : '/operador';
+          // Se for Lider SMD, vai para conferência
+          const redirectPath =
+            data.user.role === 'admin'
+              ? '/admin'
+              : data.user.role === 'lider_smt'
+              ? '/smt/conferencia'
+              : '/operador';
 
           // Usa window.location para garantir que o cookie seja enviado
           // Isso força uma navegação completa e garante que os cookies sejam incluídos

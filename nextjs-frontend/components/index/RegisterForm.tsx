@@ -49,6 +49,7 @@ const TIPOS_DEFEITO = [
       { value: 'Danificado', label: 'Danificado' },
       { value: 'Deslocado', label: 'Deslocado' },
       { value: 'Incorreto', label: 'Incorreto' },
+      { value: 'Possível Incorreto', label: 'Possível Incorreto' },
       { value: 'Valor Incorreto', label: 'Valor Incorreto' },
       { value: 'Invertido', label: 'Invertido' },
       { value: 'Polaridade Incorreta', label: 'Polaridade Incorreta' },
