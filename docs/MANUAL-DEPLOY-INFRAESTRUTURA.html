@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Instalação & Setup do Servidor (AOI)</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #fafafa;
+      }
+      code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .hero-pattern {
+        background-color: #0d1117;
+        background-image: radial-gradient(#1e293b 1px, transparent 1px);
+        background-size: 20px 20px;
+      }
+      pre {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1.25rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+        border: 1px solid #333;
+      }
+      pre code {
+        color: #e5e5e5;
+        background: transparent;
+        padding: 0;
+      }
+      p > code {
+        background-color: #f1f5f9;
+        color: #334155;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-size: 0.875em;
+      }
+      .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        background-color: #0ea5e9;
+        color: white;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: bold;
+        margin-right: 0.5rem;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+    </style>
+  </head>
+  <body class="text-slate-800 antialiased leading-relaxed">
+    <!-- Header / Hero section -->
+    <header class="hero-pattern pt-20 pb-16 text-white border-b-4 border-sky-500 shadow-lg">
+      <div class="max-w-5xl mx-auto px-6">
+        <div
+          class="inline-block bg-sky-500/20 border border-sky-400/30 text-sky-400 rounded-full px-3 py-1 text-sm font-semibold mb-6 shadow-sm"
+        >
+          Documentação Oficial TI
+        </div>
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
+          Manual Completo de Setup e Contingência
+        </h1>
+        <p class="text-xl text-slate-400 max-w-2xl font-light">
+          Guia detalhado de Instalação na Intranet do sistema de Controle de Falhas (AOI) e Práticas
+          de Gestão/Backup com PostgreSQL.
+        </p>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-5xl mx-auto px-6 py-12 flex flex-col md:flex-row gap-8 items-start">
+      <!-- Sidebar Navigation -->
+      <aside class="md:w-64 flex-shrink-0 sticky top-6 hidden md:block">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <h3 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Índice</h3>
+          <nav class="space-y-1 text-sm">
+            <a
+              href="#instalacao"
+              class="block py-2 px-3 text-slate-600 hover:bg-slate-50 hover:text-sky-600 rounded transition-colors font-semibold"
+              >1. Deploy na Intranet</a
+            >
+            <div class="pl-4 space-y-1 mb-2 border-l border-slate-100 ml-3">
+              <a href="#pre-reqs" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Pré-Requisitos</a
+              >
+              <a href="#ip-fixo" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Rede (IP Fixo)</a
+              >
+              <a href="#setup-back" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Setup Backend</a
+              >
+              <a href="#setup-front" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Setup Frontend</a
+              >
+              <a href="#pm2" class="block py-1 text-slate-500 hover:text-sky-600">Serviço PM2</a>
+            </div>
+
+            <a
+              href="#backup"
+              class="block py-2 px-3 text-slate-600 hover:bg-slate-50 hover:text-sky-600 rounded transition-colors font-semibold mt-4"
+              >2. Gestão e Backup</a
+            >
+            <div class="pl-4 space-y-1 border-l border-slate-100 ml-3">
+              <a href="#regra-321" class="block py-1 text-slate-500 hover:text-sky-600"
+                >A Regra 3-2-1</a
+              >
+              <a href="#backup-manual" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Backup Manual</a
+              >
+              <a href="#backup-auto" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Script Diário (Auto)</a
+              >
+              <a href="#restore" class="block py-1 text-slate-500 hover:text-sky-600"
+                >Restauração Total</a
+              >
+            </div>
+          </nav>
+        </div>
+      </aside>
+
+      <!-- Content -->
+      <div class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-8 md:p-12">
+        <!-- SECTION 1: INSTALACAO INTRANET -->
+        <section id="instalacao" class="mb-16">
+          <div class="flex items-center gap-3 mb-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
+                ></path>
+              </svg>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-900 border-b-2 border-slate-100 pb-2 flex-1">
+              Implantação do Sistema
+            </h2>
+          </div>
+
+          <p class="text-lg text-slate-600 mb-8">
+            Este guia pressupõe que estamos implantando o sistema em uma máquina base (Servidor VM
+            ou Físico) que rode o sistema operacional <strong>Windows Server</strong> ou
+            <strong>Windows 10/11 Pro</strong> disponível na rede local corporativa.
+          </p>
+
+          <h3
+            id="pre-reqs"
+            class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center"
+          >
+            <span class="step-number">1</span> Pré-Requisitos na Máquina Host
+          </h3>
+          <ul class="space-y-3 mb-6 list-disc pl-6 text-slate-600 marker:text-sky-300">
+            <li class="pl-2">
+              <strong>Node.js</strong>: Versão 20 LTS ou superior. Faça o download do instalador
+              clássico padrão no site oficial.
+            </li>
+            <li class="pl-2">
+              <strong>Git</strong> <em>(Recomendado)</em>: Para baixar/clonar o código de forma
+              rápida e puxar atualizações futuras com segurança via versionamento.
+            </li>
+            <li class="pl-2">
+              <strong>PostgreSQL</strong>: Baixe a versão Desktop standard ou via Docker. Grave a
+              senha do superusuário <code>postgres</code> durante a instalação inicial e porta
+              <code>5432</code>.
+            </li>
+          </ul>
+
+          <h3
+            id="ip-fixo"
+            class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center"
+          >
+            <span class="step-number">2</span> Preparação da Rede
+          </h3>
+          <div class="bg-amber-50 border-l-4 border-amber-400 p-5 rounded-r-lg mb-6">
+            <h4 class="text-amber-800 font-bold flex items-center gap-2 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                ></path>
+              </svg>
+              Atenção: Endereço IP Fixo
+            </h4>
+            <p class="text-amber-700 text-sm">
+              Sendo na intranet, sua máquina deve ter um IP estilo <code>192.168.X.Y</code>.
+              Comunique à TI/Infraestrutura para <strong>reservar este IP no DHCP</strong>! Se o
+              roteador reatribuir o IP em um reinício, as máquinas de produção das Linhas vão perder
+              acesso subitamente ao Dashboard.
+            </p>
+          </div>
+
+          <h3
+            id="setup-back"
+            class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center"
+          >
+            <span class="step-number">3</span> Passo a Passo: Backend
+          </h3>
+          <div class="space-y-4 text-slate-600">
+            <p>
+              1. Vá até a pasta <code>backend</code> pelo console e crie/configure o arquivo
+              <code>.env</code> com seus parâmetros de subida do Banco e a porta:
+            </p>
+            <pre><code># .env File
+DATABASE_URL="postgresql://postgres:SuaSenhaAqui@localhost:5432/aoi_db?schema=public"
+PORT=3001
+CORS_ORIGIN=http://192.168.X.Y:3000   // Substitua "X.Y" pelo IP Fixo do Host
+NODE_ENV=production
+JWT_SECRET="senha_forte_seguranca_jwt"</code></pre>
+            <p>
+              2. No Powershell da pasta <code>backend</code> como Administrador, rode a injeção do
+              schema no postgres vazio:
+            </p>
+            <pre><code>npm install
+npx prisma generate
+npx prisma db push</code></pre>
+          </div>
+
+          <h3
+            id="setup-front"
+            class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center"
+          >
+            <span class="step-number">4</span> Passo a Passo: Frontend (Next.js)
+          </h3>
+          <div class="space-y-4 text-slate-600">
+            <p>1. Acesse a pasta <code>nextjs-frontend</code> e rode o Build de produção.</p>
+            <pre><code>npm install
+npm run build</code></pre>
+            <p class="text-sm italic mt-1 text-slate-500">
+              Isto transformará o React pesado em HTML pré-renderizado estático super veloz (SSG +
+              SSR).
+            </p>
+            <p>2. Ao Finalizar o Build:</p>
+            <pre><code>npm run start</code></pre>
+            <p>O sistema subirá na Porta <code>:3000</code>.</p>
+          </div>
+
+          <h3 id="pm2" class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center">
+            <span class="step-number">5</span> PM2: O Segredo da Estabilidade
+          </h3>
+          <p class="text-slate-600 mb-4">
+            Você <strong>não deve</strong> deixar popups de prompt pretos abertos rodando o sistema
+            manualmente. Um esbarrão, ou um Windows Update reiniciando à noite, e sua fábrica fica
+            às cegas.
+          </p>
+
+          <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+            <ol class="list-decimal pl-5 space-y-2 text-slate-700">
+              <li>
+                Instale o gerenciador de processos globalmente (CMD Adm):
+                <code>npm install -g pm2</code>
+              </li>
+              <li>
+                Na pasta Backend levante o serviço isolado:
+                <code>pm2 start server.js --name "Aoi_Backend"</code>
+              </li>
+              <li>
+                Na pasta Frontend levante em paralelo:
+                <code>pm2 start npm --name "Aoi_Frontend" -- run start</code>
+              </li>
+              <li>Tranque as configurações atuando o comando: <code>pm2 save</code></li>
+              <li>
+                <em>(Especial Windows):</em> Execute
+                <code>npm install -g pm2-windows-startup</code> e siga os passos dados no console.
+                Com isso, caso caia a força na empresa, o PM2 irá subir tudo sozinho do zero sem o
+                admin precisar sequer colocar a senha do Windows após ligar o PC.
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <hr class="my-16 border-t-2 border-slate-200 border-dashed" />
+
+        <!-- SECTION 2: BACKUPS E CONTINGENCIA -->
+        <section id="backup">
+          <div class="flex items-center gap-3 mb-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                ></path>
+              </svg>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-900 border-b-2 border-slate-100 pb-2 flex-1">
+              Database Contingency (PostgreSQL)
+            </h2>
+          </div>
+
+          <p class="text-lg text-slate-600 mb-8">
+            Por migrarmos de um arquivo de teste isolado para um Banco de Dados Profissional
+            (PostgreSQL), extrair cópias passa a exigir o sistema <code>pg_dump</code>. Abaixo os
+            passos de rotina para blindagem contra Ransomware.
+          </p>
+
+          <h3
+            id="regra-321"
+            class="text-xl font-semibold text-slate-800 mt-8 mb-3 flex items-center"
+          >
+            <span class="step-number">1</span> Regra Básica 3-2-1
+          </h3>
+          <div class="grid md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-center">
+              <div class="text-2xl font-black text-indigo-500 mb-1">3 Cópias</div>
+              <p class="text-sm text-slate-600">
+                Sempre tenha 1 original e faça mais 2 backups contínuos.
+              </p>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-center">
+              <div class="text-2xl font-black text-indigo-500 mb-1">2 Mídias</div>
+              <p class="text-sm text-slate-600">
+                Salve uma na máquina, e a outra em HD/Nuvem Network/Drive.
+              </p>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-center">
+              <div class="text-2xl font-black text-indigo-500 mb-1">1 Offsite</div>
+              <p class="text-sm text-slate-600">
+                Isolação externa física (Nuvem ou Prédio Secundário).
+              </p>
+            </div>
+          </div>
+
+          <h3
+            id="backup-manual"
+            class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center"
+          >
+            <span class="step-number">2</span> Método de Extração Rápida (Manual)
+          </h3>
+          <p class="text-slate-600 mb-4">
+            Se for realizar uma manutenção de risco num feriado, extraia a base usando prompt via
+            <code>pg_dump</code>:
+          </p>
+          <pre><code>pg_dump -U postgres -F t aoi_db > "C:\Meus_Backups\backup_aoi.tar"</code></pre>
+          <p class="text-slate-600 text-sm mt-2">
+            A flag <code>-F t</code> empacota silenciosamente a base. Utilize .sql no lugar de .tar
+            se preferir texto corrido para debug puro.
+          </p>
+
+          <h3
+            id="backup-auto"
+            class="text-xl font-semibold text-slate-800 mt-10 mb-4 flex items-center"
+          >
+            <span class="step-number">3</span> Automação Diária (Powershell Silencioso)
+          </h3>
+          <p class="text-slate-600 mb-4">
+            Crie um arquivo <code>fazer_backup_diario.ps1</code>. Vá no
+            <strong>"Agendador de Tarefas" do Windows</strong> e crie uma tarefa que dispare esse
+            Script à Meia-Noite de cada dia. Desta forma você colapsará com zero surpresas de meses
+            sem salvar.
+          </p>
+
+          <pre><code>$DataDeHoje = Get-Date -Format "yyyy-MM-dd_HH-mm"
+$DiretorioDestino = "C:\Backups_Sistemas\AOI\"  # E aponte pro GoogleDrive/OneDrive Synced
+$NomeDoFile = "AOI_DB_$DataDeHoje.backup"
+$CaminhoCompleto = Join-Path -Path $DiretorioDestino -ChildPath $NomeDoFile
+
+# O PgPass injeta a senha invisível sem precisar pedir prompt humano
+$env:PGPASSWORD="SUA_SENHA_AQUI"
+
+Write-Host "Iniciando Dump das OMs do AOI Database..."
+# Referencie o caminho nativo de instalação do PostgreSQL \bin
+& "C:\Program Files\PostgreSQL\16\bin\pg_dump.exe" -U postgres -F c -b -v -f $CaminhoCompleto aoi_db
+
+Write-Host "Base Backup efetuada com sucesso!"</code></pre>
+
+          <h3
+            id="restore"
+            class="text-xl font-semibold text-slate-800 mt-12 mb-4 flex items-center"
+          >
+            <span class="step-number">4</span> Restaurando o Banco num Dia Ruim
+          </h3>
+          <p class="text-slate-600 mb-4">
+            Num evento que a base quebre ou máquina física queime: crie uma base nova
+            <code>aoi_db</code> no postgres de uma maquina nova usando a UI (pgAdmin ou DBeaver).
+          </p>
+          <p class="text-slate-600 mb-4">
+            Em seguida, rode magicamente via CMD o arquivo <code>.backup</code> extraído pela
+            automação para recompor tudo que existia na tela naquele momento sem perder
+            relacionamentos:
+          </p>
+          <pre><code>pg_restore -U postgres -d aoi_db -v "D:\Backups\AOI_DB_2026-05-18_01-00.backup"</code></pre>
+
+          <!-- Status de encerramento -->
+          <div class="mt-16 bg-blue-50/50 border border-blue-100 rounded-xl p-6 text-center">
+            <div
+              class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-4"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                ></path>
+              </svg>
+            </div>
+            <h4 class="text-lg font-bold text-slate-900">Tudo Pronto para Ir À Produção</h4>
+            <p class="text-slate-500 mt-2">
+              Você possui o guia, a arquitetura moderna (Node + NextJS) limpa e um SGDB Enterprise
+              rodando sob Prisma. O sistema agora suportam a carga fabril contínua.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-12 py-8 text-center">
+      <p class="text-slate-400 text-sm">
+        © 2026 Controle de Falhas AOI | Documentação Técnica de Arquitetura.
+      </p>
+    </footer>
+  </body>
+</html>
