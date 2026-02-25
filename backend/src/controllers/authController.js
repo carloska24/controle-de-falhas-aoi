@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const database = require('../config/database');
+const prisma = require('../config/prisma');
 const { JWT_SECRET } = require('../middleware/auth');
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -8,7 +8,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 async function login(req, res) {
   const { username, password } = req.body;
   try {
-    const user = await database.dbGet('SELECT * FROM users WHERE username = ?', [username]);
+    const user = await prisma.users.findUnique({ where: { username } });
     if (!user) return res.status(401).json({ error: 'Usuário ou senha inválidos.' });
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -38,10 +38,10 @@ async function login(req, res) {
 async function logout(req, res) {
   try {
     // Limpar dados de demonstração
-    await database.dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
-    await database.dbRun("DELETE FROM requisicoes WHERE om LIKE 'DEMO-%'");
-    await database.dbRun("DELETE FROM oms_pausadas WHERE omNumber LIKE 'DEMO-%'");
-    await database.dbRun("DELETE FROM oms_finalizadas WHERE omNumber LIKE 'DEMO-%'");
+    await prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
+    await prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
+    await prisma.oms_pausadas.deleteMany({ where: { omNumber: { startsWith: 'DEMO-' } } });
+    await prisma.oms_finalizadas.deleteMany({ where: { omNumber: { startsWith: 'DEMO-' } } });
     console.log('[Auth] Dados de DEMO limpos no logout.');
   } catch (err) {
     console.error('[Auth] Erro ao limpar dados de DEMO:', err);

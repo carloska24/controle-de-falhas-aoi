@@ -9,8 +9,6 @@ console.log('Cors loaded');
 const cookieParser = require('cookie-parser');
 console.log('CookieParser loaded');
 
-const { initializeDatabase } = require('./src/config/database');
-console.log('Database config loaded');
 const { setupLogger, morganMiddleware } = require('./src/middleware/logger');
 console.log('Logger loaded');
 
@@ -124,9 +122,7 @@ app.get('/api/oms', authenticateToken, (req, res) => {
 async function startServer() {
   console.log('startServer called');
   try {
-    console.log('Initializing database...');
-    await initializeDatabase();
-    console.log('Database initialized. Loading OMs...');
+    console.log('Loading OMs via Prisma...');
     await omController.carregarOMsPausadas();
     console.log('OMs loaded. Starting listener...');
 

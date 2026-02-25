@@ -1,9 +1,12 @@
 const bcrypt = require('bcrypt');
-const database = require('../config/database');
+const prisma = require('../config/prisma');
 
 async function listUsers(req, res) {
   try {
-    const users = await database.dbAll('SELECT id, name, username, role FROM users ORDER BY id');
+    const users = await prisma.users.findMany({
+      select: { id: true, name: true, username: true, role: true },
+      orderBy: { id: 'asc' },
+    });
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -15,30 +18,14 @@ async function createUser(req, res) {
   try {
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
-    // Nota: dbRun configurado no database.js já devolve lastID corretamente para PG e SQLite
-    const result = await database.dbRun(
-      'INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id',
-      [name, username, password_hash, role]
-    );
 
-    // Ajuste para pegar ID independentemente do driver
-    const newId = result.lastID;
+    const newUser = await prisma.users.create({
+      data: { name, username, password_hash, role },
+    });
 
-    // Se por acaso lastID vier nulo (driver antigo), tenta buscar pelo username
-    let newUser;
-    if (newId) {
-      newUser = await database.dbGet('SELECT id, name, username, role FROM users WHERE id = ?', [
-        newId,
-      ]);
-    } else {
-      newUser = await database.dbGet(
-        'SELECT id, name, username, role FROM users WHERE username = ?',
-        [username]
-      );
-    }
-
-    if (!newUser) throw new Error('Falha ao recuperar o usuário recém-criado.');
-    res.status(201).json(newUser);
+    res
+      .status(201)
+      .json({ id: newUser.id, name: newUser.name, username: newUser.username, role: newUser.role });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Nome de usuário já cadastrado ou erro no servidor.' });
@@ -50,27 +37,24 @@ async function updateUser(req, res) {
   const { name, username, role, password } = req.body;
 
   try {
-    let result;
+    const data = { name, username, role };
     if (password) {
       const salt = await bcrypt.genSalt(10);
-      const password_hash = await bcrypt.hash(password, salt);
-      result = await database.dbRun(
-        'UPDATE users SET name = ?, username = ?, role = ?, password_hash = ? WHERE id = ?',
-        [name, username, role, password_hash, id]
-      );
-    } else {
-      result = await database.dbRun(
-        'UPDATE users SET name = ?, username = ?, role = ? WHERE id = ?',
-        [name, username, role, id]
-      );
+      data.password_hash = await bcrypt.hash(password, salt);
     }
-    if (result.changes === 0) return res.status(404).json({ message: 'Usuário não encontrado' });
-    const updatedUser = await database.dbGet(
-      'SELECT id, name, username, role FROM users WHERE id = ?',
-      [id]
-    );
+
+    const updatedUser = await prisma.users.update({
+      where: { id: parseInt(id, 10) },
+      data,
+      select: { id: true, name: true, username: true, role: true },
+    });
+
     res.json(updatedUser);
   } catch (err) {
+    // Se o prisma não achar o registro, cai no catch // P2025 record to update not found
+    if (err.code === 'P2025') {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
     res
       .status(500)
       .json({ error: 'Erro ao atualizar usuário. O nome de usuário pode já estar em uso.' });
@@ -86,7 +70,7 @@ async function deleteUser(req, res) {
       .json({ error: 'Você não pode excluir sua própria conta de administrador.' });
   }
   try {
-    await database.dbRun('DELETE FROM users WHERE id = ?', [id]);
+    await prisma.users.delete({ where: { id: parseInt(id, 10) } });
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Erro ao excluir usuário.' });
@@ -96,7 +80,10 @@ async function deleteUser(req, res) {
 // Rota de debug (opcional, pode ser removida se quiser limpar 100%)
 async function debugUsers(req, res) {
   try {
-    const users = await database.dbAll('SELECT id, name, username, role FROM users ORDER BY id');
+    const users = await prisma.users.findMany({
+      select: { id: true, name: true, username: true, role: true },
+      orderBy: { id: 'asc' },
+    });
     res.json(users);
   } catch (e) {
     res.status(500).json({ error: e.message });

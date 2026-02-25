@@ -1,38 +1,28 @@
-const database = require('../config/database');
+const prisma = require('../config/prisma');
 
 async function listRequisicoes(req, res) {
   try {
     const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
-    let whereClauses = [];
-    let queryParams = [];
 
-    if (om) {
-      whereClauses.push('om = ?');
-      queryParams.push(om);
-    }
-    if (status) {
-      whereClauses.push('status = ?');
-      queryParams.push(status);
-    }
-    if (dataIni) {
-      whereClauses.push('created_at >= ?');
-      queryParams.push(dataIni);
-    }
-    if (dataFim) {
-      whereClauses.push('created_at <= ?');
-      queryParams.push(dataFim);
+    const where = {};
+    if (om) where.om = om;
+    if (status) where.status = status;
+    if (dataIni || dataFim) {
+      where.created_at = {};
+      if (dataIni) where.created_at.gte = dataIni;
+      if (dataFim) where.created_at.lte = dataFim;
     }
 
-    let query = 'SELECT * FROM requisicoes';
-    if (whereClauses.length > 0) query += ' WHERE ' + whereClauses.join(' AND ');
-    query += ' ORDER BY created_at DESC';
-
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 50;
     const offset = (pageNum - 1) * limitNum;
-    query += ` LIMIT ${limitNum} OFFSET ${offset}`;
 
-    const rows = await database.dbAll(query, queryParams);
+    const rows = await prisma.requisicoes.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      skip: offset,
+      take: limitNum,
+    });
 
     // Parse JSON items
     const results = rows.map(r => ({
@@ -49,39 +39,25 @@ async function listRequisicoes(req, res) {
 async function createRequisicao(req, res) {
   const { registroIds } = req.body;
   try {
-    // Validação: buscar registros
-    const placeholders = registroIds.map(() => '?').join(',');
-    const registrosRaw = await database.dbAll(
-      `SELECT * FROM registros WHERE id IN (${placeholders})`,
-      registroIds
-    );
+    const registrosRaw = await prisma.registros.findMany({
+      where: {
+        id: { in: registroIds },
+      },
+    });
 
-    // Normalizar casing das colunas (SQLite/DB Drivers podem variar)
     const registros = registrosRaw.map(r => ({
       ...r,
-      tipodefeito: r.tipodefeito || r.tipoDefeito || '', // Garante acesso consistente
-      pn: r.pn || r.PN || '', // Por garantia
+      tipodefeito: r.tipodefeito || '',
+      pn: r.pn || '',
     }));
 
     if (registros.length === 0)
       return res.status(400).json({ error: 'Nenhum registro encontrado.' });
 
-    console.log('--- DEBUG REQUISICAO ---');
-    console.log('IDs recebidos:', registroIds);
-    console.log(
-      'Registros encontrados:',
-      registros.map(r => ({ id: r.id, tipo: r.tipodefeito }))
-    );
-
-    // Filtrar apenas defeitos que exigem requisição de componente
     const DEFEITOS_REQUISICAO = ['Ausente', 'Danificado', 'Incorreto'];
 
-    // Normalizar para comparação segura (trim)
     const registrosValidos = registros.filter(r => {
       const tipo = r.tipodefeito ? r.tipodefeito.trim() : '';
-      console.log(
-        `Verificando registro ${r.id}: Tipo="${tipo}" Valido=${DEFEITOS_REQUISICAO.includes(tipo)}`
-      );
       return DEFEITOS_REQUISICAO.includes(tipo);
     });
 
@@ -92,8 +68,6 @@ async function createRequisicao(req, res) {
       });
     }
 
-    // Usar apenas os validos daqui pra frente
-    // Agrupar registros por OM
     const registrosPorOM = {};
     for (const r of registrosValidos) {
       if (!registrosPorOM[r.om]) {
@@ -103,11 +77,10 @@ async function createRequisicao(req, res) {
     }
 
     const createdIds = [];
-    const created_by = req.user.username || 'Sistema'; // Fallback
+    const created_by = req.user.username || 'Sistema';
 
-    await database.dbTransaction(async run => {
+    await prisma.$transaction(async tx => {
       for (const [om, regs] of Object.entries(registrosPorOM)) {
-        // Agrupa registros desta OM por PN para montar items
         const itemsMap = {};
         for (const r of regs) {
           if (!itemsMap[r.pn]) {
@@ -122,36 +95,17 @@ async function createRequisicao(req, res) {
         }
         const items = Object.values(itemsMap);
 
-        const result = await run(
-          'INSERT INTO requisicoes (om, items, created_at, created_by) VALUES (?, ?, ?, ?)',
-          [om, JSON.stringify(items), new Date().toISOString(), created_by]
-        );
-
-        // Recuperar ID (se SQLite, run retorna this com lastID, se PG precisa de RETURNING mas o driver do database.js abstrai ou usamos fallback)
-        // Mas como estamos dentro de transaction e run, precisamos cuidado.
-        // O database.js diz: dbRun retorna { changes, lastID }.
-        // No transaction, run retorna o this do driver sqlite.
-        // Vamos assumir que run retorna o objeto que tem lastID.
-        if (result.lastID) {
-          createdIds.push(result.lastID);
-        } else {
-          // Fallback perigoso dentro de transaction se driver não suportar,
-          // mas nosso database.js para SQLite retorna lastID.
-        }
+        const newReq = await tx.requisicoes.create({
+          data: {
+            om,
+            items: JSON.stringify(items),
+            created_at: new Date().toISOString(),
+            created_by,
+          },
+        });
+        createdIds.push(newReq.id);
       }
     });
-
-    // Se por acaso lastID não veio (ex: driver PG sem returning), teríamos que ajustar.
-    // Mas assumindo SQLite aqui.
-
-    // Se createdIds vazio (ex: falha silenciosa), buscar os ultimos N?
-    // Melhor confiar no database.js.
-
-    // Para PG em produção, o database.js usa RETURNING id se não me engano ou rowCount.
-    // O código original usava RETURNING id na query manual?
-    // 'INSERT INTO ... RETURNING id'
-    // Se for SQLite, isso falha se não for versão nova.
-    // Vamos manter simples.
 
     res.status(201).json({
       message: `${createdIds.length} requisições criadas com sucesso.`,
@@ -165,9 +119,12 @@ async function createRequisicao(req, res) {
 
 async function updateStatus(req, res) {
   const { id } = req.params;
-  const { status } = req.body; // { status: "..." }
+  const { status } = req.body;
   try {
-    await database.dbRun('UPDATE requisicoes SET status = ? WHERE id = ?', [status, id]);
+    await prisma.requisicoes.update({
+      where: { id: parseInt(id, 10) },
+      data: { status },
+    });
     res.json({ message: `Status atualizado para ${status}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -176,25 +133,23 @@ async function updateStatus(req, res) {
 
 async function updateItems(req, res) {
   const { id } = req.params;
-  const { items } = req.body; // { items: [...] }
+  const { items } = req.body;
   try {
     const jsonItems = JSON.stringify(items);
-    await database.dbRun('UPDATE requisicoes SET items = ? WHERE id = ?', [jsonItems, id]);
 
-    // Verifica se completou
+    let computedStatus = 'pendente';
     const allDelivered = items.every(i => i.quantidade_entregue >= i.quantidade_requisitada);
     if (allDelivered) {
-      await database.dbRun("UPDATE requisicoes SET status = 'entregue' WHERE id = ?", [id]);
+      computedStatus = 'entregue';
     } else {
-      // Se começou a entregar mas não tudo, parcial
       const someDelivered = items.some(i => i.quantidade_entregue > 0);
-      if (someDelivered) {
-        await database.dbRun(
-          "UPDATE requisicoes SET status = 'parcialmente_entregue' WHERE id = ?",
-          [id]
-        );
-      }
+      if (someDelivered) computedStatus = 'parcialmente_entregue';
     }
+
+    await prisma.requisicoes.update({
+      where: { id: parseInt(id, 10) },
+      data: { items: jsonItems, status: computedStatus },
+    });
 
     res.json({ message: 'Itens atualizados com sucesso.' });
   } catch (err) {
@@ -205,12 +160,14 @@ async function updateItems(req, res) {
 async function deleteRequisicao(req, res) {
   const { id } = req.params;
   try {
-    const result = await database.dbRun('DELETE FROM requisicoes WHERE id = ?', [id]);
-    if (result.changes === 0) {
+    await prisma.requisicoes.delete({
+      where: { id: parseInt(id, 10) },
+    });
+    res.status(204).send();
+  } catch (err) {
+    if (err.code === 'P2025') {
       return res.status(404).json({ error: 'Requisição não encontrada.' });
     }
-    res.status(204).send(); // No Content
-  } catch (err) {
     console.error('Erro ao excluir requisição:', err);
     res.status(500).json({ error: err.message });
   }

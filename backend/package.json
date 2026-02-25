@@ -6,10 +6,7 @@
   "scripts": {
     "start": "node -r dotenv/config server.js",
     "dev": "nodemon -r dotenv/config --ext js,json,env server.js",
-    "export:sqlite": "node scripts/export_sqlite.js",
     "test:auth": "node tests/auth_cookie_flow.test.js",
-    "clean:om": "node scripts/clean_db.js om",
-    "clean:all": "node scripts/clean_db.js all",
     "test": "jest"
   },
   "keywords": [],
@@ -17,6 +14,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.4.1",
+    "@prisma/client": "^7.4.1",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -26,8 +25,8 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "node-fetch": "^2.7.0",
-    "pg": "^8.16.3",
-    "sqlite3": "^5.1.7",
+    "pg": "^8.18.0",
+    "prisma": "^7.4.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

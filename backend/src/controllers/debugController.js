@@ -1,4 +1,4 @@
-const database = require('../config/database');
+const prisma = require('../config/prisma');
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -47,7 +47,7 @@ function getDefectsFor(type) {
     case 'resistor':
       return [...common, 'Tombstone', 'Bilboard', 'Incorreto', 'Levantado'];
     case 'capacitor':
-      return [...common, 'Tombstone', 'Bilboard', 'Curto', 'Incorreto']; // Caps don't usually have polarity issues unless tantalum, but let's be safe
+      return [...common, 'Tombstone', 'Bilboard', 'Curto', 'Incorreto'];
     case 'ic':
       return [
         ...common,
@@ -71,23 +71,22 @@ async function populateDemoData(req, res) {
 
   try {
     if (clear) {
-      await database.dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
-      await database.dbRun("DELETE FROM requisicoes WHERE om LIKE 'DEMO-%'");
+      await prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
+      await prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
     }
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Gerar datas base distintas
     const timestamps = new Set();
     while (timestamps.size < count) {
       timestamps.add(getRandomDate(thirtyDaysAgo, now).toISOString());
     }
     const sortedDates = Array.from(timestamps).sort().reverse();
 
-    const queries = [];
-    const paramsList = [];
     const demoOMs = ['DEMO-OM-01', 'DEMO-OM-02', 'DEMO-OM-03'];
+
+    const newRegistros = [];
 
     for (let i = 0; i < count; i++) {
       const omNumber = demoOMs[getRandomInt(0, demoOMs.length - 1)];
@@ -97,11 +96,9 @@ async function populateDemoData(req, res) {
       const data = sortedDates[i];
       const id = `DEMO-REG-${Date.now()}-${i}`;
 
-      // Simular status
       const statusList = ['pendente', 'em_analise', 'reparado', 'sucata'];
       const status = statusList[getRandomInt(0, statusList.length - 1)];
 
-      // Simular prioridade ponderada (60% media, 20% baixa, 10% alta, 10% urgente)
       const randPrioridade = Math.random();
       let prioridade = 'media';
       if (randPrioridade < 0.2) prioridade = 'baixa';
@@ -109,35 +106,25 @@ async function populateDemoData(req, res) {
       else if (randPrioridade < 0.9) prioridade = 'alta';
       else prioridade = 'urgente';
 
-      // 1. Inserir Registro (Falha)
-      queries.push(
-        `INSERT INTO registros (id, om, qtdlote, serial, designador, tipodefeito, pn, descricao, obs, createdat, status, operador, prioridade) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      );
-      paramsList.push([
+      newRegistros.push({
         id,
-        omNumber,
-        getRandomInt(50, 500),
-        `SN-${getRandomInt(10000, 99999)}`,
-        `R${getRandomInt(1, 999)}`,
-        defeito,
-        componente.pn,
-        componente.desc,
-        'Gerado automaticamente via Debug Mode',
-        data,
-        status,
-        'DemoUser',
+        om: omNumber,
+        qtdlote: getRandomInt(50, 500),
+        serial: `SN-${getRandomInt(10000, 99999)}`,
+        designador: `R${getRandomInt(1, 999)}`,
+        tipodefeito: defeito,
+        pn: componente.pn,
+        descricao: componente.desc,
+        obs: 'Gerado automaticamente via Debug Mode',
+        createdat: data,
+        status: status,
+        operador: 'DemoUser',
         prioridade,
-      ]);
-
-      // 2. Inserir Requisição - REMOVIDO
-      // O usuário solicitou que o Demo NÃO gere requisições automaticamente.
-      // As requisições devem ser criadas apenas manualmente via botão "Requisitar".
+      });
     }
 
-    await database.dbTransaction(async run => {
-      for (let i = 0; i < queries.length; i++) {
-        await run(queries[i], paramsList[i]);
-      }
+    await prisma.registros.createMany({
+      data: newRegistros,
     });
 
     res.json({ message: `${count} registros e requisições DEMO gerados com sucesso.` });
@@ -149,8 +136,8 @@ async function populateDemoData(req, res) {
 
 async function clearDemoData(req, res) {
   try {
-    await database.dbRun("DELETE FROM registros WHERE om LIKE 'DEMO-%'");
-    await database.dbRun("DELETE FROM requisicoes WHERE om LIKE 'DEMO-%'");
+    await prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
+    await prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
     res.json({ message: 'Dados DEMO removidos com sucesso.' });
   } catch (error) {
     res.status(500).json({ error: error.message });

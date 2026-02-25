@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model oms_ativas {
+  omNumber   String @id
+  startTime  BigInt?
+  pausedTime BigInt? @default(0)
+  qtdlote    Int?
+}
+
+model oms_finalizadas {
+  omNumber   String @id
+  startTime  BigInt?
+  endTime    BigInt?
+  pausedTime BigInt?
+  qtdlote    Int?
+}
+
+model oms_pausadas {
+  omNumber       String @id
+  startTime      BigInt?
+  pausedTime     BigInt?
+  pauseStartedAt BigInt?
+  elapsedAtPause BigInt?
+  qtdlote        Int?
+}
+
+model registros {
+  id          String @id
+  om          String
+  qtdlote     Int?
+  serial      String?
+  designador  String?
+  tipodefeito String?
+  pn          String?
+  descricao   String?
+  obs         String?
+  createdat   String
+  status      String?
+  operador    String?
+  prioridade  String?
+}
+
+model requisicoes {
+  id         Int     @id @default(autoincrement())
+  om         String
+  items      String
+  status     String? @default("pendente")
+  created_at String? @default("CURRENT_TIMESTAMP")
+  created_by String?
+}
+
+model users {
+  id            Int    @id @default(autoincrement())
+  name          String
+  username      String @unique(map: "sqlite_autoindex_users_1")
+  password_hash String
+  role          String @default("operator")
+}

@@ -1,47 +1,66 @@
-const database = require('../config/database');
+const prisma = require('../config/prisma');
 
-// Estrutura em memória
+// Estrutura em memória original preservada (mantendo a lógica do timer no nodejs runtime)
 const oms = {};
 
-// Funções auxiliares de persistência
 async function salvarOMPausada(omNumber) {
   const om = oms[omNumber];
   if (!om || om.status !== 'pausada') return;
-  const qtdRes = await database.dbGet('SELECT qtdlote FROM registros WHERE om = ? LIMIT 1', [
-    omNumber,
-  ]);
-  const qtdloteValue = qtdRes ? qtdRes.qtdlote : null;
+
+  const regQtd = await prisma.registros.findFirst({
+    where: { om: omNumber },
+    select: { qtdlote: true },
+  });
+
+  const qtdloteValue = regQtd ? regQtd.qtdlote : null;
   om.qtdlote = qtdloteValue;
-  await database.dbRun(
-    `INSERT OR REPLACE INTO oms_pausadas (omNumber, startTime, pausedTime, pauseStartedAt, elapsedAtPause, qtdlote) VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      om.omNumber,
-      om.startTime,
-      om.pausedTime || 0,
-      om.pauseStartedAt || null,
-      om.elapsedAtPause || null,
-      qtdloteValue,
-    ]
-  );
+
+  await prisma.oms_pausadas.upsert({
+    where: { omNumber: om.omNumber },
+    update: {
+      startTime: om.startTime,
+      pausedTime: om.pausedTime || 0,
+      pauseStartedAt: om.pauseStartedAt || null,
+      elapsedAtPause: om.elapsedAtPause || null,
+      qtdlote: qtdloteValue,
+    },
+    create: {
+      omNumber: om.omNumber,
+      startTime: om.startTime,
+      pausedTime: om.pausedTime || 0,
+      pauseStartedAt: om.pauseStartedAt || null,
+      elapsedAtPause: om.elapsedAtPause || null,
+      qtdlote: qtdloteValue,
+    },
+  });
 }
 
 async function removerOMPausada(omNumber) {
   try {
-    await database.dbRun('DELETE FROM oms_pausadas WHERE omNumber = ?', [omNumber]);
+    await prisma.oms_pausadas.deleteMany({ where: { omNumber } });
   } catch (error) {
     console.error('[OM] Erro ao remover OM pausada:', error);
   }
 }
 
-// Funções para OMs ativas (em andamento)
 async function salvarOMAtiva(omNumber) {
   const om = oms[omNumber];
   if (!om || om.status !== 'em_andamento') return;
   try {
-    await database.dbRun(
-      `INSERT OR REPLACE INTO oms_ativas (omNumber, startTime, pausedTime, qtdlote) VALUES (?, ?, ?, ?)`,
-      [om.omNumber, om.startTime, om.pausedTime || 0, om.qtdlote || null]
-    );
+    await prisma.oms_ativas.upsert({
+      where: { omNumber: om.omNumber },
+      update: {
+        startTime: om.startTime,
+        pausedTime: om.pausedTime || 0,
+        qtdlote: om.qtdlote || null,
+      },
+      create: {
+        omNumber: om.omNumber,
+        startTime: om.startTime,
+        pausedTime: om.pausedTime || 0,
+        qtdlote: om.qtdlote || null,
+      },
+    });
   } catch (error) {
     console.error('[OM] Erro ao salvar OM ativa:', error);
   }
@@ -49,7 +68,7 @@ async function salvarOMAtiva(omNumber) {
 
 async function removerOMAtiva(omNumber) {
   try {
-    await database.dbRun('DELETE FROM oms_ativas WHERE omNumber = ?', [omNumber]);
+    await prisma.oms_ativas.deleteMany({ where: { omNumber } });
   } catch (error) {
     console.error('[OM] Erro ao remover OM ativa:', error);
   }
@@ -58,29 +77,49 @@ async function removerOMAtiva(omNumber) {
 async function salvarOMFinalizada(omNumber) {
   const om = oms[omNumber];
   if (!om || om.status !== 'finalizada') return;
-  const qtdRes = await database.dbGet('SELECT qtdlote FROM registros WHERE om = ? LIMIT 1', [
-    omNumber,
-  ]);
-  const qtdloteValue = qtdRes ? qtdRes.qtdlote : null;
+
+  const regQtd = await prisma.registros.findFirst({
+    where: { om: omNumber },
+    select: { qtdlote: true },
+  });
+
+  const qtdloteValue = regQtd ? regQtd.qtdlote : null;
   om.qtdlote = qtdloteValue;
-  await database.dbRun(
-    `INSERT OR REPLACE INTO oms_finalizadas (omNumber, startTime, endTime, pausedTime, qtdlote) VALUES (?, ?, ?, ?, ?)`,
-    [om.omNumber, om.startTime, om.endTime, om.pausedTime || 0, qtdloteValue]
-  );
+
+  await prisma.oms_finalizadas.upsert({
+    where: { omNumber: om.omNumber },
+    update: {
+      startTime: om.startTime,
+      endTime: om.endTime,
+      pausedTime: om.pausedTime || 0,
+      qtdlote: qtdloteValue,
+    },
+    create: {
+      omNumber: om.omNumber,
+      startTime: om.startTime,
+      endTime: om.endTime,
+      pausedTime: om.pausedTime || 0,
+      qtdlote: qtdloteValue,
+    },
+  });
+}
+
+// Convert BigInt to Number on load (since JS precision limit is fine for timestamps)
+function toNum(val) {
+  return val ? Number(val) : null;
 }
 
 async function carregarOMsPausadas() {
   try {
-    // Carregar OMs pausadas
-    const pausedOMs = await database.dbAll('SELECT * FROM oms_pausadas');
+    const pausedOMs = await prisma.oms_pausadas.findMany();
     pausedOMs.forEach(row => {
       oms[row.omNumber] = {
         omNumber: row.omNumber,
-        startTime: row.startTime,
-        pausedTime: row.pausedTime || 0,
+        startTime: toNum(row.startTime),
+        pausedTime: toNum(row.pausedTime) || 0,
         status: 'pausada',
-        pauseStartedAt: row.pauseStartedAt,
-        elapsedAtPause: row.elapsedAtPause,
+        pauseStartedAt: toNum(row.pauseStartedAt),
+        elapsedAtPause: toNum(row.elapsedAtPause),
         endTime: null,
         qtdlote: row.qtdlote || null,
       };
@@ -88,15 +127,13 @@ async function carregarOMsPausadas() {
     if (pausedOMs.length > 0)
       console.log(`[OM] Carregadas ${pausedOMs.length} OMs pausadas do banco`);
 
-    // Carregar OMs ativas (em andamento)
-    const activeOMs = await database.dbAll('SELECT * FROM oms_ativas');
+    const activeOMs = await prisma.oms_ativas.findMany();
     activeOMs.forEach(row => {
-      // Only add if not already in memory (avoid overwriting)
       if (!oms[row.omNumber]) {
         oms[row.omNumber] = {
           omNumber: row.omNumber,
-          startTime: row.startTime,
-          pausedTime: row.pausedTime || 0,
+          startTime: toNum(row.startTime),
+          pausedTime: toNum(row.pausedTime) || 0,
           status: 'em_andamento',
           pauseStartedAt: null,
           elapsedAtPause: null,
@@ -128,7 +165,6 @@ function getElapsed(om) {
   return now - om.startTime - paused;
 }
 
-// Handlers
 async function startOM(req, res) {
   const { omNumber, qtdLote } = req.body;
   if (!omNumber) return res.status(400).json({ error: 'omNumber obrigatório' });
@@ -144,7 +180,6 @@ async function startOM(req, res) {
     pauseStartedAt: null,
     qtdlote: qtdLote || null,
   };
-  // Persistir OM ativa imediatamente
   await salvarOMAtiva(omNumber);
   res.json({ ...oms[omNumber], elapsed: 0 });
 }
@@ -157,18 +192,20 @@ async function getOM(req, res) {
     return res.json({ ...om, elapsed });
   }
   try {
-    const omData = await database.dbGet('SELECT * FROM oms_finalizadas WHERE omNumber = ?', [
-      omNumber,
-    ]);
+    const omData = await prisma.oms_finalizadas.findUnique({ where: { omNumber } });
     if (!omData) return res.status(404).json({ error: 'OM não encontrada' });
 
-    const elapsed = omData.endTime - omData.startTime - (omData.pausedTime || 0);
+    const startTime = toNum(omData.startTime);
+    const endTime = toNum(omData.endTime);
+    const pausedTime = toNum(omData.pausedTime);
+
+    const elapsed = endTime - startTime - (pausedTime || 0);
     res.json({
       omNumber: omData.omNumber,
       status: 'finalizada',
-      startTime: omData.startTime,
-      pausedTime: omData.pausedTime,
-      endTime: omData.endTime,
+      startTime,
+      pausedTime,
+      endTime,
       elapsed,
       qtdlote: omData.qtdlote || null,
     });
@@ -190,7 +227,6 @@ async function pauseOM(req, res) {
     om.elapsedAtPause = Date.now() - om.startTime - om.pausedTime;
   }
   const elapsed = getElapsed(om);
-  // Remover de oms_ativas e salvar em oms_pausadas
   await removerOMAtiva(omNumber);
   await salvarOMPausada(omNumber);
   res.json({ ...om, elapsed });
@@ -208,7 +244,6 @@ async function resumeOM(req, res) {
   om.status = 'em_andamento';
   om.pauseStartedAt = null;
   om.elapsedAtPause = null;
-  // Remover de oms_pausadas e salvar em oms_ativas
   await removerOMPausada(omNumber);
   await salvarOMAtiva(omNumber);
   res.json({ ...om, elapsed: getElapsed(om) });
@@ -225,7 +260,6 @@ async function finishOM(req, res) {
     om.pauseStartedAt = null;
     await removerOMPausada(omNumber);
   }
-  // Remover de oms_ativas se estava em andamento
   await removerOMAtiva(omNumber);
   om.status = 'finalizada';
   om.endTime = Date.now();
@@ -236,17 +270,19 @@ async function finishOM(req, res) {
 async function getOMTime(req, res) {
   const { omNumber } = req.params;
   try {
-    const omData = await database.dbGet('SELECT * FROM oms_finalizadas WHERE omNumber = ?', [
-      omNumber,
-    ]);
+    const omData = await prisma.oms_finalizadas.findUnique({ where: { omNumber } });
     if (!omData)
       return res.status(404).json({ error: 'Dados de tempo para esta OM não encontrados.' });
 
-    const elapsed = omData.endTime - omData.startTime - (omData.pausedTime || 0);
+    const startTime = toNum(omData.startTime);
+    const endTime = toNum(omData.endTime);
+    const pausedTime = toNum(omData.pausedTime);
+
+    const elapsed = endTime - startTime - (pausedTime || 0);
     res.json({
       elapsed: elapsed,
-      startTime: omData.startTime,
-      endTime: omData.endTime,
+      startTime: startTime,
+      endTime: endTime,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -256,45 +292,30 @@ async function getOMTime(req, res) {
 async function getRelatorioFalhas(req, res) {
   try {
     const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
-    let whereClauses = [];
-    let queryParams = [];
 
-    if (om) {
-      whereClauses.push('om = ?');
-      queryParams.push(om);
-    }
-    if (status) {
-      whereClauses.push('status = ?');
-      queryParams.push(status);
-    }
-    if (dataIni) {
-      whereClauses.push('createdAt >= ?');
-      queryParams.push(dataIni);
-    }
-    if (dataFim) {
-      whereClauses.push('createdAt <= ?');
-      queryParams.push(dataFim);
+    let where = {};
+    if (om) where.om = om;
+    if (status) where.status = status;
+    if (dataIni || dataFim) {
+      where.createdat = {};
+      if (dataIni) where.createdat.gte = dataIni;
+      if (dataFim) where.createdat.lte = dataFim;
     }
 
-    let countQuery = 'SELECT COUNT(*) as total FROM registros';
-    if (whereClauses.length > 0) countQuery += ' WHERE ' + whereClauses.join(' AND ');
-    const countRes = await database.dbGet(countQuery, queryParams);
-    const total = countRes
-      ? countRes.total !== undefined
-        ? countRes.total
-        : Object.values(countRes)[0]
-      : 0;
-
-    let query =
-      'SELECT om, qtdlote, serial, designador, tipoDefeito, pn, descricao, obs, createdAt, status, operador, prioridade FROM registros';
-    if (whereClauses.length > 0) query += ' WHERE ' + whereClauses.join(' AND ');
-    query += ' ORDER BY om, createdAt';
-    const pageNum = Math.max(1, parseInt(page, 10));
-    const limitNum = Math.max(1, Math.min(parseInt(limit, 10), 200));
+    const pageNum = Math.max(1, parseInt(page, 10)) || 1;
+    const limitNum = Math.max(1, Math.min(parseInt(limit, 10), 200)) || 50;
     const offset = (pageNum - 1) * limitNum;
-    query += ` LIMIT ${limitNum} OFFSET ${offset}`;
 
-    const registros = await database.dbAll(query, queryParams);
+    const [total, registros] = await Promise.all([
+      prisma.registros.count({ where }),
+      prisma.registros.findMany({
+        where,
+        orderBy: [{ om: 'asc' }, { createdat: 'asc' }],
+        skip: offset,
+        take: limitNum,
+      }),
+    ]);
+
     const porOM = {};
     for (const r of registros) {
       if (!porOM[r.om]) porOM[r.om] = { om: r.om, qtdlote: r.qtdlote, falhas: [] };
@@ -302,9 +323,9 @@ async function getRelatorioFalhas(req, res) {
         pn: r.pn,
         serial: r.serial,
         designador: r.designador,
-        tipodefeito: r.tipoDefeito ?? '',
+        tipodefeito: r.tipodefeito ?? '',
         descricao: r.descricao,
-        createdat: r.createdAt ?? '',
+        createdat: r.createdat ?? '',
         operador: r.operador,
         status: r.status,
         obs: r.obs,
@@ -322,19 +343,27 @@ async function getRelatorioFalhas(req, res) {
 
 async function getRelatorioOMs(req, res) {
   try {
-    const finalizadas = await database.dbAll('SELECT * FROM oms_finalizadas ORDER BY endTime DESC');
+    const finalizadas = await prisma.oms_finalizadas.findMany({
+      orderBy: { endTime: 'desc' },
+    });
+
     const relatorio = [];
     for (const om of finalizadas) {
-      const registros = await database.dbAll('SELECT tipodefeito FROM registros WHERE om = ?', [
-        om.omNumber,
-      ]);
+      // Fetch only tipodefeitos for this OM
+      const registros = await prisma.registros.findMany({
+        where: { om: om.omNumber },
+        select: { tipodefeito: true },
+      });
+
+      const startTime = toNum(om.startTime);
+      const endTime = toNum(om.endTime);
+      const pausedTime = toNum(om.pausedTime) || 0;
+
       relatorio.push({
         omNumber: om.omNumber,
         qtdlote: om.qtdlote || '-',
         tempo:
-          om.endTime && om.startTime
-            ? ((om.endTime - om.startTime - (om.pausedTime || 0)) / 1000).toFixed(0) + 's'
-            : '-',
+          endTime && startTime ? ((endTime - startTime - pausedTime) / 1000).toFixed(0) + 's' : '-',
         defeitos: registros.map(r => r.tipodefeito).filter(Boolean),
       });
     }
@@ -346,7 +375,6 @@ async function getRelatorioOMs(req, res) {
 
 async function listAtivas(req, res) {
   try {
-    // Return active OMs from memory that are currently running
     const ativas = Object.values(oms)
       .filter(om => om.status === 'em_andamento')
       .map(om => ({
@@ -364,7 +392,6 @@ async function listAtivas(req, res) {
 
 async function listPausadas(req, res) {
   try {
-    // Return paused OMs from memory that haven't been finalized
     const pausadas = Object.values(oms)
       .filter(om => om.status === 'pausada')
       .map(om => ({
@@ -382,9 +409,10 @@ async function listPausadas(req, res) {
 
 async function listFinalizadas(req, res) {
   try {
-    const finalizadas = await database.dbAll(
-      'SELECT omNumber, qtdlote FROM oms_finalizadas ORDER BY endTime DESC'
-    );
+    const finalizadas = await prisma.oms_finalizadas.findMany({
+      select: { omNumber: true, qtdlote: true },
+      orderBy: { endTime: 'desc' },
+    });
     res.json(finalizadas);
   } catch (e) {
     res.status(500).json({ error: e.message });
