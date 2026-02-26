@@ -386,15 +386,15 @@ export default function IndexPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#0f172a] to-[#0b0f1a]"
+      className="app-shell-bg"
       style={{
         backgroundImage:
           'radial-gradient(1200px 600px at 80% -20%, rgba(124,58,237,.18), transparent 50%)',
       }}
     >
       {/* Header Moderno PRO */}
-      <header className="bg-slate-900/60 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-xl">
-        <div className="max-w-[1600px] mx-auto px-6 py-4">
+      <header className="app-shell-header">
+        <div className="app-shell-container xl:max-w-[1520px] py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <motion.div
@@ -430,7 +430,7 @@ export default function IndexPage() {
         </div>
       </header>
 
-      <div className="max-w-[1600px] mx-auto px-6 py-4">
+      <div className="app-shell-container xl:max-w-[1520px] py-4">
         {/* Context Bar - Timer e Status */}
         <ProTimer
           omNumber={omState.omNumber}
@@ -441,9 +441,9 @@ export default function IndexPage() {
         />
 
         {/* Grid Principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_0.9fr] gap-7">
+        <div className="grid grid-cols-1 xl:grid-cols-[3fr_1fr] gap-6">
           {/* Coluna Principal */}
-          <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-5 self-start">
             {/* Formulário de Lançamento */}
             <ProForm
               activeOM={activeOM}

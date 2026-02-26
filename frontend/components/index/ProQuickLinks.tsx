@@ -143,7 +143,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 border border-purple-500/30 rounded-3xl p-8 shadow-2xl backdrop-blur-xl overflow-hidden"
+        className="relative app-card rounded-2xl p-4 md:p-5 shadow-xl backdrop-blur-xl overflow-hidden"
       >
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
@@ -157,13 +157,13 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
         </div>
 
         {/* Glow Effect */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute -top-20 -right-20 w-56 h-56 bg-purple-500/15 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl"></div>
 
         <div className="relative">
-          <h2 className="text-xl font-extrabold text-white flex items-center gap-3 mb-8 tracking-tight">
+          <h2 className="text-lg md:text-xl font-extrabold text-white flex items-center gap-3 mb-5 tracking-tight">
             <div className="relative p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-violet-600 rounded-xl shadow-lg shadow-purple-500/30 shrink-0">
-              <Zap className="w-6 h-6 text-white" />
+              <Zap className="w-5 h-5 text-white" />
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl"></div>
             </div>
             <span className="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent whitespace-nowrap">
@@ -171,7 +171,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
             </span>
           </h2>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3">
             {links.map((link, index) => {
               const Icon = link.icon;
               const isDemoActive = demoModes[link.baseHref];
@@ -188,7 +188,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                   <div
                     onClick={() => handleCardClick(link.baseHref)}
                     onMouseEnter={() => handleCardHover(link.baseHref)}
-                    className="relative overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/90 via-slate-800/80 to-slate-900/90 backdrop-blur-sm hover:border-purple-500/60 transition-all duration-200 shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 cursor-pointer active:scale-[0.98]"
+                    className="relative overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-br from-slate-800/90 via-slate-800/80 to-slate-900/90 backdrop-blur-sm hover:border-purple-500/50 transition-all duration-200 shadow-lg hover:shadow-purple-500/10 cursor-pointer active:scale-[0.99]"
                   >
                     {/* Gradient Background on Hover */}
                     <div
@@ -201,33 +201,33 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                       style={{ backgroundColor: link.glowColor }}
                     ></div>
 
-                    <div className="relative p-4 overflow-visible">
+                    <div className="relative p-3.5 overflow-visible">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 flex items-start gap-3 min-w-0">
                           {/* Icon Container */}
                           <div
-                            className={`relative p-3 rounded-xl bg-gradient-to-br ${link.color} shadow-lg shadow-black/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}
+                            className={`relative p-2.5 rounded-lg bg-gradient-to-br ${link.color} shadow-lg shadow-black/20 group-hover:scale-105 transition-all duration-300 shrink-0`}
                           >
-                            <Icon className="w-5 h-5 text-white relative z-10" />
+                            <Icon className="w-4 h-4 text-white relative z-10" />
                             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl"></div>
                           </div>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0 pr-2 flex items-center">
-                            <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors break-words">
+                            <h3 className="text-sm md:text-[15px] font-semibold text-white group-hover:text-purple-300 transition-colors break-words leading-tight">
                               {link.label}
                             </h3>
                           </div>
 
                           {/* Arrow Icon */}
                           <div className="flex items-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 shrink-0">
-                            <ArrowRight className="w-5 h-5 text-purple-400" />
+                            <ArrowRight className="w-4 h-4 text-purple-400" />
                           </div>
                         </div>
 
                         <button
                           onClick={e => toggleDemo(link.baseHref, e)}
-                          className={`relative flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg transition-all duration-300 shrink-0 ${
+                          className={`relative flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-300 shrink-0 ${
                             isDemoActive
                               ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-amber-500 shadow-lg shadow-yellow-500/40 text-white'
                               : 'bg-slate-700/60 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-600/50'
@@ -239,7 +239,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                               isDemoActive ? 'animate-pulse' : ''
                             } shrink-0`}
                           />
-                          <span className="text-[10px] font-bold tracking-wide whitespace-nowrap">
+                          <span className="text-[10px] font-bold tracking-wide whitespace-nowrap hidden sm:inline">
                             DEMO
                           </span>
                           {isDemoActive && (
@@ -253,7 +253,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                           initial={{ opacity: 0, height: 0, marginTop: 0 }}
                           animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
                           exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                          className="p-3 bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-amber-500/10 border border-yellow-500/30 rounded-xl backdrop-blur-sm"
+                          className="p-2.5 bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-amber-500/10 border border-yellow-500/30 rounded-lg backdrop-blur-sm"
                         >
                           <p className="text-xs text-yellow-400/90 flex items-center gap-2 font-semibold">
                             <Zap className="w-3.5 h-3.5 animate-pulse" />
@@ -279,7 +279,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="relative bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 border border-purple-500/30 rounded-3xl p-8 shadow-2xl backdrop-blur-xl overflow-hidden mt-6"
+          className="relative app-card rounded-2xl p-4 md:p-5 shadow-xl backdrop-blur-xl overflow-hidden mt-5"
         >
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-5">
@@ -293,13 +293,13 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
           </div>
 
           {/* Glow Effect */}
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -top-20 -right-20 w-56 h-56 bg-violet-500/15 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl"></div>
 
           <div className="relative">
-            <h2 className="text-xl font-extrabold text-white flex items-center gap-3 mb-8 tracking-tight">
+            <h2 className="text-lg md:text-xl font-extrabold text-white flex items-center gap-3 mb-5 tracking-tight">
               <div className="relative p-3 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-xl shadow-lg shadow-violet-500/30 shrink-0">
-                <BarChart3 className="w-6 h-6 text-white" />
+                <BarChart3 className="w-5 h-5 text-white" />
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl"></div>
               </div>
               <span className="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent whitespace-nowrap">
@@ -307,7 +307,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
               </span>
             </h2>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {reports.map((report, index) => {
                 const Icon = report.icon;
                 const isDemoActive = demoModes[report.baseHref];
@@ -324,7 +324,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                     <div
                       onClick={() => handleCardClick(report.baseHref)}
                       onMouseEnter={() => handleCardHover(report.baseHref)}
-                      className="relative overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/90 via-slate-800/80 to-slate-900/90 backdrop-blur-sm hover:border-purple-500/60 transition-all duration-200 shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 cursor-pointer active:scale-[0.98]"
+                      className="relative overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-br from-slate-800/90 via-slate-800/80 to-slate-900/90 backdrop-blur-sm hover:border-purple-500/50 transition-all duration-200 shadow-lg hover:shadow-purple-500/10 cursor-pointer active:scale-[0.99]"
                     >
                       {/* Gradient Background on Hover */}
                       <div
@@ -337,34 +337,34 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                         style={{ backgroundColor: report.glowColor }}
                       ></div>
 
-                      <div className="relative p-4 overflow-visible">
+                      <div className="relative p-3.5 overflow-visible">
                         <div className="flex items-center gap-3">
                           <div className="flex-1 flex items-start gap-3 min-w-0">
                             {/* Icon Container */}
                             <div
-                              className={`relative p-3 rounded-xl bg-gradient-to-br ${report.color} shadow-lg shadow-black/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}
+                              className={`relative p-2.5 rounded-lg bg-gradient-to-br ${report.color} shadow-lg shadow-black/20 group-hover:scale-105 transition-all duration-300 shrink-0`}
                             >
-                              <Icon className="w-5 h-5 text-white relative z-10" />
+                              <Icon className="w-4 h-4 text-white relative z-10" />
                               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl"></div>
                             </div>
 
                             {/* Content */}
                             <div className="flex-1 min-w-0 pr-2 flex items-center">
-                              <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors break-words">
+                              <h3 className="text-sm md:text-[15px] font-semibold text-white group-hover:text-purple-300 transition-colors break-words leading-tight">
                                 {report.label}
                               </h3>
                             </div>
 
                             {/* Arrow Icon */}
                             <div className="flex items-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 shrink-0">
-                              <ArrowRight className="w-5 h-5 text-purple-400" />
+                              <ArrowRight className="w-4 h-4 text-purple-400" />
                             </div>
                           </div>
 
                           {report.supportsDemo && (
                             <button
                               onClick={e => toggleDemo(report.baseHref, e)}
-                              className={`relative flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg transition-all duration-300 shrink-0 ${
+                              className={`relative flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-300 shrink-0 ${
                                 isDemoActive
                                   ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-amber-500 shadow-lg shadow-yellow-500/40 text-white'
                                   : 'bg-slate-700/60 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-600/50'
@@ -376,7 +376,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                                   isDemoActive ? 'animate-pulse' : ''
                                 } shrink-0`}
                               />
-                              <span className="text-[10px] font-bold tracking-wide whitespace-nowrap">
+                              <span className="text-[10px] font-bold tracking-wide whitespace-nowrap hidden sm:inline">
                                 DEMO
                               </span>
                               {isDemoActive && (
@@ -391,7 +391,7 @@ export default function ProQuickLinks({ isAdmin }: ProQuickLinksProps) {
                             initial={{ opacity: 0, height: 0, marginTop: 0 }}
                             animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
                             exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                            className="p-3 bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-amber-500/10 border border-yellow-500/30 rounded-xl backdrop-blur-sm"
+                            className="p-2.5 bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-amber-500/10 border border-yellow-500/30 rounded-lg backdrop-blur-sm"
                           >
                             <p className="text-xs text-yellow-400/90 flex items-center gap-2 font-semibold">
                               <Zap className="w-3.5 h-3.5 animate-pulse" />

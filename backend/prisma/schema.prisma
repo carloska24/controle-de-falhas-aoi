@@ -44,6 +44,12 @@ model registros {
   status      String?
   operador    String?
   prioridade  String?
+
+  @@index([om], map: "idx_registros_om")
+  @@index([status], map: "idx_registros_status")
+  @@index([createdat], map: "idx_registros_createdat")
+  @@index([operador], map: "idx_registros_operador")
+  @@index([om, status], map: "idx_registros_om_status")
 }
 
 model requisicoes {
@@ -53,6 +59,10 @@ model requisicoes {
   status     String? @default("pendente")
   created_at String? @default("CURRENT_TIMESTAMP")
   created_by String?
+
+  @@index([om], map: "idx_requisicoes_om")
+  @@index([status], map: "idx_requisicoes_status")
+  @@index([created_at], map: "idx_requisicoes_created_at")
 }
 
 model users {

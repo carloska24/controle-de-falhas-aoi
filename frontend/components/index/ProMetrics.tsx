@@ -35,10 +35,10 @@ export default function ProMetrics({ total, oms, distrib }: ProMetricsProps) {
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-b from-[#16243a] to-[#112137] border border-[#314566] rounded-2xl p-6 shadow-[0_0_40px_rgba(31,45,61,0.6)] backdrop-blur-sm"
+      className="app-card rounded-2xl p-4 md:p-5 shadow-[0_0_32px_rgba(31,45,61,0.45)] backdrop-blur-sm"
     >
       {/* Header com ícone animado */}
-      <h2 className="text-xl font-black tracking-wide text-[#b5c6e3] flex items-center gap-3 mb-6">
+      <h2 className="text-lg md:text-xl font-black tracking-wide text-[#b5c6e3] flex items-center gap-3 mb-4">
         <svg
           id="fi_6159352"
           enableBackground="new 0 0 512 512"
@@ -121,13 +121,13 @@ export default function ProMetrics({ total, oms, distrib }: ProMetricsProps) {
       </h2>
 
       {/* Grid de métricas - Layout melhorado */}
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Métrica 1: Registros */}
         <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="relative p-5 bg-gradient-to-br from-[#0f1a2b]/60 to-[#1a2535]/60 rounded-xl border border-cyan-500/20 hover:border-cyan-400/40 transition-all duration-300 group overflow-hidden"
+          className="relative p-4 bg-gradient-to-br from-[#0f1a2b]/60 to-[#1a2535]/60 rounded-xl border border-cyan-500/20 hover:border-cyan-400/40 transition-all duration-300 group overflow-hidden"
         >
           {/* Efeito de brilho animado */}
           <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
@@ -140,12 +140,12 @@ export default function ProMetrics({ total, oms, distrib }: ProMetricsProps) {
                   Total de Registros
                 </span>
               </div>
-              <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-cyan-500">
+              <div className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-cyan-500">
                 {total}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-              <Database className="w-6 h-6 text-cyan-400" />
+            <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+              <Database className="w-5 h-5 text-cyan-400" />
             </div>
           </div>
         </motion.div>
@@ -155,7 +155,7 @@ export default function ProMetrics({ total, oms, distrib }: ProMetricsProps) {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="relative p-5 bg-gradient-to-br from-[#0f1a2b]/60 to-[#1a2535]/60 rounded-xl border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 group overflow-hidden"
+          className="relative p-4 bg-gradient-to-br from-[#0f1a2b]/60 to-[#1a2535]/60 rounded-xl border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 group overflow-hidden"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
 
@@ -167,12 +167,12 @@ export default function ProMetrics({ total, oms, distrib }: ProMetricsProps) {
                   OM Distintas
                 </span>
               </div>
-              <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-300 to-blue-500">
+              <div className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-300 to-blue-500">
                 {oms}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-              <FileText className="w-6 h-6 text-blue-400" />
+            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+              <FileText className="w-5 h-5 text-blue-400" />
             </div>
           </div>
         </motion.div>
@@ -182,7 +182,7 @@ export default function ProMetrics({ total, oms, distrib }: ProMetricsProps) {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="relative p-5 bg-gradient-to-br from-[#0f1a2b]/60 to-[#1a2535]/60 rounded-xl border border-amber-500/20 hover:border-amber-400/40 transition-all duration-300 group overflow-hidden col-span-full"
+          className="relative p-4 bg-gradient-to-br from-[#0f1a2b]/60 to-[#1a2535]/60 rounded-xl border border-amber-500/20 hover:border-amber-400/40 transition-all duration-300 group overflow-hidden col-span-full"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-amber-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
 

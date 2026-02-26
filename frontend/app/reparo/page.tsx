@@ -6,16 +6,12 @@ import { motion } from 'framer-motion';
 import {
   LogOut,
   ArrowLeft,
-  ArrowRight,
   Search,
   X,
-  Filter,
-  Eye,
   Trash2,
   CheckCircle,
   XCircle,
   Clock,
-  Settings,
   AlertTriangle,
   Download,
   LayoutGrid,
@@ -29,6 +25,35 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
 import DemoBadge from '@/components/ui/DemoBadge';
+
+type RepairStatus = 'aberto' | 'reparado' | 'cancelado';
+
+const normalizeRegistroStatus = (status?: string | null): RepairStatus => {
+  if (!status) return 'aberto';
+  const normalized = status.toLowerCase().trim();
+  if (
+    normalized === 'requisição_gerada' ||
+    normalized === 'requisicao_gerada' ||
+    normalized === 'pendente' ||
+    normalized === 'em_andamento' ||
+    normalized === 'em andamento' ||
+    normalized === 'em_analise' ||
+    normalized === 'em análise' ||
+    normalized === 'analise'
+  ) {
+    return 'aberto';
+  }
+  if (normalized === 'sucata') return 'cancelado';
+  if (normalized === 'concluido' || normalized === 'concluído') return 'reparado';
+  if (normalized === 'cancelado') return 'cancelado';
+  if (normalized === 'reparado') return 'reparado';
+  return 'aberto';
+};
+
+const toBackendStatus = (status: RepairStatus): string => {
+  if (status === 'aberto') return 'pendente';
+  return status;
+};
 
 export default function ReparoPage() {
   const router = useRouter();
@@ -46,12 +71,18 @@ export default function ReparoPage() {
   const [currentView, setCurrentView] = useState<'kanban' | 'table' | 'timeline'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [dropTargetStatus, setDropTargetStatus] = useState<RepairStatus | null>(null);
+  const [updatingItemIds, setUpdatingItemIds] = useState<Set<string>>(new Set());
+  const [kanbanPages, setKanbanPages] = useState<Record<RepairStatus, number>>({
+    aberto: 1,
+    reparado: 1,
+    cancelado: 1,
+  });
 
   // Filters
   const [omFilter, setOmFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [prioridadeFilter, setPrioridadeFilter] = useState('all');
-  const [operadorFilter, setOperadorFilter] = useState('all');
 
   // Sort
   const [sortKey, setSortKey] = useState<string>('createdat');
@@ -59,7 +90,7 @@ export default function ReparoPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // Fixado em 12 itens por página
+  const itemsPerPage = 6; // Fixado em 6 itens por página
 
   // Check URL for demo mode
   useEffect(() => {
@@ -104,10 +135,10 @@ export default function ReparoPage() {
       const data = await fetchAutenticado('/api/registros');
       const registrosList = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
 
-      // Traduzir status de "requisição_gerada" para "aberto"
+      // Normaliza status vindos do backend para os estados usados nesta tela
       const translatedData = registrosList.map((r: Registro) => ({
         ...r,
-        status: r.status === 'requisição_gerada' ? 'aberto' : r.status,
+        status: normalizeRegistroStatus(r.status),
       }));
 
       // Se estiver em modo demo, incluir todos os dados; caso contrário, filtrar DEMO
@@ -151,23 +182,7 @@ export default function ReparoPage() {
       filtered = filtered.filter(item => item.om === omFilter);
     }
     if (statusFilter !== 'all') {
-      // Normalizar status antes de comparar
-      const normalizeStatus = (status?: string | null): string => {
-        if (!status) return 'aberto';
-        const statusLower = status.toLowerCase().trim();
-        // Mapear status similares para 'aberto'
-        if (statusLower === 'requisição_gerada' || statusLower === 'pendente') {
-          return 'aberto';
-        }
-        return statusLower;
-      };
-      filtered = filtered.filter(item => normalizeStatus(item.status) === statusFilter);
-    }
-    if (prioridadeFilter !== 'all') {
-      filtered = filtered.filter(item => item.prioridade === prioridadeFilter);
-    }
-    if (operadorFilter !== 'all') {
-      filtered = filtered.filter(item => item.operador === operadorFilter);
+      filtered = filtered.filter(item => normalizeRegistroStatus(item.status) === statusFilter);
     }
 
     // Sort
@@ -193,8 +208,6 @@ export default function ReparoPage() {
     searchTerm,
     omFilter,
     statusFilter,
-    prioridadeFilter,
-    operadorFilter,
     sortKey,
     sortDir,
   ]);
@@ -209,47 +222,26 @@ export default function ReparoPage() {
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
 
   // Função helper para normalizar status (usada em vários lugares)
-  const normalizeStatus = useCallback((status?: string | null): string => {
-    if (!status) return 'aberto';
-    const statusLower = status.toLowerCase().trim();
-    // Mapear status similares para 'aberto'
-    if (statusLower === 'requisição_gerada' || statusLower === 'pendente') {
-      return 'aberto';
-    }
-    return statusLower;
-  }, []);
+  const normalizeStatus = useCallback(
+    (status?: string | null): RepairStatus => normalizeRegistroStatus(status),
+    []
+  );
 
   // KPIs
   const kpis = useMemo(() => {
-    const normalizeStatus = (status?: string | null): string => {
-      if (!status) return 'aberto';
-      const statusLower = status.toLowerCase().trim();
-      // Mapear status similares para 'aberto'
-      if (statusLower === 'requisição_gerada' || statusLower === 'pendente') {
-        return 'aberto';
-      }
-      return statusLower;
-    };
-
     const urgentes = filteredData.filter(
       r => r.prioridade === 'urgente' || r.prioridade === 'alta'
     ).length;
-    const pendentes = filteredData.filter(r => normalizeStatus(r.status) === 'aberto').length;
-    const emAndamento = filteredData.filter(
-      r => normalizeStatus(r.status) === 'em_andamento'
-    ).length;
+    const abertos = filteredData.filter(r => normalizeStatus(r.status) === 'aberto').length;
+    const cancelados = filteredData.filter(r => normalizeStatus(r.status) === 'cancelado').length;
     const concluidos = filteredData.filter(r => normalizeStatus(r.status) === 'reparado').length;
 
-    return { urgentes, pendentes, emAndamento, concluidos };
-  }, [filteredData]);
+    return { urgentes, abertos, cancelados, concluidos };
+  }, [filteredData, normalizeStatus]);
 
   // Get unique values for filters
   const uniqueOms = useMemo(
     () => ['all', ...new Set(allData.map(d => d.om).filter(Boolean))],
-    [allData]
-  );
-  const uniqueOperadores = useMemo(
-    () => ['all', ...new Set(allData.map(d => d.operador).filter(Boolean))],
     [allData]
   );
 
@@ -258,44 +250,37 @@ export default function ReparoPage() {
     setSearchTerm('');
     setOmFilter('all');
     setStatusFilter('all');
-    setPrioridadeFilter('all');
-    setOperadorFilter('all');
   };
 
   // Actions
-  const handleReparar = async (id: string) => {
+  const updateRegistroStatus = async (id: string, status: RepairStatus) => {
     try {
+      setUpdatingItemIds(prev => new Set(prev).add(id));
       setIsDataLoading(true);
       await fetchAutenticado(`/api/registros/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: 'reparado' }),
+        body: JSON.stringify({ status: toBackendStatus(status) }),
       });
 
-      showToast('Status atualizado para "Reparado".', 'success');
+      showToast(`Status atualizado para "${getStatusLabel(status)}".`, 'success');
       await loadData();
     } catch (error: any) {
       showToast(`Erro ao atualizar status: ${error.message}`, 'error');
     } finally {
-      setIsDataLoading(false);
-    }
-  };
-
-  const handleCancelar = async (id: string) => {
-    try {
-      setIsDataLoading(true);
-      await fetchAutenticado(`/api/registros/${id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: 'cancelado' }),
+      setUpdatingItemIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
-
-      showToast('Status atualizado para "Cancelado".', 'success');
-      await loadData();
-    } catch (error: any) {
-      showToast(`Erro ao cancelar: ${error.message}`, 'error');
-    } finally {
       setIsDataLoading(false);
     }
   };
+
+  const handleReparar = async (id: string) => updateRegistroStatus(id, 'reparado');
+
+  const handleCancelar = async (id: string) => updateRegistroStatus(id, 'cancelado');
+
+  const handleMoverAberto = async (id: string) => updateRegistroStatus(id, 'aberto');
 
   const handleExcluir = async (id: string) => {
     try {
@@ -336,7 +321,7 @@ export default function ReparoPage() {
         for (const id of ids) {
           await fetchAutenticado(`/api/registros/${id}/status`, {
             method: 'PUT',
-            body: JSON.stringify({ status }),
+            body: JSON.stringify({ status: toBackendStatus(status) }),
           });
         }
       }
@@ -360,9 +345,7 @@ export default function ReparoPage() {
         'Serial',
         'Descrição',
         'Defeito',
-        'Prioridade',
         'Status',
-        'Operador',
         'Data/Hora',
       ],
       ...filteredData.map(item => [
@@ -371,9 +354,7 @@ export default function ReparoPage() {
         item.serial || '',
         item.descricao || '',
         item.tipodefeito || '',
-        item.prioridade || 'baixa',
         item.status || '',
-        item.operador || '',
         new Date(item.createdat).toLocaleString('pt-BR'),
       ]),
     ]
@@ -406,30 +387,10 @@ export default function ReparoPage() {
   };
 
   // Utils
-  const getPriorityClass = (prioridade?: string) => {
-    const map: Record<string, string> = {
-      baixa: 'bg-slate-600 text-slate-200',
-      media: 'bg-blue-600 text-blue-100',
-      alta: 'bg-orange-600 text-orange-100',
-      urgente: 'bg-red-600 text-red-100',
-    };
-    return map[prioridade || 'baixa'] || map.baixa;
-  };
-
-  const getPriorityLabel = (prioridade?: string) => {
-    const map: Record<string, string> = {
-      baixa: 'Baixa',
-      media: 'Média',
-      alta: 'Alta',
-      urgente: 'Urgente',
-    };
-    return map[prioridade || 'baixa'] || 'Baixa';
-  };
 
   const getStatusClass = (status?: string) => {
     const map: Record<string, string> = {
       aberto: 'bg-blue-600 text-blue-100',
-      em_andamento: 'bg-yellow-600 text-yellow-100',
       reparado: 'bg-green-600 text-green-100',
       cancelado: 'bg-red-600 text-red-100',
     };
@@ -439,11 +400,10 @@ export default function ReparoPage() {
   const getStatusLabel = (status?: string) => {
     const map: Record<string, string> = {
       aberto: 'Aberto',
-      em_andamento: 'Em Andamento',
       reparado: 'Reparado',
       cancelado: 'Cancelado',
     };
-    return map[status || 'aberto'] || 'Aberto';
+    return map[status || 'aberto'] || status || '—';
   };
 
   const formatDate = (date: string) => {
@@ -456,6 +416,70 @@ export default function ReparoPage() {
     return `${day}/${month}/${year} ${hour}:${min}`;
   };
 
+  const boardColumns = useMemo(
+    () => [
+      {
+        status: 'aberto' as RepairStatus,
+        title: 'Abertos',
+        borderColor: 'border-orange-500/35',
+        countClass:
+          'bg-orange-500/15 text-orange-300 border border-orange-500/35 shadow-[0_0_16px_-8px_rgba(249,115,22,0.7)]',
+      },
+      {
+        status: 'reparado' as RepairStatus,
+        title: 'Reparados',
+        borderColor: 'border-emerald-500/35',
+        countClass:
+          'bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 shadow-[0_0_16px_-8px_rgba(16,185,129,0.7)]',
+      },
+      {
+        status: 'cancelado' as RepairStatus,
+        title: 'Cancelados',
+        borderColor: 'border-rose-500/35',
+        countClass:
+          'bg-rose-500/15 text-rose-300 border border-rose-500/35 shadow-[0_0_16px_-8px_rgba(244,63,94,0.7)]',
+      },
+    ],
+    []
+  );
+
+  const handleKanbanDragStart = (id: string) => {
+    setDraggingItemId(id);
+  };
+
+  const handleKanbanDragEnd = () => {
+    setDraggingItemId(null);
+    setDropTargetStatus(null);
+  };
+
+  const handleKanbanDrop = async (targetStatus: RepairStatus) => {
+    if (!draggingItemId) return;
+
+    const draggedItem = filteredData.find(item => item.id === draggingItemId);
+    if (!draggedItem) {
+      handleKanbanDragEnd();
+      return;
+    }
+
+    const currentStatus = normalizeStatus(draggedItem.status);
+    if (currentStatus === targetStatus) {
+      handleKanbanDragEnd();
+      return;
+    }
+
+    setAllData(prev =>
+      prev.map(item => (item.id === draggingItemId ? { ...item, status: targetStatus } : item))
+    );
+
+    try {
+      await updateRegistroStatus(draggingItemId, targetStatus);
+    } catch {
+      // updateRegistroStatus already displays toast and reloads on failure
+    } finally {
+      handleKanbanDragEnd();
+    }
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -465,10 +489,10 @@ export default function ReparoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+    <div className="app-shell-bg">
       {/* Header */}
-      <div className="bg-slate-900/60 border-b border-slate-800 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="app-shell-header">
+        <div className="app-shell-container py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
@@ -525,13 +549,13 @@ export default function ReparoPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="app-shell-container py-8">
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <AlertTriangle className="w-6 h-6 text-red-400" />
@@ -544,33 +568,33 @@ export default function ReparoPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-6 h-6 text-orange-400" />
-              <h3 className="text-sm font-semibold text-slate-400">Pendentes</h3>
+              <h3 className="text-sm font-semibold text-slate-400">Abertos</h3>
             </div>
-            <p className="text-3xl font-bold text-orange-400">{kpis.pendentes}</p>
+            <p className="text-3xl font-bold text-orange-400">{kpis.abertos}</p>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Settings className="w-6 h-6 text-blue-400" />
-              <h3 className="text-sm font-semibold text-slate-400">Em Andamento</h3>
+              <XCircle className="w-6 h-6 text-red-400" />
+              <h3 className="text-sm font-semibold text-slate-400">Cancelados</h3>
             </div>
-            <p className="text-3xl font-bold text-blue-400">{kpis.emAndamento}</p>
+            <p className="text-3xl font-bold text-red-400">{kpis.cancelados}</p>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <CheckCircle className="w-6 h-6 text-green-400" />
@@ -585,15 +609,15 @@ export default function ReparoPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6 mb-6"
+          className="app-card p-6 mb-6"
         >
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div className="md:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Buscar por OM, serial, operador..."
+                  placeholder="Buscar por OM, serial, descrição..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="w-full bg-slate-900 border border-purple-500/20 rounded-lg px-4 pl-10 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-purple-500/50"
@@ -631,37 +655,11 @@ export default function ReparoPage() {
             >
               <option value="all">Todos os Status</option>
               <option value="aberto">Aberto</option>
-              <option value="em_andamento">Em Andamento</option>
               <option value="reparado">Reparado</option>
               <option value="cancelado">Cancelado</option>
             </select>
 
-            <select
-              value={prioridadeFilter}
-              onChange={e => setPrioridadeFilter(e.target.value)}
-              className="bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
-            >
-              <option value="all">Todas as Prioridades</option>
-              <option value="baixa">Baixa</option>
-              <option value="media">Média</option>
-              <option value="alta">Alta</option>
-              <option value="urgente">Urgente</option>
-            </select>
 
-            <select
-              value={operadorFilter}
-              onChange={e => setOperadorFilter(e.target.value)}
-              className="bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
-            >
-              <option value="all">Todos os Operadores</option>
-              {uniqueOperadores
-                .filter(op => op !== 'all')
-                .map(op => (
-                  <option key={op} value={op}>
-                    {op}
-                  </option>
-                ))}
-            </select>
           </div>
 
           <div className="flex justify-between items-center">
@@ -745,224 +743,157 @@ export default function ReparoPage() {
         {/* Content */}
         {currentView === 'kanban' && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Colunas do Kanban */}
-              {[
-                {
-                  status: 'aberto',
-                  title: 'Abertos',
-                  borderColor: 'border-orange-500/30',
-                  badgeBg: 'bg-orange-500/20',
-                  badgeBorder: 'border-orange-500/30',
-                  badgeText: 'text-orange-400',
-                },
-                {
-                  status: 'em_andamento',
-                  title: 'Em Andamento',
-                  borderColor: 'border-blue-500/30',
-                  badgeBg: 'bg-blue-500/20',
-                  badgeBorder: 'border-blue-500/30',
-                  badgeText: 'text-blue-400',
-                },
-                {
-                  status: 'reparado',
-                  title: 'Reparados',
-                  borderColor: 'border-green-500/30',
-                  badgeBg: 'bg-green-500/20',
-                  badgeBorder: 'border-green-500/30',
-                  badgeText: 'text-green-400',
-                },
-                {
-                  status: 'cancelado',
-                  title: 'Cancelados',
-                  borderColor: 'border-red-500/30',
-                  badgeBg: 'bg-red-500/20',
-                  badgeBorder: 'border-red-500/30',
-                  badgeText: 'text-red-400',
-                },
-              ].map(col => {
-                // Função helper para normalizar status especificamente para o Kanban
-                const getKanbanStatus = (status?: string | null) => {
-                  if (!status) return 'aberto';
-                  const s = status.toLowerCase().trim();
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {boardColumns.map((col, colIndex) => {
+              const columnItems = filteredData.filter(d => normalizeStatus(d.status) === col.status);
+              const columnTotalPages = Math.max(1, Math.ceil(columnItems.length / itemsPerPage));
+              const columnPage = Math.min(Math.max(1, kanbanPages[col.status] || 1), columnTotalPages);
+              const startIdx = (columnPage - 1) * itemsPerPage;
+              const endIdx = startIdx + itemsPerPage;
+              const paginatedColumnItems = columnItems.slice(startIdx, endIdx);
+              const isDropTarget = dropTargetStatus === col.status;
 
-                  // Mapeamentos
-                  if (
-                    ['aberto', 'pendente', 'requisição_gerada', 'requisicao_gerada'].some(v =>
-                      s.includes(v)
-                    )
-                  )
-                    return 'aberto';
-                  if (s.includes('andamento')) return 'em_andamento';
-                  if (s.includes('reparado') || s.includes('concluido') || s.includes('concluído'))
-                    return 'reparado';
-                  if (s.includes('cancelado')) return 'cancelado';
+              return (
+                <motion.section
+                  key={col.status}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 * colIndex }}
+                  onDragOver={e => {
+                    e.preventDefault();
+                    if (draggingItemId) setDropTargetStatus(col.status);
+                  }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    handleKanbanDrop(col.status);
+                  }}
+                  onDragLeave={() => {
+                    if (dropTargetStatus === col.status) setDropTargetStatus(null);
+                  }}
+                  className={`app-card p-4 min-h-[520px] transition-all ${col.borderColor} ${
+                    isDropTarget ? 'ring-2 ring-cyan-400/70 shadow-[0_0_25px_-12px_rgba(34,211,238,0.9)]' : ''
+                  }`}
+                  aria-label={`Coluna ${col.title}`}
+                >
+                  <header className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
+                    <h3 className="text-base md:text-lg font-bold text-slate-100">{col.title}</h3>
+                    <span className={`px-3 py-1 rounded-full text-xs md:text-sm font-bold ${col.countClass}`}>
+                      {columnItems.length}
+                    </span>
+                  </header>
 
-                  return 'aberto'; // Fallback: qualquer outro status desconhecido vai para "Abertos"
-                };
+                  <div className="space-y-3">
+                    {paginatedColumnItems.length > 0 ? (
+                      paginatedColumnItems.map(item => {
+                        const itemStatus = normalizeStatus(item.status);
+                        const isUpdating = updatingItemIds.has(item.id);
+                        const isDragging = draggingItemId === item.id;
+                        return (
+                          <motion.article
+                            key={item.id}
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            draggable
+                            onDragStart={() => handleKanbanDragStart(item.id)}
+                            onDragEnd={handleKanbanDragEnd}
+                            className={`rounded-xl border border-slate-700/70 bg-slate-900/70 p-4 transition-all ${
+                              isDragging ? 'opacity-50 ring-2 ring-cyan-400/60' : 'hover:border-cyan-500/40'
+                            }`}
+                            aria-grabbed={isDragging}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                              <div>
+                                <h4 className="text-base font-bold text-slate-100 leading-tight">{item.om}</h4>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  {item.designador || 'Designador N/A'}
+                                </p>
+                              </div>
+                              <Badge variant={itemStatus === 'reparado' ? 'success' : itemStatus === 'cancelado' ? 'danger' : 'info'} size="sm">
+                                {getStatusLabel(itemStatus)}
+                              </Badge>
+                            </div>
 
-                const colStatus = col.status; // já é 'aberto', 'em_andamento', etc.
+                            <div className="space-y-1.5 text-sm mb-4">
+                              <p className="text-slate-300">
+                                <span className="text-slate-500">Serial:</span> {item.serial || 'N/A'}
+                              </p>
+                              <p className="text-slate-300">
+                                <span className="text-slate-500">PN:</span> {item.pn || 'N/A'}
+                              </p>
+                              <p className="text-slate-300">
+                                <span className="text-slate-500">Defeito:</span> {item.tipodefeito || 'N/A'}
+                              </p>
+                              <p className="text-slate-400 text-xs">{formatDate(item.createdat)}</p>
+                            </div>
 
-                // Itens desta coluna
-                const columnItems = filteredData.filter(
-                  d => getKanbanStatus(d.status) === colStatus
-                );
-
-                return (
-                  <motion.div
-                    key={col.status}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className={`bg-gradient-to-br from-slate-800/90 to-slate-900/90 border ${col.borderColor} rounded-xl p-4 min-h-[500px] shadow-xl`}
-                  >
-                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
-                      <h3 className="text-lg font-bold text-white">{col.title}</h3>
-                      <span
-                        className={`${col.badgeBg} ${col.badgeBorder} border px-3 py-1 rounded-full text-sm font-bold ${col.badgeText}`}
-                      >
-                        {columnItems.length}
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      {(() => {
-                        // Limitar a 20 itens por coluna para não sobrecarregar
-                        return columnItems.length > 0 ? (
-                          columnItems.slice(0, 20).map(item => {
-                            const getPriorityVariant = (
-                              prioridade?: string
-                            ): 'danger' | 'warning' | 'info' | 'secondary' => {
-                              if (prioridade === 'urgente') return 'danger';
-                              if (prioridade === 'alta') return 'warning';
-                              if (prioridade === 'media') return 'info';
-                              return 'secondary';
-                            };
-
-                            return (
-                              <motion.div
-                                key={item.id}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                whileHover={{ scale: 1.02 }}
-                                className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-purple-500/30 rounded-xl p-4 cursor-pointer hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/10 transition-all"
+                            <div className="flex items-center gap-2">
+                              {itemStatus === 'aberto' ? (
+                                <button
+                                  onClick={() => handleReparar(item.id)}
+                                  className="flex-1 h-10 rounded-lg bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white text-sm font-semibold transition-all"
+                                  aria-label={`Reparar ${item.om}`}
+                                >
+                                  Reparar
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleMoverAberto(item.id)}
+                                  className="flex-1 h-10 rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-sm font-semibold transition-all"
+                                  aria-label={`Reabrir ${item.om}`}
+                                >
+                                  Reabrir
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleCancelar(item.id)}
+                                className="h-10 w-10 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition-all"
+                                title="Cancelar"
+                                aria-label={`Cancelar ${item.om}`}
                               >
-                                {/* Header com OM e Prioridade */}
-                                <div className="flex items-start justify-between mb-3">
-                                  <h4 className="font-bold text-white text-lg">{item.om}</h4>
-                                  <Badge variant={getPriorityVariant(item.prioridade)} size="sm">
-                                    {getPriorityLabel(item.prioridade)}
-                                  </Badge>
-                                </div>
+                                <XCircle className="w-4 h-4 mx-auto" />
+                              </button>
+                              <button
+                                onClick={() => handleExcluir(item.id)}
+                                className="h-10 w-10 rounded-lg border border-slate-600/70 bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition-all"
+                                title="Excluir"
+                                aria-label={`Excluir ${item.om}`}
+                              >
+                                <Trash2 className="w-4 h-4 mx-auto" />
+                              </button>
+                            </div>
 
-                                {/* Informações do Item */}
-                                <div className="space-y-2 mb-4">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-slate-500 font-semibold min-w-[75px]">
-                                      Designador:
-                                    </span>
-                                    <span className="text-slate-100 font-bold font-mono bg-purple-500/20 px-2 py-1 rounded border border-purple-500/30">
-                                      {item.designador || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-slate-500 font-semibold min-w-[75px]">
-                                      Serial:
-                                    </span>
-                                    <span className="text-slate-300 font-mono">
-                                      {item.serial || 'N/A'}
-                                    </span>
-                                  </div>
-                                  {item.pn && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <span className="text-slate-500 font-semibold min-w-[75px]">
-                                        PN:
-                                      </span>
-                                      <span className="text-slate-300 font-mono">{item.pn}</span>
-                                    </div>
-                                  )}
-                                  {item.tipodefeito && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <span className="text-slate-500 font-semibold min-w-[75px]">
-                                        Defeito:
-                                      </span>
-                                      <span className="text-slate-300">{item.tipodefeito}</span>
-                                    </div>
-                                  )}
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-slate-500 font-semibold min-w-[75px]">
-                                      Operador:
-                                    </span>
-                                    <span className="text-slate-300">{item.operador || 'N/A'}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-slate-500 font-semibold min-w-[75px]">
-                                      Data:
-                                    </span>
-                                    <span className="text-slate-300">
-                                      {formatDate(item.createdat)}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Botões de Ação */}
-                                <div className="flex gap-2">
-                                  {(() => {
-                                    const itemStatus = (item.status || 'aberto')
-                                      .toLowerCase()
-                                      .trim();
-                                    // Normalizar status: 'requisição_gerada' e 'pendente' -> 'aberto'
-                                    const normalizedStatus =
-                                      itemStatus === 'requisição_gerada' ||
-                                      itemStatus === 'pendente'
-                                        ? 'aberto'
-                                        : itemStatus;
-                                    return normalizedStatus === 'aberto';
-                                  })() && (
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => handleReparar(item.id)}
-                                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-2"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                      Reparar
-                                    </motion.button>
-                                  )}
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleCancelar(item.id)}
-                                    className="w-10 h-10 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 text-red-400 rounded-lg transition-all flex items-center justify-center"
-                                    title="Cancelar"
-                                  >
-                                    <XCircle className="w-5 h-5" />
-                                  </motion.button>
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleExcluir(item.id)}
-                                    className="w-10 h-10 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/30 hover:border-slate-600/50 text-slate-300 rounded-lg transition-all flex items-center justify-center"
-                                    title="Excluir"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </motion.button>
-                                </div>
-                              </motion.div>
-                            );
-                          })
-                        ) : (
-                          <div className="text-center py-8 text-slate-500 text-sm">
-                            Nenhum item nesta coluna
-                          </div>
+                            {isUpdating && (
+                              <p className="mt-3 text-xs text-cyan-300/90">Atualizando status...</p>
+                            )}
+                          </motion.article>
                         );
-                      })()}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Nota: Paginação removida do Kanban - exibindo todos os itens filtrados por status (limitado a 20 por coluna) */}
+                      })
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-900/40 px-4 py-8 text-center">
+                        <p className="text-sm text-slate-400">Nenhum item nesta coluna</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Arraste cards para organizar o fluxo.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <Pagination
+                    currentPage={columnPage}
+                    totalPages={columnTotalPages}
+                    onPageChange={page =>
+                      setKanbanPages(prev => ({
+                        ...prev,
+                        [col.status]: page,
+                      }))
+                    }
+                    totalItems={columnItems.length}
+                    itemsPerPage={itemsPerPage}
+                    showInfo={false}
+                  />
+                </motion.section>
+              );
+            })}
+          </div>
           </>
         )}
 
@@ -982,8 +913,8 @@ export default function ReparoPage() {
               )}
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse" role="table">
+            <div className="overflow-x-auto pb-2 pr-1">
+              <table className="w-max min-w-full border-collapse" role="table">
                 <thead>
                   <tr className="bg-slate-900/40 text-left">
                     <th className="p-4 text-left w-12">
@@ -1014,10 +945,8 @@ export default function ReparoPage() {
                       { key: 'serial', label: 'Serial' },
                       { key: 'descricao', label: 'Descrição' },
                       { key: 'tipodefeito', label: 'Defeito' },
-                      { key: 'prioridade', label: 'Prioridade' },
                       { key: 'createdat', label: 'Data/Hora' },
                       { key: 'status', label: 'Status' },
-                      { key: 'operador', label: 'Operador' },
                     ].map(col => (
                       <th
                         key={col.key}
@@ -1084,7 +1013,7 @@ export default function ReparoPage() {
                         </div>
                       </th>
                     ))}
-                    <th className="px-3 py-3 text-xs font-bold text-slate-300 uppercase tracking-wide text-right pr-6">
+                    <th className="px-3 py-3 text-xs font-bold text-slate-300 uppercase tracking-wide text-right pr-2 min-w-[132px]">
                       Ações
                     </th>
                   </tr>
@@ -1255,22 +1184,6 @@ export default function ReparoPage() {
                           </span>
                         </td>
                         <td className="px-3 py-2">
-                          <Badge
-                            variant={
-                              item.prioridade === 'urgente'
-                                ? 'danger'
-                                : item.prioridade === 'alta'
-                                ? 'warning'
-                                : item.prioridade === 'media'
-                                ? 'info'
-                                : 'secondary'
-                            }
-                            size="lg"
-                          >
-                            {getPriorityLabel(item.prioridade)}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2">
                           <span className="font-mono text-sm text-slate-300 tabular-nums">
                             {formatDate(item.createdat)}
                           </span>
@@ -1282,8 +1195,6 @@ export default function ReparoPage() {
                                 ? 'success'
                                 : normalizeStatus(item.status) === 'cancelado'
                                 ? 'danger'
-                                : normalizeStatus(item.status) === 'em_andamento'
-                                ? 'warning'
                                 : 'info'
                             }
                             size="lg"
@@ -1291,37 +1202,30 @@ export default function ReparoPage() {
                             {getStatusLabel(normalizeStatus(item.status))}
                           </Badge>
                         </td>
-                        <td className="px-3 py-2">
-                          <span className="text-sm text-slate-300 font-medium whitespace-nowrap">
-                            {item.operador || '—'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap pr-6">
+                        <td className="px-3 py-2 whitespace-nowrap pr-2 min-w-[132px]">
                           <div
                             className="flex gap-2 justify-end"
                             onClick={e => e.stopPropagation()}
                           >
-                            {['aberto', 'pendente', 'requisição_gerada'].includes(
-                              (item.status || '').toLowerCase().trim()
-                            ) && (
+                            {normalizeStatus(item.status) === 'aberto' && (
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleReparar(item.id)}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-400 transition-all shadow-lg shadow-green-500/10"
+                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-400 transition-all shadow-lg shadow-green-500/10"
                                 title="Marcar como Reparado"
                               >
-                                <CheckCircle className="w-4 h-4" />
+                                <CheckCircle className="w-5 h-5" />
                               </motion.button>
                             )}
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={() => handleExcluir(item.id)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 transition-all shadow-lg shadow-red-500/10"
+                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 transition-all shadow-lg shadow-red-500/10"
                               title="Excluir"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-5 h-5" />
                             </motion.button>
                           </div>
                         </td>
@@ -1362,15 +1266,9 @@ export default function ReparoPage() {
                   <div className="flex-shrink-0">
                     <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
                       {(() => {
-                        const itemStatus = (item.status || 'aberto').toLowerCase().trim();
-                        const normalizedStatus =
-                          itemStatus === 'requisição_gerada' || itemStatus === 'pendente'
-                            ? 'aberto'
-                            : itemStatus;
+                        const normalizedStatus = normalizeStatus(item.status);
                         if (normalizedStatus === 'aberto')
                           return <AlertTriangle className="w-5 h-5 text-white" />;
-                        if (normalizedStatus === 'em_andamento')
-                          return <Settings className="w-5 h-5 text-white" />;
                         if (normalizedStatus === 'reparado')
                           return <CheckCircle className="w-5 h-5 text-white" />;
                         if (normalizedStatus === 'cancelado')
@@ -1391,14 +1289,8 @@ export default function ReparoPage() {
                         <span className="font-semibold">Defeito:</span> {item.tipodefeito || 'N/A'}
                       </p>
                       <p>
-                        <span className="font-semibold">Operador:</span> {item.operador || 'N/A'}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Prioridade:</span>{' '}
-                        {getPriorityLabel(item.prioridade)}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Status:</span> {getStatusLabel(item.status)}
+                        <span className="font-semibold">Status:</span>{' '}
+                        {getStatusLabel(normalizeStatus(item.status))}
                       </p>
                     </div>
                   </div>

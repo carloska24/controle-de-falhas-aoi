@@ -467,10 +467,10 @@ export default function AlmoxarifadoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+    <div className="app-shell-bg">
       {/* Header */}
-      <div className="bg-slate-900/60 border-b border-slate-800 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="app-shell-header">
+        <div className="app-shell-container py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
@@ -535,13 +535,13 @@ export default function AlmoxarifadoPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="app-shell-container py-6">
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-red-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <AlertCircle className="w-6 h-6 text-red-400" />
@@ -554,7 +554,7 @@ export default function AlmoxarifadoPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-yellow-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <Package className="w-6 h-6 text-yellow-400" />
@@ -567,7 +567,7 @@ export default function AlmoxarifadoPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-green-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <CheckCircle2 className="w-6 h-6 text-green-400" />
@@ -580,7 +580,7 @@ export default function AlmoxarifadoPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 border border-blue-500/20 rounded-xl p-6"
+            className="app-card p-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-6 h-6 text-blue-400" />
@@ -595,7 +595,7 @@ export default function AlmoxarifadoPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/20 rounded-xl p-6 mb-6"
+          className="app-card p-6 mb-6"
         >
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div className="md:col-span-2">

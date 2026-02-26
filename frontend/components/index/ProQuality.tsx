@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Clock } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Award, Clock } from 'lucide-react';
 import { Registro, OM } from '@/types/index';
 
 interface ProQualityProps {
@@ -16,6 +16,23 @@ interface ProQualityProps {
     omNumber: string | null;
   };
   finishedOMs?: OM[];
+}
+
+function normalizeOmStatus(status?: string): 'running' | 'paused' | 'finished' | 'unknown' {
+  const normalized = String(status || '')
+    .trim()
+    .toLowerCase();
+
+  if (['running', 'em_andamento', 'em andamento', 'ativa', 'ativo'].includes(normalized)) {
+    return 'running';
+  }
+  if (['paused', 'pausada', 'pausado'].includes(normalized)) {
+    return 'paused';
+  }
+  if (['finished', 'finalizada', 'finalizado', 'concluida', 'concluída'].includes(normalized)) {
+    return 'finished';
+  }
+  return 'unknown';
 }
 
 // Função para determinar status da qualidade baseado no aproveitamento
@@ -95,12 +112,16 @@ export default function ProQuality({
   omState,
   finishedOMs = [],
 }: ProQualityProps) {
+  const reduceMotion = useReducedMotion();
+
   // Verificar se a OM está finalizada
   const isOMFinished = useMemo(() => {
     if (!activeOM) return false;
     
     // Verificar se está na lista de OMs finalizadas
-    const isInFinishedList = finishedOMs.some(om => om.omNumber === activeOM && om.status === 'finished');
+    const isInFinishedList = finishedOMs.some(
+      om => om.omNumber === activeOM && normalizeOmStatus(String(om.status)) === 'finished'
+    );
     
     // OU verificar se a OM atual não está rodando nem pausada e omState.omNumber é null (foi finalizada)
     const currentOMFinished = (omState?.omNumber === null || omState?.omNumber !== activeOM) && 
@@ -128,14 +149,54 @@ export default function ProQuality({
     };
   }, [isOMFinished, activeOM, activeOMQtdLote, registros]);
 
+  if (reduceMotion) {
+    return (
+      <section className="app-card rounded-2xl p-4 md:p-5 shadow-xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-slate-800/70 border border-slate-700/70 flex items-center justify-center">
+            <Award className="w-5 h-5 text-cyan-300" />
+          </div>
+          <h2 className="text-xl font-bold tracking-wide text-[#b5c6e3]">Selo de Qualidade</h2>
+        </div>
+
+        {qualityData ? (
+          <div
+            className={`p-5 bg-gradient-to-br ${qualityData.bgGradient} rounded-xl border ${qualityData.borderColor}/40`}
+          >
+            <div className="text-center space-y-3">
+              <div className="text-2xl font-extrabold text-white">{qualityData.label}</div>
+              <div className="text-4xl font-black tabular-nums text-white">
+                {qualityData.yield.toFixed(1)}%
+              </div>
+              <div className="text-sm text-slate-300">
+                Inspecionadas: <span className="font-bold">{qualityData.totalInspecionado}</span> · Falhas:{' '}
+                <span className="font-bold">{qualityData.totalFalhas}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-5 bg-gradient-to-br from-[#0f1a2b]/40 to-[#1a2535]/40 rounded-xl border border-[#314566]/50">
+            <div className="flex flex-col items-center justify-center space-y-3 text-center">
+              <Clock className="w-9 h-9 text-slate-400" />
+              <div className="text-lg font-semibold text-[#B4C6E3]">Aguardando finalização da OM...</div>
+              <div className="text-sm text-[#7A8FA8]">
+                O selo de qualidade será exibido assim que a OM for finalizada.
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-b from-[#16243a] to-[#112137] border-2 border-purple-500/40 rounded-2xl p-6 shadow-2xl"
+      className="app-card rounded-2xl p-4 md:p-5 shadow-xl"
     >
       {/* Header - SVG no canto superior esquerdo */}
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-4">
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
@@ -331,7 +392,7 @@ export default function ProQuality({
                 rotate: [0, -5, 5, -5, 0],
                 transition: { duration: 0.5 }
               }}
-              className="w-28 h-28 flex items-center justify-center mb-2 relative"
+            className="w-24 h-24 flex items-center justify-center mb-2 relative"
             >
               {/* Efeito de brilho pulsante ao redor do troféu */}
               <motion.div
@@ -379,9 +440,9 @@ export default function ProQuality({
                 <svg 
                   id="trophy-quality"
                   enableBackground="new 0 0 512 512" 
-                  height="112" 
+                  height="96" 
                   viewBox="0 0 512 512" 
-                  width="112" 
+                  width="96" 
                   xmlns="http://www.w3.org/2000/svg"
                   className="drop-shadow-2xl"
                 >
@@ -571,7 +632,7 @@ export default function ProQuality({
             <div className="text-center space-y-4 mt-4">
               {/* Status Label - Fonte amigável e atraente */}
               <div 
-                className="text-3xl mb-3 tracking-wide"
+                className="text-2xl mb-3 tracking-wide"
                 style={{
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                   fontWeight: 800,
@@ -593,7 +654,7 @@ export default function ProQuality({
               
               {/* Porcentagem exata - Fonte grande e amigável */}
               <div 
-                className="text-5xl mb-4 tracking-tight tabular-nums"
+                className="text-4xl mb-4 tracking-tight tabular-nums"
                 style={{
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                   fontWeight: 900,
@@ -637,7 +698,7 @@ export default function ProQuality({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="relative p-8 bg-gradient-to-br from-[#0f1a2b]/40 to-[#1a2535]/40 rounded-xl border border-[#314566]/50 overflow-hidden"
+          className="relative p-5 bg-gradient-to-br from-[#0f1a2b]/40 to-[#1a2535]/40 rounded-xl border border-[#314566]/50 overflow-hidden"
         >
           <div className="relative flex flex-col items-center justify-center space-y-4">
             {/* Ícone de Relógio Animado */}
@@ -648,10 +709,10 @@ export default function ProQuality({
                 repeat: Infinity,
                 ease: "linear"
               }}
-              className="w-16 h-16 flex items-center justify-center"
+              className="w-14 h-14 flex items-center justify-center"
             >
               <Clock 
-                className="w-12 h-12"
+                className="w-10 h-10"
                 style={{
                   color: '#9CA3AF',
                 }}

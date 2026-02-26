@@ -74,6 +74,12 @@ export default function LoginForm() {
           const redirectPath =
             data.user.role === 'admin'
               ? '/admin'
+              : data.user.role === 'reparo'
+              ? '/reparo'
+              : data.user.role === 'qualidade'
+              ? '/relatorios/qualidade'
+              : data.user.role === 'almoxarifado'
+              ? '/almoxarifado'
               : data.user.role === 'lider_smt'
               ? '/smt/conferencia'
               : '/operador';

@@ -19,7 +19,14 @@ export interface Registro {
 export interface OM {
   omNumber: string;
   qtdlote?: number;
-  status: 'running' | 'paused' | 'finished';
+  status:
+    | 'running'
+    | 'paused'
+    | 'finished'
+    | 'em_andamento'
+    | 'pausada'
+    | 'finalizada'
+    | 'ativa';
   elapsed?: number;
   startTime?: number;
   endTime?: number;

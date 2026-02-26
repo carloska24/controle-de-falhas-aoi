@@ -28,8 +28,12 @@ console.log('DebugRoutes loaded');
 
 const omController = require('./src/controllers/omController');
 console.log('OMController loaded');
+const { authenticateToken, hasRole } = require('./src/middleware/auth');
+console.log('Auth middleware loaded');
+const prisma = require('./src/config/prisma');
+console.log('Prisma loaded');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Setup Logger (console override)
@@ -76,6 +80,20 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+app.get('/health/db', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', db: 'reachable', time: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      db: 'unreachable',
+      error: 'Falha ao consultar banco de dados',
+      time: new Date().toISOString(),
+    });
+  }
+});
+
 // Arquivos Estáticos / Frontend Logs Blocker (Simplificado)
 app.use((req, res, next) => {
   if (req.path.endsWith('.log')) return res.status(404).send('Not found');
@@ -96,23 +114,42 @@ app.use('/api/debug', debugRoutes);
 app.use('/api/om', omRoutes); // /api/om/start, /api/om/:omNumber, etc.
 
 // Rotas soltas (Legacy/Reports) que estavam no server.js raiz
-const { authenticateToken } = require('./src/middleware/auth');
-app.get('/api/om-time/:omNumber', omController.getOMTime);
-app.get('/api/relatorio-falhas', omController.getRelatorioFalhas);
-app.get('/api/oms/finalizadas', authenticateToken, omController.listFinalizadas); // Esta era solta
+app.get(
+  '/api/om-time/:omNumber',
+  authenticateToken,
+  hasRole('admin', 'operator', 'reparo', 'qualidade', 'almoxarifado'),
+  omController.getOMTime
+);
+app.get(
+  '/api/relatorio-falhas',
+  authenticateToken,
+  hasRole('admin', 'qualidade'),
+  omController.getRelatorioFalhas
+);
+app.get(
+  '/api/oms/finalizadas',
+  authenticateToken,
+  hasRole('admin', 'operator', 'reparo', 'qualidade', 'almoxarifado'),
+  omController.listFinalizadas
+); // Esta era solta
 
 // Rota para listar OMs pausadas e ativas (frontend chama /api/oms?status=pausada ou status=ativa)
-app.get('/api/oms', authenticateToken, (req, res) => {
-  const { status } = req.query;
-  if (status === 'pausada') {
-    return omController.listPausadas(req, res);
+app.get(
+  '/api/oms',
+  authenticateToken,
+  hasRole('admin', 'operator', 'reparo', 'qualidade', 'almoxarifado'),
+  (req, res) => {
+    const { status } = req.query;
+    if (status === 'pausada') {
+      return omController.listPausadas(req, res);
+    }
+    if (status === 'ativa') {
+      return omController.listAtivas(req, res);
+    }
+    // Fallback: retorna lista vazia se status não for reconhecido
+    res.json([]);
   }
-  if (status === 'ativa') {
-    return omController.listAtivas(req, res);
-  }
-  // Fallback: retorna lista vazia se status não for reconhecido
-  res.json([]);
-});
+);
 
 // Debug (manter apenas se não for produção ou se tiver chave, mas simplificando aqui)
 // Se precisar das rotas de debug, criar um debugRoutes.js. Por enquanto vou omitir para limpeza,

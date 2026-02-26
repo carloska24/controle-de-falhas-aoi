@@ -6,11 +6,16 @@ const router = express.Router();
 // Rotas de relatorio usam GET
 
 const omController = require('../controllers/omController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, hasRole } = require('../middleware/auth');
 
 // Funcional
-router.post('/start', omController.startOM);
-router.get('/:omNumber', omController.getOM); // Este conflita com /finalizadas se nao for especifico.
+router.post('/start', authenticateToken, hasRole('admin', 'operator'), omController.startOM);
+router.get(
+  '/:omNumber',
+  authenticateToken,
+  hasRole('admin', 'operator', 'reparo', 'qualidade', 'almoxarifado'),
+  omController.getOM
+); // Este conflita com /finalizadas se nao for especifico.
 // Mas no server.js original:
 // /api/om/start
 // /api/om/:omNumber
@@ -21,9 +26,9 @@ router.get('/:omNumber', omController.getOM); // Este conflita com /finalizadas 
 // O frontend chama /api/om/:omNumber
 // Entao precisamos cuidar da ordem.
 
-router.put('/pause', omController.pauseOM);
-router.put('/resume', omController.resumeOM);
-router.put('/finalizar', omController.finishOM);
+router.put('/pause', authenticateToken, hasRole('admin', 'operator'), omController.pauseOM);
+router.put('/resume', authenticateToken, hasRole('admin', 'operator'), omController.resumeOM);
+router.put('/finalizar', authenticateToken, hasRole('admin', 'operator'), omController.finishOM);
 
 // Relatorios e Infos Extras
 // Nota: no server.js era /api/om-time/:omNumber agora sera /api/om/time/:omNumber se eu montar router em /api/om

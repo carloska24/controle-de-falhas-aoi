@@ -3,8 +3,16 @@ const router = express.Router();
 const debugController = require('../controllers/debugController');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
 
-// Rotas protegidas (apenas admin deveria conseguir gerar/limpar em teoria, mas para dev deixaremos auth simples)
-router.post('/populate', authenticateToken, debugController.populateDemoData);
-router.post('/clear', authenticateToken, debugController.clearDemoData);
+function ensureDebugEnabled(_req, res, next) {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const enabledInProd = String(process.env.DEBUG_ROUTES_ENABLED || '').toLowerCase() === 'true';
+
+  if (isDev || enabledInProd) return next();
+  return res.status(404).json({ error: 'Rota não encontrada.' });
+}
+
+// Rotas de debug devem ser restritas a administradores.
+router.post('/populate', ensureDebugEnabled, authenticateToken, isAdmin, debugController.populateDemoData);
+router.post('/clear', ensureDebugEnabled, authenticateToken, isAdmin, debugController.clearDemoData);
 
 module.exports = router;

@@ -14,7 +14,15 @@ export default function HomePage() {
       return;
     }
 
-    const parsedUser = JSON.parse(user);
+    let parsedUser: { role?: string };
+    try {
+      parsedUser = JSON.parse(user);
+    } catch {
+      localStorage.removeItem('user');
+      router.push('/login');
+      return;
+    }
+
     // Redireciona baseado no role (igual ao comportamento original)
     switch (parsedUser.role) {
       case 'admin':
@@ -24,10 +32,13 @@ export default function HomePage() {
         router.push('/reparo');
         break;
       case 'qualidade':
-        router.push('/relatorio-qualidade');
+        router.push('/relatorios/qualidade');
         break;
       case 'almoxarifado':
         router.push('/almoxarifado');
+        break;
+      case 'lider_smt':
+        router.push('/smt/conferencia');
         break;
       case 'operator':
       default:

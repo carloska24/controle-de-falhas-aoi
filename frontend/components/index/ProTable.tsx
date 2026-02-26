@@ -570,13 +570,13 @@ export default function ProTable({
       {/* Table */}
       <div className="overflow-x-auto">
         <table
-          className="w-full border-collapse"
+          className="w-max min-w-full border-collapse"
           role="table"
           aria-label="Tabela de registros de falhas"
         >
           <thead>
             <tr className="bg-slate-900/40 text-left">
-              <th className="p-4 text-left w-12">
+              <th className="p-3 text-left w-10">
                 <input
                   type="checkbox"
                   checked={
@@ -604,7 +604,15 @@ export default function ProTable({
               ).map(field => (
                 <th
                   key={field}
-                  className="p-4 text-sm font-bold text-slate-300 uppercase tracking-wide text-left cursor-pointer hover:text-white transition-colors relative select-none"
+                  className={`p-3 text-xs font-bold text-slate-300 uppercase tracking-wide text-left cursor-pointer hover:text-white transition-colors relative select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded ${
+                    field === 'createdat'
+                      ? 'min-w-[96px]'
+                      : field === 'descricao'
+                      ? 'min-w-[140px]'
+                      : field === 'serial'
+                      ? 'min-w-[108px]'
+                      : ''
+                  }`}
                   onClick={e => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -625,16 +633,12 @@ export default function ProTable({
                         : 'descending'
                       : 'none'
                   }
-                  tabIndex={-1}
+                  tabIndex={0}
                   onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       handleSort(field, e);
                     }
-                  }}
-                  onFocus={e => {
-                    // Remove foco imediatamente para evitar outlines
-                    e.currentTarget.blur();
                   }}
                   aria-label={`Ordenar por ${
                     field === 'om'
@@ -649,7 +653,7 @@ export default function ProTable({
                   }`}
                 >
                   {/* Wrapper interno otimizado */}
-                  <div className="flex items-center gap-1.5 select-none pointer-events-none">
+                  <div className="flex items-center gap-1 select-none pointer-events-none">
                     <span>
                       {field === 'om'
                         ? 'OM'
@@ -681,7 +685,7 @@ export default function ProTable({
                   </div>
                 </th>
               ))}
-              <th className="p-4 text-sm font-bold text-slate-300 uppercase tracking-wide text-left">
+              <th className="p-3 text-xs font-bold text-slate-300 uppercase tracking-wide text-left min-w-[96px]">
                 Prioridade
               </th>
             </tr>
@@ -774,7 +778,7 @@ export default function ProTable({
                       selectedIds.has(registro.id) ? ' - Selecionado' : ''
                     }`}
                   >
-                    <td className="p-4">
+                    <td className="p-3">
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -798,23 +802,23 @@ export default function ProTable({
                         )}
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {/* OM - Fonte monoespaçada com destaque maior */}
                       <span
-                        className={`font-mono text-base font-bold tracking-wide whitespace-nowrap ${
+                        className={`font-mono text-sm font-bold tracking-wide whitespace-nowrap ${
                           selectedIds.has(registro.id) ? 'text-cyan-300' : 'text-white'
                         }`}
                       >
                         {registro.om}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {/* COD.ALT/PN - Destaque maior */}
-                      <span className="font-mono text-base font-bold text-amber-300 tracking-wide whitespace-nowrap">
+                      <span className="font-mono text-sm font-bold text-amber-300 tracking-wide whitespace-nowrap">
                         {registro.pn || '—'}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {/* Serial - Estilo de código de placa industrial */}
                       <span
                         className="font-mono text-xs px-2 py-1 rounded bg-slate-800/80 border border-slate-600/50 text-cyan-200 tracking-wider uppercase cursor-help whitespace-nowrap block w-fit"
@@ -828,7 +832,7 @@ export default function ProTable({
                           : '—'}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {/* Designadores com destaque colorido por tipo de componente */}
                       <div className="flex flex-wrap gap-0.5">
                         {registro.designador
@@ -838,20 +842,20 @@ export default function ProTable({
                             // Identificar tipo de componente pelo prefixo
                             const prefix = des.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() || '';
 
-                            // Cores por tipo de componente (padrão IPC)
+                            // Cores por famílias de componentes (paleta reduzida e mais consistente)
                             const colorMap: Record<string, string> = {
-                              R: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40', // Resistor
-                              C: 'bg-blue-500/20 text-blue-400 border-blue-500/40', // Capacitor
-                              U: 'bg-purple-500/20 text-purple-400 border-purple-500/40', // IC/Chip
-                              Q: 'bg-orange-500/20 text-orange-400 border-orange-500/40', // Transistor
-                              D: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40', // Diodo
-                              L: 'bg-pink-500/20 text-pink-400 border-pink-500/40', // Indutor
-                              J: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40', // Conector
-                              Y: 'bg-red-500/20 text-red-400 border-red-500/40', // Cristal
-                              FL: 'bg-teal-500/20 text-teal-400 border-teal-500/40', // Filtro
-                              F: 'bg-amber-500/20 text-amber-400 border-amber-500/40', // Fusível
-                              SW: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40', // Switch
-                              LED: 'bg-lime-500/20 text-lime-400 border-lime-500/40', // LED
+                              R: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                              C: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                              L: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                              FL: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                              U: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+                              Q: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+                              D: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                              F: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                              LED: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                              J: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+                              SW: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+                              Y: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
                             };
 
                             const colorClass =
@@ -861,7 +865,7 @@ export default function ProTable({
                             return (
                               <span
                                 key={`${des}-${i}`}
-                                className={`inline-flex items-center px-1 py-px text-[10px] font-medium rounded border ${colorClass}`}
+                                className={`inline-flex items-center px-1 py-px text-[9px] font-medium rounded border ${colorClass}`}
                                 title={`Componente: ${des}`}
                               >
                                 {des}
@@ -870,10 +874,10 @@ export default function ProTable({
                           })}
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {/* Tipo de Defeito - Badge maior e mais visível */}
                       <span
-                        className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-lg border shadow-sm whitespace-nowrap ${(() => {
+                        className={`inline-flex items-center px-1.5 py-0.5 text-[11px] font-semibold rounded-lg border shadow-sm whitespace-nowrap ${(() => {
                           const def = (registro.tipodefeito || '').toLowerCase();
                           if (def.includes('curto') || def.includes('solder ball'))
                             return 'bg-rose-500/20 text-rose-200 border-rose-500/40 shadow-rose-500/20';
@@ -906,25 +910,30 @@ export default function ProTable({
                         })()}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {/* Descrição - Texto maior */}
                       <span
-                        className="text-sm text-slate-400 italic max-w-[180px] truncate block"
+                        className="text-xs text-slate-400 italic max-w-[140px] truncate block"
                         title={registro.descricao}
                       >
                         {registro.descricao || '—'}
                       </span>
                     </td>
-                    <td className="p-4">
-                      {/* Data/Hora - Fonte monoespaçada maior */}
-                      <span className="font-mono text-sm text-slate-300 tabular-nums">
-                        {(() => {
-                          const date = new Date(registro.createdat);
-                          return isValid(date) ? format(date, 'dd/MM/yyyy HH:mm') : '—';
-                        })()}
-                      </span>
+                    <td className="p-2.5 min-w-[96px]">
+                      {/* Data em cima e hora embaixo para economizar largura */}
+                      {(() => {
+                        const date = new Date(registro.createdat);
+                        if (!isValid(date))
+                          return <span className="font-mono text-sm text-slate-300 tabular-nums">—</span>;
+                        return (
+                          <span className="font-mono text-[11px] text-slate-300 tabular-nums leading-tight inline-flex flex-col">
+                            <span>{format(date, 'dd/MM/yy')}</span>
+                            <span className="text-slate-400 text-[10px]">{format(date, 'HH:mm')}</span>
+                          </span>
+                        );
+                      })()}
                     </td>
-                    <td className="p-4">
+                    <td className="p-3 min-w-[96px]">
                       {registro.prioridade ? (
                         <Badge
                           variant={
@@ -936,13 +945,13 @@ export default function ProTable({
                               ? 'default'
                               : 'info'
                           }
-                          size="lg"
+                          size="md"
                         >
                           {registro.prioridade.charAt(0).toUpperCase() +
                             registro.prioridade.slice(1)}
                         </Badge>
                       ) : (
-                        <Badge variant="default" size="lg">
+                        <Badge variant="default" size="md">
                           Média
                         </Badge>
                       )}

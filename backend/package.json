@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node -r dotenv/config server.js",
     "dev": "nodemon -r dotenv/config --ext js,json,env server.js",
+    "smoke:intranet": "node scripts/smoke-intranet.js",
+    "smoke:rbac": "node scripts/smoke-rbac-intranet.js",
+    "probe:intranet": "node scripts/probe-intranet.js",
     "test:auth": "node tests/auth_cookie_flow.test.js",
     "test": "jest"
   },

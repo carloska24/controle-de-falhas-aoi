@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dossiê Técnico - Controle de Falhas AOI</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --text: #e9eefc;
+      --muted: #b6c2ea;
+      --line: #2a3768;
+      --accent: #6aa3ff;
+      --ok: #5dd39e;
+      --warn: #ffcc66;
+      --crit: #ff7f7f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, var(--bg), #0d1330);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+    .hero {
+      background: rgba(18, 26, 51, 0.85);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 22px;
+    }
+    h1, h2, h3 { margin: 0 0 12px; line-height: 1.2; }
+    h1 { font-size: 1.8rem; }
+    h2 {
+      font-size: 1.25rem;
+      margin-top: 24px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+    h3 { font-size: 1rem; margin-top: 18px; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 0.8rem;
+      margin-right: 8px;
+      color: var(--text);
+      background: rgba(106, 163, 255, 0.12);
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      margin: 14px 0;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(18, 26, 51, 0.7);
+    }
+    ul { margin: 8px 0 14px 20px; }
+    li { margin: 6px 0; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 16px;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: rgba(106, 163, 255, 0.14); }
+    code {
+      background: rgba(10, 16, 34, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1px 6px;
+      color: #d6e3ff;
+    }
+    .risk-crit { color: var(--crit); font-weight: 600; }
+    .risk-high { color: #ff9d9d; font-weight: 600; }
+    .risk-med { color: var(--warn); font-weight: 600; }
+    .risk-low { color: var(--ok); font-weight: 600; }
+    .footer-note {
+      margin-top: 24px;
+      padding: 12px;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>Dossiê Técnico do Projeto - Controle de Falhas AOI</h1>
+      <p>
+        Documento consolidado por leitura do código para visão executiva e técnica do sistema:
+        arquitetura, telas, fluxos, APIs, dados, riscos e plano inicial de melhorias.
+      </p>
+      <span class="badge">Frontend: Next.js + React + TS</span>
+      <span class="badge">Backend: Express + Prisma</span>
+      <span class="badge">Auth: JWT em Cookie HttpOnly</span>
+    </section>
+
+    <h2>1. Objetivo e escopo do sistema</h2>
+    <p>
+      Plataforma para controle de falhas de produção AOI, com operação por perfis (admin,
+      operador, reparo, qualidade, almoxarifado e liderança SMT), contemplando registro de falhas,
+      ciclo de OMs, requisições e relatórios analíticos.
+    </p>
+
+    <h2>2. Arquitetura e organização</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Frontend</h3>
+        <ul>
+          <li><code>frontend/app/</code>: rotas e páginas (App Router).</li>
+          <li><code>frontend/components/</code>: UI e componentes de domínio.</li>
+          <li><code>frontend/lib/api.ts</code>: wrapper de API autenticada.</li>
+          <li>Gráficos com Chart.js e notificações via toast.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Backend</h3>
+        <ul>
+          <li><code>backend/src/routes/</code>: definição de endpoints.</li>
+          <li><code>backend/src/controllers/</code>: regras de negócio.</li>
+          <li><code>backend/src/middleware/</code>: autenticação e logger.</li>
+          <li><code>backend/prisma/schema.prisma</code>: modelo de dados.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Dados</h3>
+        <ul>
+          <li>Entidades principais: <code>users</code>, <code>registros</code>, <code>requisicoes</code>, OMs.</li>
+          <li>Fluxo orientado por OM e status de registros/requisições.</li>
+          <li>Persistência via Prisma com provider PostgreSQL.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>3. Inventário de telas (rotas)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Rota</th>
+          <th>Arquivo</th>
+          <th>Responsabilidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>/</code></td><td><code>frontend/app/page.tsx</code></td><td>Redirecionamento por role.</td></tr>
+        <tr><td><code>/login</code></td><td><code>frontend/app/login/page.tsx</code></td><td>Autenticação.</td></tr>
+        <tr><td><code>/admin</code></td><td><code>frontend/app/admin/page.tsx</code></td><td>CRUD de usuários.</td></tr>
+        <tr><td><code>/operador</code></td><td><code>frontend/app/operador/page.tsx</code></td><td>Registro de falhas e ciclo da OM.</td></tr>
+        <tr><td><code>/reparo</code></td><td><code>frontend/app/reparo/page.tsx</code></td><td>Tratamento de falhas em múltiplas visões.</td></tr>
+        <tr><td><code>/qualidade</code></td><td><code>frontend/app/qualidade/page.tsx</code></td><td>Métricas de qualidade e DPMO/Sigma.</td></tr>
+        <tr><td><code>/almoxarifado</code></td><td><code>frontend/app/almoxarifado/page.tsx</code></td><td>Gestão de requisições e entregas.</td></tr>
+        <tr><td><code>/relatorios/controle-falhas</code></td><td><code>frontend/app/relatorios/controle-falhas/page.tsx</code></td><td>Relatório consolidado de falhas.</td></tr>
+        <tr><td><code>/relatorios/qualidade</code></td><td><code>frontend/app/relatorios/qualidade/page.tsx</code></td><td>Relatório analítico de qualidade.</td></tr>
+        <tr><td><code>/relatorios/reparo</code></td><td><code>frontend/app/relatorios/reparo/page.tsx</code></td><td>Relatório de reparo e produtividade.</td></tr>
+        <tr><td><code>/smt/conferencia</code></td><td><code>frontend/app/smt/conferencia/page.tsx</code></td><td>Conferência SMT e classificação de defeitos.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Fluxos principais do negócio</h2>
+    <ul>
+      <li><strong>Operação:</strong> login → iniciar OM → lançar registros → pausar/retomar/finalizar.</li>
+      <li><strong>Reparo:</strong> filtrar backlog → atualizar status de registro → exportar dados.</li>
+      <li><strong>Almoxarifado:</strong> receber requisições → ajustar itens/quantidades → concluir entrega.</li>
+      <li><strong>Qualidade:</strong> filtrar períodos/OM → analisar gráficos e indicadores industriais.</li>
+      <li><strong>Administração:</strong> gestão de usuários e permissões por role.</li>
+    </ul>
+
+    <h2>5. Mapa resumido da API</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Domínio</th>
+          <th>Prefixo</th>
+          <th>Principais operações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Autenticação</td><td><code>/api/auth</code></td><td>login, logout, sessão atual (<code>/me</code>)</td></tr>
+        <tr><td>Usuários</td><td><code>/api/users</code></td><td>listagem, criação, edição, remoção (admin)</td></tr>
+        <tr><td>Registros</td><td><code>/api/registros</code></td><td>CRUD, batch e atualização de status</td></tr>
+        <tr><td>OM</td><td><code>/api/om</code></td><td>start, pause, resume, finish, consulta por número</td></tr>
+        <tr><td>Requisições</td><td><code>/api/requisicoes</code></td><td>criação, atualização de itens/status, remoção</td></tr>
+        <tr><td>Debug</td><td><code>/api/debug</code></td><td>popular e limpar dados demo</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. Riscos e pontos críticos</h2>
+    <ul>
+      <li><span class="risk-crit">Crítico:</span> rotas de OM sem autenticação em <code>backend/src/routes/omRoutes.js</code>.</li>
+      <li><span class="risk-crit">Crítico:</span> <code>/api/relatorio-falhas</code> público em <code>backend/server.js</code>.</li>
+      <li><span class="risk-high">Alto:</span> fallback fraco de segredo JWT no middleware de auth.</li>
+      <li><span class="risk-high">Alto:</span> rotas de debug sem bloqueio explícito por admin.</li>
+      <li><span class="risk-med">Médio:</span> divergências de documentação (README vs estrutura atual).</li>
+      <li><span class="risk-med">Médio:</span> possível inconsistência de rota de redirecionamento para qualidade na home.</li>
+    </ul>
+
+    <h2>7. Recomendações iniciais para começar as melhorias</h2>
+    <h3>Fase P0 (segurança e estabilidade imediata)</h3>
+    <ol>
+      <li>Proteger todas as rotas de OM com <code>authenticateToken</code> e revisar autorização por role.</li>
+      <li>Fechar acesso público de <code>/api/relatorio-falhas</code> e demais endpoints sensíveis no <code>server.js</code>.</li>
+      <li>Remover fallback inseguro de <code>JWT_SECRET</code>; falhar startup sem segredo válido.</li>
+      <li>Restringir <code>/api/debug/*</code> para admin (<code>isAdmin</code>) e condicionar por ambiente.</li>
+      <li>Padronizar logout e validação de sessão para reduzir inconsistência frontend/backend.</li>
+    </ol>
+
+    <h3>Fase P1 (qualidade de código e coerência funcional)</h3>
+    <ol>
+      <li>Corrigir redirecionamentos por role na home para rotas existentes.</li>
+      <li>Padronizar documentação raiz (pastas, comandos e versões reais).</li>
+      <li>Consolidar rotas soltas do <code>server.js</code> em módulos de rotas para manutenção segura.</li>
+      <li>Adicionar testes de integração para fluxos críticos: login, OM, registros e requisições.</li>
+    </ol>
+
+    <h3>Fase P2 (evolução arquitetural)</h3>
+    <ol>
+      <li>Revisar modelagem Prisma para integridade referencial e governança de dados.</li>
+      <li>Estruturar observabilidade mínima (logs padronizados + métricas básicas).</li>
+      <li>Melhorar política de limites/rate-limit para rotas sensíveis além de login.</li>
+    </ol>
+
+    <h2>8. Fontes da leitura técnica</h2>
+    <ul>
+      <li><code>frontend/app/**/page.tsx</code></li>
+      <li><code>frontend/lib/api.ts</code></li>
+      <li><code>backend/server.js</code></li>
+      <li><code>backend/src/routes/*.js</code></li>
+      <li><code>backend/prisma/schema.prisma</code></li>
+      <li><code>README.md</code> e arquivos em <code>docs/</code></li>
+    </ul>
+
+    <div class="footer-note">
+      Documento preparado para apoiar tomada de decisão técnica e priorização de roadmap.
+      Atualize este dossiê ao final de cada ciclo de melhorias para manter rastreabilidade.
+    </div>
+  </div>
+</body>
+</html>

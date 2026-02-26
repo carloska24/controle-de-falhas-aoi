@@ -169,7 +169,7 @@
   "terminal.integrated.selectionBackground": "#1e3a5f",
   
   // Extensões recomendadas
-  "extensions.ignoreRecommendations": false,
+  "extensions.ignoreRecommendations": true,
   
   // Arquivos e pastas
   "files.exclude": {
