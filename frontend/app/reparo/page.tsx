@@ -788,6 +788,12 @@ export default function ReparoPage() {
                         const itemStatus = normalizeStatus(item.status);
                         const isUpdating = updatingItemIds.has(item.id);
                         const isDragging = draggingItemId === item.id;
+                        const statusAccentClass =
+                          itemStatus === 'aberto'
+                            ? 'shadow-[inset_3px_0_0_0_rgba(249,115,22,0.75)]'
+                            : itemStatus === 'reparado'
+                            ? 'shadow-[inset_3px_0_0_0_rgba(16,185,129,0.75)]'
+                            : 'shadow-[inset_3px_0_0_0_rgba(244,63,94,0.75)]';
                         return (
                           <motion.article
                             key={item.id}
@@ -796,41 +802,56 @@ export default function ReparoPage() {
                             draggable
                             onDragStart={() => handleKanbanDragStart(item.id)}
                             onDragEnd={handleKanbanDragEnd}
-                            className={`rounded-xl border border-slate-700/70 bg-slate-900/70 p-4 transition-all ${
-                              isDragging ? 'opacity-50 ring-2 ring-cyan-400/60' : 'hover:border-cyan-500/40'
+                            className={`rounded-xl border border-slate-700/70 bg-slate-900/70 p-4 min-h-[250px] flex flex-col transition-all ${statusAccentClass} ${
+                              isDragging
+                                ? 'opacity-50 ring-2 ring-cyan-400/60'
+                                : 'hover:border-cyan-500/40 hover:shadow-[0_12px_30px_-22px_rgba(34,211,238,0.95)]'
                             }`}
                             aria-grabbed={isDragging}
                           >
                             <div className="flex items-start justify-between gap-2 mb-3">
                               <div>
-                                <h4 className="text-base font-bold text-slate-100 leading-tight">{item.om}</h4>
-                                <p className="text-xs text-slate-400 mt-1">
-                                  {item.designador || 'Designador N/A'}
-                                </p>
+                                <h4 className="text-[15px] font-bold text-slate-100 leading-tight">{item.om}</h4>
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-200 tracking-wide">
+                                    {item.designador || 'Designador N/A'}
+                                  </span>
+                                </div>
                               </div>
-                              <Badge variant={itemStatus === 'reparado' ? 'success' : itemStatus === 'cancelado' ? 'danger' : 'info'} size="sm">
+                              <Badge
+                                variant={
+                                  itemStatus === 'reparado'
+                                    ? 'success'
+                                    : itemStatus === 'cancelado'
+                                    ? 'danger'
+                                    : 'info'
+                                }
+                                size="sm"
+                              >
                                 {getStatusLabel(itemStatus)}
                               </Badge>
                             </div>
 
-                            <div className="space-y-1.5 text-sm mb-4">
-                              <p className="text-slate-300">
-                                <span className="text-slate-500">Serial:</span> {item.serial || 'N/A'}
+                            <div className="space-y-2 text-[13px] mb-4">
+                              <p className="text-slate-300 leading-snug">
+                                <span className="text-slate-500 inline-block w-14">Serial:</span>{' '}
+                                {item.serial || 'N/A'}
                               </p>
-                              <p className="text-slate-300">
-                                <span className="text-slate-500">PN:</span> {item.pn || 'N/A'}
+                              <p className="text-slate-300 leading-snug">
+                                <span className="text-slate-500 inline-block w-14">PN:</span> {item.pn || 'N/A'}
                               </p>
-                              <p className="text-slate-300">
-                                <span className="text-slate-500">Defeito:</span> {item.tipodefeito || 'N/A'}
+                              <p className="text-slate-300 leading-snug">
+                                <span className="text-slate-500 inline-block w-14">Defeito:</span>{' '}
+                                {item.tipodefeito || 'N/A'}
                               </p>
-                              <p className="text-slate-400 text-xs">{formatDate(item.createdat)}</p>
+                              <p className="text-slate-400 text-[11px] mt-1">{formatDate(item.createdat)}</p>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mt-auto">
                               {itemStatus === 'aberto' ? (
                                 <button
                                   onClick={() => handleReparar(item.id)}
-                                  className="flex-1 h-10 rounded-lg bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white text-sm font-semibold transition-all"
+                                  className="flex-1 h-9 rounded-lg bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white text-sm font-semibold transition-all"
                                   aria-label={`Reparar ${item.om}`}
                                 >
                                   Reparar
@@ -838,7 +859,7 @@ export default function ReparoPage() {
                               ) : (
                                 <button
                                   onClick={() => handleMoverAberto(item.id)}
-                                  className="flex-1 h-10 rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-sm font-semibold transition-all"
+                                  className="flex-1 h-9 rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-sm font-semibold transition-all"
                                   aria-label={`Reabrir ${item.om}`}
                                 >
                                   Reabrir
@@ -846,7 +867,7 @@ export default function ReparoPage() {
                               )}
                               <button
                                 onClick={() => handleCancelar(item.id)}
-                                className="h-10 w-10 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition-all"
+                                className="h-9 w-9 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition-all"
                                 title="Cancelar"
                                 aria-label={`Cancelar ${item.om}`}
                               >
@@ -854,7 +875,7 @@ export default function ReparoPage() {
                               </button>
                               <button
                                 onClick={() => handleExcluir(item.id)}
-                                className="h-10 w-10 rounded-lg border border-slate-600/70 bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition-all"
+                                className="h-9 w-9 rounded-lg border border-slate-600/70 bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 transition-all"
                                 title="Excluir"
                                 aria-label={`Excluir ${item.om}`}
                               >
@@ -872,7 +893,11 @@ export default function ReparoPage() {
                       <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-900/40 px-4 py-8 text-center">
                         <p className="text-sm text-slate-400">Nenhum item nesta coluna</p>
                         <p className="text-xs text-slate-500 mt-1">
-                          Arraste cards para organizar o fluxo.
+                          {col.status === 'aberto'
+                            ? 'Novas falhas aparecerão aqui.'
+                            : col.status === 'reparado'
+                            ? 'Itens concluídos aparecerão aqui.'
+                            : 'Itens cancelados aparecerão aqui.'}
                         </p>
                       </div>
                     )}

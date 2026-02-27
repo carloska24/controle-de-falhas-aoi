@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   Table2,
   Bell,
+  BellOff,
   ArrowLeft,
 } from 'lucide-react';
 import { fetchAutenticado } from '@/lib/api';
@@ -45,6 +46,9 @@ export default function AlmoxarifadoPage() {
   // UI State
   const [currentView, setCurrentView] = useState<'kanban' | 'table'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
+  const [draggingReqId, setDraggingReqId] = useState<number | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+  const [updatingReqIds, setUpdatingReqIds] = useState<Set<number>>(new Set());
 
   // Filters
   const [omFilter, setOmFilter] = useState('all');
@@ -55,6 +59,12 @@ export default function AlmoxarifadoPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRequisicao, setSelectedRequisicao] = useState<Requisicao | null>(null);
   const [editedQuantities, setEditedQuantities] = useState<Record<string, number>>({});
+  const [initialEditedQuantities, setInitialEditedQuantities] = useState<Record<string, number>>({});
+  const [modalSearch, setModalSearch] = useState('');
+  const [showOnlyPendingItems, setShowOnlyPendingItems] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const modalSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const quantityInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Delete Confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -63,6 +73,7 @@ export default function AlmoxarifadoPage() {
 
   // Notifications
   const [hasPending, setHasPending] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [previousPendingCount, setPreviousPendingCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -71,6 +82,15 @@ export default function AlmoxarifadoPage() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       setIsDemoMode(urlParams.get('demo') === 'true');
+    }
+  }, []);
+
+  // Preferência local de som do alerta
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('almoxarifado_sound_enabled');
+    if (saved !== null) {
+      setSoundEnabled(saved === 'true');
     }
   }, []);
 
@@ -216,7 +236,7 @@ export default function AlmoxarifadoPage() {
     setHasPending(pendentes > 0);
 
     // Tocar som quando novos pendentes aparecem
-    if (pendentes > previousPendingCount && pendentes > 0) {
+    if (soundEnabled && pendentes > previousPendingCount && pendentes > 0) {
       if (audioRef.current) {
         audioRef.current.play().catch(() => {
           // Ignora erros de autoplay (políticas do navegador)
@@ -224,7 +244,18 @@ export default function AlmoxarifadoPage() {
       }
     }
     setPreviousPendingCount(pendentes);
-  }, [allData, previousPendingCount]);
+  }, [allData, previousPendingCount, soundEnabled]);
+
+  const handleToggleSound = () => {
+    setSoundEnabled(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('almoxarifado_sound_enabled', String(next));
+      }
+      showToast(next ? 'Som de alerta ativado' : 'Som de alerta desativado', 'info');
+      return next;
+    });
+  };
 
   // Unique OMs
   const uniqueOms = useMemo(() => {
@@ -302,14 +333,28 @@ export default function AlmoxarifadoPage() {
       });
 
       setEditedQuantities(initialQuantities);
+      setInitialEditedQuantities(initialQuantities);
     }
+    setModalSearch('');
+    setShowOnlyPendingItems(false);
+    setHasUnsavedChanges(false);
     setModalOpen(true);
   };
 
   const closeModal = () => {
+    if (hasUnsavedChanges) {
+      const shouldClose = window.confirm(
+        'Existem alterações não salvas. Deseja fechar mesmo assim?'
+      );
+      if (!shouldClose) return;
+    }
     setModalOpen(false);
     setSelectedRequisicao(null);
     setEditedQuantities({});
+    setInitialEditedQuantities({});
+    setModalSearch('');
+    setShowOnlyPendingItems(false);
+    setHasUnsavedChanges(false);
   };
 
   // Agrupar itens por PN quando uma requisição é selecionada
@@ -344,6 +389,69 @@ export default function AlmoxarifadoPage() {
     return Object.values(grouped);
   }, [selectedRequisicao]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    const hasChanges =
+      JSON.stringify(editedQuantities) !== JSON.stringify(initialEditedQuantities);
+    setHasUnsavedChanges(hasChanges);
+  }, [editedQuantities, initialEditedQuantities, modalOpen]);
+
+  const filteredGroupedItems = useMemo(() => {
+    if (!Array.isArray(groupedItems) || groupedItems.length === 0) return [];
+
+    const search = modalSearch.trim().toLowerCase();
+
+    return groupedItems.filter((item: any) => {
+      const itemKey = item.pn;
+      const qtdEntregue = editedQuantities[itemKey] ?? item.quantidade_entregue;
+      const isPending = qtdEntregue < item.quantidade_requisitada;
+
+      if (showOnlyPendingItems && !isPending) return false;
+
+      if (!search) return true;
+      const designadores = Array.isArray(item.designadores) ? item.designadores.join(' ') : '';
+      const searchable = `${item.pn || ''} ${item.descricao || ''} ${designadores}`.toLowerCase();
+      return searchable.includes(search);
+    });
+  }, [groupedItems, editedQuantities, modalSearch, showOnlyPendingItems]);
+
+  const modalSummary = useMemo(() => {
+    if (!Array.isArray(groupedItems) || groupedItems.length === 0) {
+      return { totalItens: 0, pendentes: 0, progresso: 0, projectedStatus: 'pendente' };
+    }
+
+    let totalItens = groupedItems.length;
+    let pendentes = 0;
+    let deliveredGroups = 0;
+
+    groupedItems.forEach((item: any) => {
+      const itemKey = item.pn;
+      const qtdEntregue = editedQuantities[itemKey] ?? item.quantidade_entregue;
+      const isDelivered = qtdEntregue >= item.quantidade_requisitada;
+      if (!isDelivered) pendentes += 1;
+      if (qtdEntregue > 0) deliveredGroups += 1;
+    });
+
+    const progresso = totalItens > 0 ? Math.round(((totalItens - pendentes) / totalItens) * 100) : 0;
+    let projectedStatus = 'pendente';
+    if (pendentes === 0) projectedStatus = 'entregue';
+    else if (deliveredGroups > 0) projectedStatus = 'parcialmente_entregue';
+
+    return { totalItens, pendentes, progresso, projectedStatus };
+  }, [groupedItems, editedQuantities]);
+
+  const handleFillPendingAsDelivered = () => {
+    const next: Record<string, number> = {};
+    groupedItems.forEach((item: any) => {
+      next[item.pn] = item.quantidade_requisitada;
+    });
+    setEditedQuantities(prev => ({ ...prev, ...next }));
+  };
+
+  const handleResetEdits = () => {
+    setEditedQuantities(initialEditedQuantities);
+  };
+
   const getStatusClass = (status: string) => {
     const map: Record<string, string> = {
       pendente: 'bg-red-600 text-red-100',
@@ -362,17 +470,138 @@ export default function AlmoxarifadoPage() {
     return map[status] || status;
   };
 
-  const handleStatusUpdate = async (id: number, status: string) => {
+  const updateRequisicaoStatus = async (
+    id: number,
+    nextStatus: string,
+    options?: { silentSuccess?: boolean }
+  ) => {
+    const current = allData.find(r => r.id === id);
+    if (!current || current.status === nextStatus) return false;
+    const previousStatus = current.status;
+    const previousItems = Array.isArray(current.items) ? current.items : [];
+    const shouldSyncItems = previousItems.length > 0 && ['pendente', 'entregue'].includes(nextStatus);
+    const syncedItems = shouldSyncItems
+      ? previousItems.map((item: any) => ({
+          ...item,
+          quantidade_entregue:
+            nextStatus === 'pendente' ? 0 : Math.max(0, Number(item.quantidade_requisitada) || 0),
+        }))
+      : null;
+
+    setUpdatingReqIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    // Otimista: atualiza local imediatamente para deixar o Kanban fluido e coerente com itens
+    setAllData(prev =>
+      prev.map(r =>
+        r.id === id
+          ? ({
+              ...r,
+              status: nextStatus as any,
+              ...(syncedItems ? { items: syncedItems } : {}),
+            } as any)
+          : r
+      )
+    );
+
     try {
-      await fetchAutenticado(`/api/requisicoes/${id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status }),
-      });
-      showToast(`Status atualizado para '${getStatusLabel(status)}'`, 'success');
-      loadData();
+      if (syncedItems) {
+        await fetchAutenticado(`/api/requisicoes/${id}/itens`, {
+          method: 'PUT',
+          body: JSON.stringify({ items: syncedItems }),
+        });
+      } else {
+        await fetchAutenticado(`/api/requisicoes/${id}/status`, {
+          method: 'PUT',
+          body: JSON.stringify({ status: nextStatus }),
+        });
+      }
+
+      if (selectedRequisicao?.id === id && syncedItems) {
+        setSelectedRequisicao(prev => (prev ? ({ ...prev, status: nextStatus as any, items: syncedItems } as any) : prev));
+        const nextGroupedQuantities: Record<string, number> = {};
+        syncedItems.forEach((item: any) => {
+          const pn = item.pn || 'SEM-CODIGO';
+          nextGroupedQuantities[pn] = (nextGroupedQuantities[pn] || 0) + (item.quantidade_entregue || 0);
+        });
+        setEditedQuantities(nextGroupedQuantities);
+        setInitialEditedQuantities(nextGroupedQuantities);
+        setHasUnsavedChanges(false);
+      }
+
+      if (!options?.silentSuccess) {
+        showToast(`Status atualizado para '${getStatusLabel(nextStatus)}'`, 'success');
+      }
+      return true;
     } catch (error: any) {
+      // Rollback
+      setAllData(prev =>
+        prev.map(r =>
+          r.id === id ? ({ ...r, status: previousStatus as any, ...(previousItems ? { items: previousItems } : {}) } as any) : r
+        )
+      );
+
+      if (selectedRequisicao?.id === id) {
+        setSelectedRequisicao(prev =>
+          prev ? ({ ...prev, status: previousStatus as any, ...(previousItems ? { items: previousItems } : {}) } as any) : prev
+        );
+      }
+
       showToast(error.message || 'Erro ao atualizar status', 'error');
+      return false;
+    } finally {
+      setUpdatingReqIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
+  };
+
+  const handleStatusUpdate = async (id: number, status: string) => {
+    await updateRequisicaoStatus(id, status);
+  };
+
+  const handleCardDragStart = (e: React.DragEvent<HTMLDivElement>, reqId: number) => {
+    e.dataTransfer.setData('text/plain', String(reqId));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingReqId(reqId);
+  };
+
+  const handleCardDragEnd = () => {
+    setDraggingReqId(null);
+    setDragOverStatus(null);
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent<HTMLDivElement>, status: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverStatus(status);
+  };
+
+  const handleColumnDrop = async (e: React.DragEvent<HTMLDivElement>, targetStatus: string) => {
+    e.preventDefault();
+    const reqIdRaw = e.dataTransfer.getData('text/plain');
+    const reqId = Number(reqIdRaw);
+    if (!Number.isFinite(reqId)) {
+      setDraggingReqId(null);
+      setDragOverStatus(null);
+      return;
+    }
+
+    const req = allData.find(r => r.id === reqId);
+    if (req && req.status !== targetStatus) {
+      const moved = await updateRequisicaoStatus(reqId, targetStatus, { silentSuccess: true });
+      if (moved) {
+        showToast(`Requisição #${reqId} movida para '${getStatusLabel(targetStatus)}'`, 'success');
+      }
+    }
+
+    setDraggingReqId(null);
+    setDragOverStatus(null);
   };
 
   const handleSaveItems = async () => {
@@ -420,6 +649,56 @@ export default function AlmoxarifadoPage() {
       showToast(error.message || 'Erro ao salvar itens', 'error');
     }
   };
+
+  const handleQuantityInputKeyDown = useCallback(
+    (itemKey: string, e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const currentIndex = filteredGroupedItems.findIndex((item: any) => item.pn === itemKey);
+      if (currentIndex < 0) return;
+
+      const nextItem = filteredGroupedItems[currentIndex + 1];
+      if (nextItem) {
+        const nextInput = quantityInputRefs.current[nextItem.pn];
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.select();
+        }
+      }
+    },
+    [filteredGroupedItems]
+  );
+
+  useEffect(() => {
+    if (!modalOpen) return;
+
+    const focusTimeout = setTimeout(() => {
+      modalSearchInputRef.current?.focus();
+    }, 80);
+
+    const handleModalHotkeys = (e: KeyboardEvent) => {
+      if (!modalOpen) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (hasUnsavedChanges) {
+          void handleSaveItems();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleModalHotkeys);
+    return () => {
+      clearTimeout(focusTimeout);
+      window.removeEventListener('keydown', handleModalHotkeys);
+    };
+  }, [modalOpen, closeModal, handleSaveItems, hasUnsavedChanges]);
 
   const handleQuickDeliver = (pn: string, qtdRequisitada: number) => {
     setEditedQuantities(prev => ({
@@ -498,34 +777,23 @@ export default function AlmoxarifadoPage() {
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/0 to-cyan-500/0 group-hover:from-purple-500/20 group-hover:to-cyan-500/20 transition-all duration-300" />
               </motion.button>
             )}
-            {hasPending && (
-              <motion.div
-                animate={{
-                  rotate: [0, -15, 15, -15, 15, 0],
-                  scale: [1, 1.1, 1, 1.1, 1],
-                }}
-                transition={{
-                  duration: 0.6,
-                  repeat: Infinity,
-                  repeatDelay: 2,
-                  ease: 'easeInOut',
-                }}
-                className="relative"
-              >
-                <Bell className="w-6 h-6 text-red-500" />
-                <motion.span
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{
-                    duration: 0.4,
-                    repeat: Infinity,
-                    repeatDelay: 2,
-                  }}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center"
-                >
-                  <span className="text-white text-xs font-bold">!</span>
-                </motion.span>
-              </motion.div>
-            )}
+            <motion.button
+              onClick={handleToggleSound}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              className={`relative inline-flex items-center justify-center rounded-xl border px-2.5 py-2 transition-all ${
+                soundEnabled
+                  ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200 hover:border-cyan-400/60'
+                  : 'border-slate-600/60 bg-slate-800/70 text-slate-300 hover:border-slate-500/80'
+              } ${hasPending && soundEnabled ? 'shadow-lg shadow-cyan-500/10' : ''}`}
+              title={soundEnabled ? 'Desativar som de alerta' : 'Ativar som de alerta'}
+              aria-label={soundEnabled ? 'Desativar som de alerta' : 'Ativar som de alerta'}
+            >
+              {soundEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+              {hasPending && soundEnabled && (
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-400" />
+              )}
+            </motion.button>
             <span className="text-slate-300">{user.name || user.username}</span>
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
@@ -692,15 +960,36 @@ export default function AlmoxarifadoPage() {
         {currentView === 'kanban' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { status: 'pendente', title: 'Pendentes', color: 'red' },
-              { status: 'parcialmente_entregue', title: 'Separando', color: 'yellow' },
-              { status: 'entregue', title: 'Entregues', color: 'green' },
+              {
+                status: 'pendente',
+                title: 'Pendentes',
+                baseClass: 'border-red-500/20',
+                activeClass: 'border-red-400/60 ring-2 ring-red-500/25',
+              },
+              {
+                status: 'parcialmente_entregue',
+                title: 'Separando',
+                baseClass: 'border-yellow-500/20',
+                activeClass: 'border-yellow-400/60 ring-2 ring-yellow-500/25',
+              },
+              {
+                status: 'entregue',
+                title: 'Entregues',
+                baseClass: 'border-green-500/20',
+                activeClass: 'border-green-400/60 ring-2 ring-green-500/25',
+              },
             ].map(col => {
               const colData = filteredData.filter(d => d.status === col.status);
+              const isDropTarget = dragOverStatus === col.status;
               return (
                 <div
                   key={col.status}
-                  className={`bg-gradient-to-br from-slate-800 to-slate-900 border border-${col.color}-500/20 rounded-xl p-4 min-h-[500px]`}
+                  onDragOver={e => handleColumnDragOver(e, col.status)}
+                  onDrop={e => handleColumnDrop(e, col.status)}
+                  onDragLeave={() => setDragOverStatus(prev => (prev === col.status ? null : prev))}
+                  className={`bg-gradient-to-br from-slate-800 to-slate-900 border rounded-xl p-4 min-h-[500px] transition-all ${
+                    isDropTarget ? col.activeClass : col.baseClass
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700">
                     <h3 className="text-lg font-bold text-slate-200">{col.title}</h3>
@@ -721,11 +1010,16 @@ export default function AlmoxarifadoPage() {
                           key={req.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
+                          draggable={!updatingReqIds.has(req.id)}
+                          onDragStart={e => handleCardDragStart(e, req.id)}
+                          onDragEnd={handleCardDragEnd}
                           className={`bg-slate-900 border rounded-lg p-4 cursor-pointer transition-colors ${
                             isUrgente(req.created_at)
                               ? 'border-red-500/50 hover:border-red-500'
                               : 'border-purple-500/20 hover:border-purple-500/50'
-                          }`}
+                          } ${
+                            draggingReqId === req.id ? 'opacity-50 ring-2 ring-cyan-400/60' : 'opacity-100'
+                          } ${updatingReqIds.has(req.id) ? 'pointer-events-none opacity-60' : ''}`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-bold text-white">#{req.id}</h4>
@@ -784,6 +1078,9 @@ export default function AlmoxarifadoPage() {
                               </button>
                             )}
                           </div>
+                          {updatingReqIds.has(req.id) && (
+                            <p className="mt-2 text-[11px] text-cyan-300">Atualizando status...</p>
+                          )}
                         </motion.div>
                       ))}
                   </div>
@@ -950,14 +1247,14 @@ export default function AlmoxarifadoPage() {
         open={modalOpen}
         onClose={closeModal}
         title={`Requisição #${selectedRequisicao?.id}`}
-        size="lg"
+        size="xl"
         icon={<Package className="w-5 h-5 text-purple-400" />}
       >
         {selectedRequisicao && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Informações da Requisição */}
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-4 border border-slate-700/50">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     OM
@@ -993,17 +1290,64 @@ export default function AlmoxarifadoPage() {
               </div>
             </div>
 
+            {/* Painel operacional do modal */}
+            <div className="bg-slate-900/45 rounded-xl p-4 border border-slate-700/50 space-y-3">
+              <div className="flex flex-wrap gap-2 text-sm">
+                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[120px]">
+                  <span className="text-slate-400">Itens</span>
+                  <p className="text-white font-bold">{modalSummary.totalItens}</p>
+                </div>
+                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[120px]">
+                  <span className="text-slate-400">Pendentes</span>
+                  <p className="text-amber-300 font-bold">{modalSummary.pendentes}</p>
+                </div>
+                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[120px]">
+                  <span className="text-slate-400">Concluído</span>
+                  <p className="text-emerald-300 font-bold">{modalSummary.progresso}%</p>
+                </div>
+                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[150px]">
+                  <span className="text-slate-400">Status ao salvar</span>
+                  <p className="text-cyan-300 font-bold">{getStatusLabel(modalSummary.projectedStatus)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
+                <div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      ref={modalSearchInputRef}
+                      type="text"
+                      value={modalSearch}
+                      onChange={e => setModalSearch(e.target.value)}
+                      placeholder="Buscar item por PN, designador ou descrição..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+                    />
+                  </div>
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm text-slate-300 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyPendingItems}
+                    onChange={e => setShowOnlyPendingItems(e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-900"
+                  />
+                  Mostrar apenas pendentes
+                </label>
+              </div>
+            </div>
+
             {/* Itens da Requisição */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Package className="w-5 h-5 text-purple-400" />
                 <h4 className="text-lg font-bold text-white">Itens da Requisição</h4>
                 <span className="ml-auto text-sm text-slate-400">
-                  {groupedItems.length} item(ns) agrupado(s)
+                  {filteredGroupedItems.length} item(ns) exibido(s)
                 </span>
               </div>
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {groupedItems.map((groupedItem: any, idx: number) => {
+                {filteredGroupedItems.map((groupedItem: any, idx: number) => {
                   const itemKey = groupedItem.pn;
                   const qtdEntregue = editedQuantities[itemKey] ?? groupedItem.quantidade_entregue;
                   const isDelivered = qtdEntregue >= groupedItem.quantidade_requisitada;
@@ -1105,14 +1449,15 @@ export default function AlmoxarifadoPage() {
                       </div>
 
                       {/* Controles de entrega */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                        <div>
                           <label className="block text-xs font-semibold text-slate-400 mb-1">
                             Quantidade Entregue
                           </label>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <input
+                            ref={el => {
+                              quantityInputRefs.current[itemKey] = el;
+                            }}
                             type="number"
                             min="0"
                             max={groupedItem.quantidade_requisitada}
@@ -1127,9 +1472,12 @@ export default function AlmoxarifadoPage() {
                               );
                               setEditedQuantities(prev => ({ ...prev, [itemKey]: value }));
                             }}
+                            onKeyDown={e => handleQuantityInputKeyDown(itemKey, e)}
                             disabled={isDelivered}
-                            className="w-24 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            className="w-full md:w-36 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                           />
+                        </div>
+                        <div className="flex items-center md:justify-end gap-2">
                           {!isDelivered && (
                             <button
                               onClick={() => {
@@ -1138,10 +1486,11 @@ export default function AlmoxarifadoPage() {
                                   [itemKey]: groupedItem.quantidade_requisitada,
                                 }));
                               }}
-                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-3 py-2 rounded-lg transition-all shadow-lg hover:shadow-green-500/20"
-                              title="Entregar quantidade total"
+                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-3 py-2 rounded-lg transition-all shadow-lg hover:shadow-green-500/20 text-sm whitespace-nowrap"
+                              title="Marcar entrega total deste item"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                              Entregar total
                             </button>
                           )}
                         </div>
@@ -1153,14 +1502,29 @@ export default function AlmoxarifadoPage() {
             </div>
 
             {/* Ações */}
-            <div className="border-t border-slate-700/50 pt-4 flex justify-end gap-3">
+            <div className="border-t border-slate-700/50 pt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs">
+                {hasUnsavedChanges ? (
+                  <span className="text-amber-300">Alterações pendentes de salvamento</span>
+                ) : (
+                  <span className="text-slate-400">Sem alterações pendentes</span>
+                )}
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="outline" onClick={handleFillPendingAsDelivered}>
+                  Marcar tudo como entregue
+                </Button>
+                <Button variant="outline" onClick={handleResetEdits} disabled={!hasUnsavedChanges}>
+                  Desfazer alterações
+                </Button>
               <Button variant="outline" onClick={closeModal}>
                 Cancelar
               </Button>
-              <Button variant="success" onClick={handleSaveItems}>
+              <Button variant="success" onClick={handleSaveItems} disabled={!hasUnsavedChanges}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Salvar Entregas
               </Button>
+              </div>
             </div>
           </div>
         )}
