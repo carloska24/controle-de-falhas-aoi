@@ -11,7 +11,7 @@
     "probe:intranet": "node scripts/probe-intranet.js",
     "test:auth": "node tests/auth_cookie_flow.test.js",
     "test": "jest",
-    "build": "npx prisma generate"
+    "build": "npx prisma generate && npx prisma db push --accept-data-loss && node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
