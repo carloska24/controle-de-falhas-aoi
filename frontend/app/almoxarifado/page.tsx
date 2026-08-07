@@ -657,7 +657,7 @@ export default function AlmoxarifadoPage() {
       const currentIndex = filteredGroupedItems.findIndex((item: any) => item.pn === itemKey);
       if (currentIndex < 0) return;
 
-      const nextItem = filteredGroupedItems[currentIndex + 1];
+      const nextItem = filteredGroupedItems[currentIndex + 1] as any;
       if (nextItem) {
         const nextInput = quantityInputRefs.current[nextItem.pn];
         if (nextInput) {
@@ -1011,7 +1011,7 @@ export default function AlmoxarifadoPage() {
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           draggable={!updatingReqIds.has(req.id)}
-                          onDragStart={e => handleCardDragStart(e, req.id)}
+                          onDragStart={(e: any) => handleCardDragStart(e, req.id)}
                           onDragEnd={handleCardDragEnd}
                           className={`bg-slate-900 border rounded-lg p-4 cursor-pointer transition-colors ${
                             isUrgente(req.created_at)
