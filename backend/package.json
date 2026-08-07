@@ -10,7 +10,8 @@
     "smoke:rbac": "node scripts/smoke-rbac-intranet.js",
     "probe:intranet": "node scripts/probe-intranet.js",
     "test:auth": "node tests/auth_cookie_flow.test.js",
-    "test": "jest"
+    "test": "jest",
+    "build": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
