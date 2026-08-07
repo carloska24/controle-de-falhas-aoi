@@ -56,10 +56,9 @@ npm run dev
 
 ```
 controle-de-falhas-aoi/
-├── backend/           # API Express + SQLite
+├── backend/           # API Express + PostgreSQL (Prisma)
 │   ├── server.js      # Servidor principal
-│   ├── database.js    # Configuração do SQLite
-│   └── queries/       # Queries de banco de dados
+│   └── src/           # Código fonte (rotas, controllers, etc)
 ├── frontend/          # Frontend legado (HTML/CSS/JS)
 ├── nextjs-frontend/   # Frontend moderno (Next.js)
 └── Comandos Windows10/ # Scripts de otimização do Windows
@@ -89,7 +88,7 @@ controle-de-falhas-aoi/
 ### Backend
 
 - Node.js + Express
-- SQLite3
+- PostgreSQL + Prisma ORM
 - JWT Authentication
 - PM2 / NSSM (serviço Windows)
 

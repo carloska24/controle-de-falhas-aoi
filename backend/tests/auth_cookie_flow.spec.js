@@ -1,11 +1,9 @@
 const request = require('supertest');
-const { initApp } = require('../server');
+const { app } = require('../server');
 
 describe('Auth cookie flow', () => {
-  let app;
   beforeAll(async () => {
-    // Inicializa o app (configura DB, tabelas, etc.)
-    app = await initApp();
+    // app is already exported
   });
 
   test('login sets HttpOnly cookie and /api/auth/me returns user; logout clears session', async () => {
