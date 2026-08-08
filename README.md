@@ -29,16 +29,18 @@
 
 ---
 
-## 📸 Visão Geral
+## 📸 Telas do Sistema
 
 | Tela | Descrição |
 |:-----|:----------|
-| 🔐 Login | Autenticação com validação, animações e design responsivo |
-| ⚙️ Operador | Lançamento de falhas em tempo real com timer de OM |
-| 📊 Qualidade | Dashboard com gráficos de pareto, trending e métricas |
+| 🔐 Login | Autenticação com animações Framer Motion e design responsivo |
+| ⚙️ Operador | Lançamento de falhas em tempo real com timer de OM (pausa/retomada) |
+| 📊 Qualidade | Dashboard com gráficos Pareto, trending e métricas de produção |
 | 🔧 Reparo | Fila de itens com defeito para equipe de reparo |
 | 📦 Almoxarifado | Gerenciamento de requisições de materiais |
-| 🛡️ Admin | Gestão de usuários, roles e dados do sistema |
+| 🏭 SMT | Conferência de produção para líderes SMT |
+| 🛡️ Admin | Gestão completa de usuários, roles e dados do sistema |
+| 📈 Relatórios | Relatórios avançados de qualidade e reparos com exportação em PDF |
 
 ---
 
@@ -47,15 +49,24 @@
 ### Backend
 <div align="left">
   <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=nodejs,express,ts,postgres,prisma&theme=dark" />
+    <img src="https://skillicons.dev/icons?i=nodejs,express,postgres,prisma&theme=dark" />
   </a>
 </div>
 
-- **Node.js** + **Express 5** — API REST robusta
-- **Prisma ORM 7** + **PostgreSQL** — Banco relacional com adapter nativo
-- **JWT** + **bcrypt** — Autenticação segura com HttpOnly cookies
-- **Zod** — Validação de schemas e inputs
-- **Express Rate Limit** — Proteção contra brute force
+| Tecnologia | Versão | Uso |
+|:-----------|:-------|:----|
+| **Node.js** | 18+ | Runtime JavaScript |
+| **Express** | ^5.1.0 | Framework HTTP |
+| **Prisma ORM** | ^7.4.1 | ORM com adapter nativo (`@prisma/adapter-pg`) |
+| **PostgreSQL** | — | Banco de dados relacional |
+| **JWT** (`jsonwebtoken`) | ^9.0.2 | Autenticação com HttpOnly cookies |
+| **bcrypt** | ^6.0.0 | Hash seguro de senhas |
+| **Zod** | ^3.25.76 | Validação de schemas e inputs |
+| **express-rate-limit** | ^7.5.1 | Proteção contra brute force |
+| **morgan** | ^1.10.1 | Logger de requisições HTTP |
+| **cors** | ^2.8.5 | Controle de CORS por variável de ambiente |
+| **cookie-parser** | ^1.4.6 | Leitura de HttpOnly cookies |
+| **dotenv** | ^16.6.1 | Gestão de variáveis de ambiente |
 
 ### Frontend
 <div align="left">
@@ -64,13 +75,23 @@
   </a>
 </div>
 
-- **Next.js 16** + **React 18** — Framework moderno com App Router
-- **TypeScript** — Tipagem estática em todo o projeto
-- **Tailwind CSS** + **Framer Motion** — Design responsivo com animações fluidas
-- **TanStack Table** + **Chart.js** — Tabelas avançadas e gráficos interativos
-- **jsPDF** + **html2canvas** — Exportação de relatórios em PDF
+| Tecnologia | Versão | Uso |
+|:-----------|:-------|:----|
+| **Next.js** | ^16.3.0 | Framework React com App Router |
+| **React** | ^18.3.1 | Biblioteca de UI |
+| **TypeScript** | ^5 | Tipagem estática em todo o projeto |
+| **Tailwind CSS** | ^3.4.4 | Estilização utilitária responsiva |
+| **Framer Motion** | ^11.3.5 | Animações e transições |
+| **TanStack Table** | ^8.21.3 | Tabelas avançadas com sorting e filtros |
+| **Chart.js** + **react-chartjs-2** | ^4.4.4 | Gráficos interativos (Pareto, Linha) |
+| **chartjs-adapter-date-fns** | ^3.0.0 | Adaptador de datas para os gráficos |
+| **jsPDF** | ^3.0.4 | Exportação de relatórios em PDF |
+| **html2canvas** | ^1.4.1 | Captura de tela para gerar PDF |
+| **lucide-react** | ^0.400.0 | Biblioteca de ícones |
+| **date-fns** | ^4.1.0 | Manipulação de datas |
+| **clsx** + **tailwind-merge** | — | Utilitários de classes CSS |
 
-### Infraestrutura
+### Infraestrutura e Testes
 <div align="left">
   <a href="https://skillicons.dev">
     <img src="https://skillicons.dev/icons?i=vercel,git,github&theme=dark" />
@@ -78,57 +99,73 @@
 </div>
 
 - **Vercel** — Deploy automático do frontend com CI/CD via GitHub
-- **Render** — Hospedagem do backend com PostgreSQL gerenciado
-- **GitHub Actions** / **Auto Deploy** — Pipeline automático a cada push
+- **Render** — Hospedagem do backend Node.js com PostgreSQL gerenciado
+- **Jest** + **Supertest** — Testes automatizados da API
+- **Auto Deploy** — Push na `main` = novo deploy automático
 
 ---
 
-## 🏗️ Arquitetura do Sistema
+## 🏗️ Arquitetura do Projeto
 
 ```
 controle-de-falhas-aoi/
 │
-├── 📁 backend/                 # API Node.js + Express
-│   ├── server.js               # Entry point com CORS, middlewares
+├── 📁 backend/
+│   ├── server.js                   # Entry point: CORS, middlewares, rotas
 │   ├── prisma/
-│   │   ├── schema.prisma       # Modelos do banco de dados
-│   │   └── seed.js             # Seed com usuários iniciais
+│   │   ├── schema.prisma           # Modelos do banco de dados
+│   │   ├── seed.js                 # Seed com usuários iniciais
+│   │   └── migrations/             # Histórico de migrações
+│   ├── prisma.config.ts            # Configuração do Prisma v7
 │   └── src/
-│       ├── controllers/        # Lógica de negócio
-│       ├── routes/             # Definição dos endpoints
-│       ├── middleware/         # Auth (JWT), Logger, RBAC
-│       ├── config/             # Configuração do Prisma Client
-│       └── utils/              # Schemas Zod, helpers
+│       ├── controllers/            # Lógica de negócio
+│       │   ├── authController.js   # Login / Logout / Me
+│       │   ├── omController.js     # Timer de OM (start/pause/resume/finish)
+│       │   ├── registroController.js # CRUD de falhas
+│       │   ├── requisicaoController.js # Gestão de requisições
+│       │   ├── userController.js   # CRUD de usuários (admin)
+│       │   └── debugController.js  # Geração de dados demo
+│       ├── routes/                 # Definição dos endpoints
+│       ├── middleware/             # Auth (JWT), RBAC, Logger
+│       ├── config/
+│       │   └── prisma.js           # Prisma Client com adapter pg
+│       └── utils/
+│           └── schemas.js          # Validações Zod
 │
-└── 📁 frontend/                # Next.js App Router
+└── 📁 frontend/
     ├── app/
-    │   ├── login/              # Tela de autenticação
-    │   ├── operador/           # Painel do operador
-    │   ├── qualidade/          # Dashboard de qualidade
-    │   ├── reparo/             # Fila de reparos
-    │   ├── almoxarifado/       # Gestão de estoque
-    │   ├── admin/              # Painel administrativo
-    │   └── relatorios/         # Relatórios avançados
-    ├── components/             # Componentes reutilizáveis
-    ├── hooks/                  # Custom React Hooks
-    ├── lib/                    # Configuração da API, utilitários
-    └── types/                  # Types e interfaces TypeScript
+    │   ├── login/                  # Tela de autenticação animada
+    │   ├── operador/               # Painel do operador + timer de OM
+    │   ├── qualidade/              # Dashboard com gráficos
+    │   ├── reparo/                 # Fila de reparos
+    │   ├── almoxarifado/           # Gestão de estoque/requisições
+    │   ├── admin/                  # Painel administrativo
+    │   ├── smt/                    # Conferência SMT
+    │   └── relatorios/             # Relatórios de qualidade e reparo
+    ├── components/                 # Componentes reutilizáveis
+    ├── hooks/                      # Custom Hooks (useToast, useDebounce, useOptimisticUpdate)
+    ├── lib/
+    │   └── api.ts                  # Cliente HTTP centralizado com gestão de auth
+    ├── types/                      # Types e interfaces TypeScript
+    └── utils/                      # Funções utilitárias
 ```
 
 ---
 
-## 🔐 Sistema de Autenticação e Roles
+## 🔐 Sistema de Autenticação e RBAC
 
-O sistema implementa **RBAC (Role-Based Access Control)** completo:
+**RBAC (Role-Based Access Control)** com 6 perfis de acesso:
 
 | Role | Acesso |
 |:-----|:-------|
 | `admin` | Acesso total — usuários, dados, relatórios, debug |
-| `operator` | Lançamento de falhas e gerenciamento de OMs |
+| `operator` | Lançamento de falhas, gerenciamento de OMs, requisições |
 | `qualidade` | Dashboards, relatórios e métricas de qualidade |
 | `reparo` | Fila de itens com defeito para reparo |
 | `almoxarifado` | Requisições e gestão de materiais |
-| `lider_smt` | Conferência SMT |
+| `lider_smt` | Conferência SMT + edição de registros |
+
+Autenticação via **JWT** armazenado em **HttpOnly cookie** — protegido contra XSS.
 
 ---
 
@@ -137,7 +174,7 @@ O sistema implementa **RBAC (Role-Based Access Control)** completo:
 ### Pré-requisitos
 
 - Node.js 18+
-- PostgreSQL instalado (ou use o banco do Render com `.env`)
+- PostgreSQL instalado localmente (ou use `DATABASE_URL` apontando para Render)
 - Git
 
 ### 1. Clone o repositório
@@ -147,7 +184,7 @@ git clone https://github.com/carloska24/controle-de-falhas-aoi.git
 cd controle-de-falhas-aoi
 ```
 
-### 2. Configure o Backend
+### 2. Configure e inicie o Backend
 
 ```bash
 cd backend
@@ -165,39 +202,29 @@ JWT_SECRET=seu-segredo-super-forte-aqui
 ```
 
 ```bash
-# Instale as dependências
-npm install
-
-# Crie as tabelas e popule o banco
-npm run build
-
-# Inicie o servidor de desenvolvimento
-npm run dev
+npm install          # Instala dependências
+npm run build        # Gera Prisma Client + cria tabelas + seed
+npm run dev          # Inicia com nodemon (hot reload)
 ```
 
-### 3. Configure o Frontend
+### 3. Configure e inicie o Frontend
 
 ```bash
 cd ../frontend
-
-# Crie o arquivo de variáveis de ambiente
-# Em desenvolvimento, o proxy do Next.js já aponta para localhost:3001
-# Não precisa de NEXT_PUBLIC_API_URL em dev
-
-# Instale as dependências
 npm install
-
-# Inicie o servidor
-npm run dev
+npm run dev          # Inicia na porta 3000
 ```
+
+> Em desenvolvimento, o Next.js faz proxy automático de `/api/*` para `localhost:3001`. Não precisa de `NEXT_PUBLIC_API_URL`.
 
 ### 4. Acesse o sistema
 
 | Serviço | URL |
 |:--------|:----|
 | Frontend | http://localhost:3000 |
-| Backend | http://localhost:3001 |
+| Backend API | http://localhost:3001 |
 | Health Check | http://localhost:3001/health |
+| Health DB | http://localhost:3001/health/db |
 
 ---
 
@@ -211,16 +238,16 @@ npm run dev
 | Build Command | `npm install && npm run build` |
 | Start Command | `npm start` |
 
-**Variáveis de Ambiente obrigatórias:**
+**Variáveis de Ambiente:**
 
 | Variável | Descrição |
 |:---------|:----------|
 | `DATABASE_URL` | URL do PostgreSQL do Render |
 | `JWT_SECRET` | Chave secreta para tokens JWT |
 | `NODE_ENV` | `production` |
-| `CORS_ORIGIN` | URL do frontend na Vercel |
+| `CORS_ORIGIN` | URL exata do frontend na Vercel (sem barra final) |
 | `COOKIE_SECURE` | `true` |
-| `COOKIE_SAMESITE` | `None` |
+| `COOKIE_SAMESITE` | `None` (obrigatório para cross-origin com cookies) |
 
 ### Frontend (Vercel)
 
@@ -231,44 +258,80 @@ npm run dev
 
 **Variável de Ambiente:**
 
-| Variável | Descrição |
-|:---------|:----------|
-| `NEXT_PUBLIC_API_URL` | URL do backend no Render |
+| Variável | Valor |
+|:---------|:------|
+| `NEXT_PUBLIC_API_URL` | URL do backend no Render (ex: `https://seu-backend.onrender.com`) |
 
 ---
 
 ## 📡 Endpoints da API
 
+### Auth
 | Método | Endpoint | Descrição | Auth |
-|:-------|:---------|:----------|:-----|
-| `POST` | `/api/auth/login` | Login do usuário | ❌ |
+|:-------|:---------|:----------|:----:|
+| `POST` | `/api/auth/login` | Login com username e senha | ❌ |
 | `POST` | `/api/auth/logout` | Logout + limpeza de dados demo | ✅ |
-| `GET` | `/api/auth/me` | Dados do usuário autenticado | ✅ |
-| `GET` | `/api/registros` | Lista todos os registros | ✅ |
-| `POST` | `/api/registros` | Cria novo registro de falha | ✅ |
-| `PUT` | `/api/registros/:id` | Atualiza registro | ✅ |
-| `DELETE` | `/api/registros/:id` | Remove registro | ✅ |
-| `GET` | `/api/om/:omNumber` | Dados de uma OM | ✅ |
+| `GET` | `/api/auth/me` | Retorna dados do usuário autenticado | ✅ |
+
+### Registros (Falhas)
+| Método | Endpoint | Descrição | Auth |
+|:-------|:---------|:----------|:----:|
+| `GET` | `/api/registros` | Lista registros (com filtros) | ✅ |
+| `POST` | `/api/registros/batch` | Cria registros em lote | ✅ |
+| `PUT` | `/api/registros/:id` | Atualiza um registro | ✅ |
+| `PUT` | `/api/registros/:id/status` | Atualiza status de um registro | ✅ |
+| `PUT` | `/api/registros/status/:status` | Atualiza status em lote | ✅ |
+| `DELETE` | `/api/registros/:id` | Remove um registro | ✅ |
+| `DELETE` | `/api/registros` | Remove registros em lote | ✅ |
+
+### OMs (Ordens de Manufatura)
+| Método | Endpoint | Descrição | Auth |
+|:-------|:---------|:----------|:----:|
 | `POST` | `/api/om/start` | Inicia timer de OM | ✅ |
-| `GET` | `/api/requisicoes` | Lista requisições de material | ✅ |
-| `GET` | `/api/users` | Lista usuários (admin) | ✅ 🔒 |
-| `GET` | `/health` | Health check do servidor | ❌ |
-| `GET` | `/health/db` | Health check do banco | ❌ |
+| `GET` | `/api/om/:omNumber` | Busca dados de uma OM | ✅ |
+| `PUT` | `/api/om/pause` | Pausa timer de OM | ✅ |
+| `PUT` | `/api/om/resume` | Retoma timer de OM pausada | ✅ |
+| `PUT` | `/api/om/finalizar` | Finaliza OM | ✅ |
+| `GET` | `/api/oms` | Lista OMs ativas ou pausadas | ✅ |
+| `GET` | `/api/oms/finalizadas` | Lista OMs finalizadas | ✅ |
+| `GET` | `/api/om-time/:omNumber` | Tempo decorrido de uma OM | ✅ |
+| `GET` | `/api/relatorio-falhas` | Relatório de falhas por OM | ✅ 🔒 |
+
+### Requisições
+| Método | Endpoint | Descrição | Auth |
+|:-------|:---------|:----------|:----:|
+| `GET` | `/api/requisicoes` | Lista requisições | ✅ |
+| `POST` | `/api/requisicoes` | Cria requisição de material | ✅ |
+| `PUT` | `/api/requisicoes/:id/status` | Atualiza status | ✅ |
+| `PUT` | `/api/requisicoes/:id/itens` | Atualiza itens | ✅ |
+| `DELETE` | `/api/requisicoes/:id` | Remove requisição | ✅ |
+
+### Usuários (Admin)
+| Método | Endpoint | Descrição | Auth |
+|:-------|:---------|:----------|:----:|
+| `GET` | `/api/users` | Lista usuários | ✅ 🔒 |
+| `POST` | `/api/users` | Cria usuário | ✅ 🔒 |
+| `PUT` | `/api/users/:id` | Atualiza usuário | ✅ 🔒 |
+| `DELETE` | `/api/users/:id` | Remove usuário | ✅ 🔒 |
+
+> 🔒 = apenas `admin`
 
 ---
 
 ## ✨ Funcionalidades em Destaque
 
-- 🔐 **Autenticação JWT** com HttpOnly cookies — seguro contra XSS
-- ⏱️ **Timer de OM em tempo real** com suporte a pausas
-- 📊 **Dashboard Pareto** — identifica os defeitos mais frequentes
-- 📈 **Gráfico de Trending** — evolução temporal das falhas
-- 🖨️ **Exportação de Relatórios** em PDF com html2canvas + jsPDF
-- 🎨 **Animações** com Framer Motion em toda a interface
-- 📱 **Design Responsivo** — funciona em mobile, tablet e desktop
-- 🛡️ **Rate Limiting** e validação de inputs com Zod
-- 🌱 **Seed automático** no deploy — banco já sobe com usuário admin
-- 🔄 **CI/CD automático** — push na main = novo deploy
+- 🔐 **Autenticação JWT** com HttpOnly cookies — seguro contra XSS e CSRF
+- ⏱️ **Timer de OM em tempo real** com suporte a pausas e retomada
+- 📊 **Gráfico de Pareto** — identifica os defeitos mais frequentes
+- 📈 **Gráfico de Trending** — evolução temporal das falhas por turno
+- 🖨️ **Exportação de Relatórios** em PDF via jsPDF + html2canvas
+- 🎨 **Animações** com Framer Motion em toda a interface (login, cards, gráficos)
+- 📱 **Design Responsivo** — funciona em desktop, tablet e mobile
+- 🛡️ **Rate Limiting** no endpoint de login — proteção contra brute force
+- ✅ **Validação de inputs** com Zod — schemas tipados no backend
+- ⚡ **Optimistic Updates** — UI atualiza antes da confirmação do servidor
+- 🌱 **Seed automático** no build — banco já sobe com usuário admin
+- 🧪 **Testes automatizados** com Jest + Supertest
 
 ---
 
