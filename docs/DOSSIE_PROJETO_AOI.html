@@ -1,259 +1,1121 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dossiê Técnico - Controle de Falhas AOI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dossiê Técnico — Controle de Falhas AOI | CADService</title>
+  <meta name="description" content="Dossiê Técnico e Arquitetural do Sistema de Controle de Falhas AOI — CADService Produtos Eletrônicos." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
   <style>
-    :root {
-      --bg: #0b1020;
-      --card: #121a33;
-      --text: #e9eefc;
-      --muted: #b6c2ea;
-      --line: #2a3768;
-      --accent: #6aa3ff;
-      --ok: #5dd39e;
-      --warn: #ffcc66;
-      --crit: #ff7f7f;
-    }
-    * { box-sizing: border-box; }
-    body {
+    /* ==========================================================================
+       DESIGN SYSTEM: INDUSTRIAL UTILITARIAN / HIGH-TECH ELECTRONIC INSPECTION
+       Target: CADService Produtos Eletrônicos — AOI Quality Control System
+       ========================================================================== */
+
+    *, *::before, *::after {
+      box-sizing: border-box;
       margin: 0;
-      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
-      background: linear-gradient(180deg, var(--bg), #0d1330);
-      color: var(--text);
-      line-height: 1.55;
+      padding: 0;
     }
-    .container {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 32px 20px 60px;
+
+    :root {
+      /* Palette: Slate PCB Dark Mode */
+      --bg-base:        #060911;
+      --bg-surface:     #0c1220;
+      --bg-card:        #121a2d;
+      --bg-card-hover:  #18233c;
+      --bg-input:       #0a0f1c;
+
+      /* Borders & Lines */
+      --border-dim:     #172338;
+      --border-bright:  #243554;
+      --border-accent:  #00f0ff;
+
+      /* Primary Industrial Colors */
+      --cyan:           #00f0ff;
+      --cyan-dim:       rgba(0, 240, 255, 0.12);
+      --cyan-glow:      rgba(0, 240, 255, 0.25);
+      
+      --amber:          #ffb700;
+      --amber-dim:      rgba(255, 183, 0, 0.12);
+      
+      --emerald:        #00e699;
+      --emerald-dim:    rgba(0, 230, 153, 0.12);
+      
+      --crimson:        #ff3b5c;
+      --crimson-dim:    rgba(255, 59, 92, 0.14);
+
+      --purple:         #a855f7;
+
+      /* Typography Colors */
+      --text-main:      #e2e8f0;
+      --text-muted:     #8fa0bc;
+      --text-dim:       #4c607e;
+      --text-inverse:   #060911;
+
+      /* Fonts */
+      --font-heading:   'Space Grotesk', -apple-system, sans-serif;
+      --font-sans:      'Inter', system-ui, sans-serif;
+      --font-mono:      'JetBrains Mono', monospace;
+
+      /* Geometry & Elevation */
+      --radius-sm:      4px;
+      --radius-md:      8px;
+      --radius-lg:      14px;
+      --sidebar-w:      280px;
+
+      --shadow-hud:     0 0 30px rgba(0, 240, 255, 0.08);
+      --shadow-card:    0 8px 32px rgba(0, 0, 0, 0.45);
     }
-    .hero {
-      background: rgba(18, 26, 51, 0.85);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 22px;
-      margin-bottom: 22px;
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-base);
     }
-    h1, h2, h3 { margin: 0 0 12px; line-height: 1.2; }
-    h1 { font-size: 1.8rem; }
-    h2 {
-      font-size: 1.25rem;
-      margin-top: 24px;
-      border-bottom: 1px solid var(--line);
-      padding-bottom: 8px;
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+      /* Subtle Industrial Grid Background Pattern */
+      background-image: 
+        linear-gradient(to right, rgba(23, 35, 56, 0.4) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(23, 35, 56, 0.4) 1px, transparent 1px);
+      background-size: 32px 32px;
     }
-    h3 { font-size: 1rem; margin-top: 18px; }
-    p { margin: 0 0 12px; color: var(--muted); }
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      font-size: 0.8rem;
-      margin-right: 8px;
-      color: var(--text);
-      background: rgba(106, 163, 255, 0.12);
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+    /* ==========================================================================
+       SIDEBAR NAVIGATION (HUD TELEMETRY STYLE)
+       ========================================================================== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-bright);
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
     }
-    .grid {
+
+    .sidebar-header {
+      padding: 24px 20px 18px;
+      border-bottom: 1px solid var(--border-dim);
+      background: rgba(6, 9, 17, 0.6);
+    }
+
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .brand-tag::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .brand-title {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.25;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .sidebar-nav {
+      padding: 16px 12px;
+      flex: 1;
+    }
+
+    .nav-label {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 14px 12px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border-color: rgba(0, 240, 255, 0.2);
+    }
+
+    .nav-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .nav-item:hover .nav-num, .nav-item.active .nav-num {
+      color: var(--cyan);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      background: rgba(6, 9, 17, 0.4);
+    }
+
+    .sidebar-footer strong { color: var(--text-muted); }
+
+    /* ==========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================== */
+    .main-wrapper {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* HERO BANNER - INDUSTRIAL COMMAND HUD */
+    .hero-banner {
+      position: relative;
+      padding: 56px 64px 44px;
+      background: linear-gradient(135deg, #0b1222 0%, #060911 100%);
+      border-bottom: 1px solid var(--border-bright);
+      overflow: hidden;
+    }
+
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 450px; height: 100%;
+      background: 
+        radial-gradient(circle at 80% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(circle at 50% 80%, rgba(255, 183, 0, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .hero-hud-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      font-weight: 600;
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(26px, 3.5vw, 40px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin-bottom: 28px;
+    }
+
+    .hero-spec-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-dim);
+    }
+
+    .spec-node {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .spec-key {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .spec-val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .spec-val.highlight { color: var(--cyan); }
+
+    /* CONTENT BODY */
+    .content-container {
+      padding: 48px 64px 80px;
+      max-width: 1120px;
+    }
+
+    /* SECTIONS & HEADINGS */
+    .doc-section {
+      margin-bottom: 64px;
+      scroll-margin-top: 24px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-bright);
+    }
+
+    .section-code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--cyan);
+      margin: 28px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3::before {
+      content: '//';
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 14.5px;
+      margin-bottom: 16px;
+    }
+
+    ul, ol {
+      color: var(--text-muted);
+      font-size: 14.5px;
+      padding-left: 20px;
+      margin-bottom: 20px;
+    }
+
+    li { margin-bottom: 8px; }
+    li strong { color: var(--text-main); }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--cyan);
+      background: rgba(10, 15, 28, 0.8);
+      border: 1px solid var(--border-bright);
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ==========================================================================
+       CARDS GRID — HIGH-TECH INDUSTRIAL MODULES
+       ========================================================================== */
+    .card-grid {
       display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      margin: 14px 0;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
     }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px;
-      background: rgba(18, 26, 51, 0.7);
+
+    .tech-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      position: relative;
+      transition: all 0.2s ease;
     }
-    ul { margin: 8px 0 14px 20px; }
-    li { margin: 6px 0; color: var(--muted); }
+
+    .tech-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-bright);
+      box-shadow: var(--shadow-card);
+      transform: translateY(-2px);
+    }
+
+    .tech-card-badge {
+      position: absolute;
+      top: 16px; right: 16px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+    }
+
+    .tech-card-icon {
+      font-size: 26px;
+      margin-bottom: 12px;
+    }
+
+    .tech-card-title {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .tech-card-body {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       INDUSTRIAL DATA TABLES
+       ========================================================================== */
+    .table-container {
+      overflow-x: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-md);
+      margin: 20px 0 28px;
+      box-shadow: var(--shadow-card);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0 16px;
-      font-size: 0.95rem;
-    }
-    th, td {
-      border: 1px solid var(--line);
-      padding: 8px;
+      font-size: 13.5px;
       text-align: left;
+    }
+
+    thead {
+      background: #080e1b;
+      border-bottom: 2px solid var(--border-bright);
+    }
+
+    th {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 12px 18px;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-dim);
+      color: var(--text-muted);
       vertical-align: top;
     }
-    th { background: rgba(106, 163, 255, 0.14); }
-    code {
-      background: rgba(10, 16, 34, 0.8);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 1px 6px;
-      color: #d6e3ff;
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    tbody tr:hover td {
+      background: rgba(24, 35, 60, 0.4);
     }
-    .risk-crit { color: var(--crit); font-weight: 600; }
-    .risk-high { color: #ff9d9d; font-weight: 600; }
-    .risk-med { color: var(--warn); font-weight: 600; }
-    .risk-low { color: var(--ok); font-weight: 600; }
-    .footer-note {
-      margin-top: 24px;
-      padding: 12px;
-      border: 1px dashed var(--line);
-      border-radius: 10px;
-      color: var(--muted);
+
+    td:first-child {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* Endpoint Method Badges */
+    .method-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      display: inline-block;
+      letter-spacing: 0.05em;
+      text-align: center;
+      min-width: 54px;
+    }
+
+    .method-get    { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(0, 230, 153, 0.3); }
+    .method-post   { background: var(--cyan-dim);    color: var(--cyan);    border: 1px solid rgba(0, 240, 255, 0.3); }
+    .method-put    { background: var(--amber-dim);   color: var(--amber);   border: 1px solid rgba(255, 183, 0, 0.3); }
+    .method-delete { background: var(--crimson-dim); color: var(--crimson); border: 1px solid rgba(255, 59, 92, 0.3); }
+
+    /* ==========================================================================
+       RISK SEVERITY TAGS & STATUS PANEL
+       ========================================================================== */
+    .risk-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 16px 0 24px;
+    }
+
+    .risk-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+    }
+
+    .risk-tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .tag-crit { background: var(--crimson-dim); color: var(--crimson); border: 1px solid rgba(255, 59, 92, 0.4); }
+    .tag-high { background: rgba(255, 120, 80, 0.14); color: #ff7850; border: 1px solid rgba(255, 120, 80, 0.3); }
+    .tag-med  { background: var(--amber-dim);   color: var(--amber);   border: 1px solid rgba(255, 183, 0, 0.3); }
+    .tag-low  { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(0, 230, 153, 0.3); }
+
+    .risk-content {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    .risk-content strong {
+      color: #fff;
+    }
+
+    .status-done {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--emerald);
+      background: var(--emerald-dim);
+      border: 1px solid rgba(0, 230, 153, 0.2);
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+      margin-left: 8px;
+    }
+
+    /* ==========================================================================
+       ROADMAP STAGES — P0 / P1 / P2
+       ========================================================================== */
+    .roadmap-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .roadmap-stage-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stage-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pill-p0 { background: var(--crimson-dim); color: var(--crimson); border: 1px solid rgba(255, 59, 92, 0.3); }
+    .pill-p1 { background: var(--amber-dim);   color: var(--amber);   border: 1px solid rgba(255, 183, 0, 0.3); }
+    .pill-p2 { background: var(--cyan-dim);    color: var(--cyan);    border: 1px solid rgba(0, 240, 255, 0.3); }
+
+    .stage-title {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* FOOTER CALLOUT */
+    .callout-box {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, rgba(12, 18, 32, 0.8) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-top: 40px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .callout-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .callout-text {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .callout-text strong { color: #fff; }
+
+    /* FOOTER */
+    .doc-footer {
+      padding: 32px 64px;
+      border-top: 1px solid var(--border-bright);
+      background: var(--bg-surface);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .doc-footer strong { color: var(--text-muted); }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { transform: translateX(-100%); }
+      .main-wrapper { margin-left: 0; }
+      .hero-banner { padding: 40px 24px 32px; }
+      .content-container { padding: 32px 20px; }
+      .doc-footer { padding: 24px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <section class="hero">
-      <h1>Dossiê Técnico do Projeto - Controle de Falhas AOI</h1>
-      <p>
-        Documento consolidado por leitura do código para visão executiva e técnica do sistema:
-        arquitetura, telas, fluxos, APIs, dados, riscos e plano inicial de melhorias.
+
+  <!-- ==========================================================================
+       SIDEBAR / HUD TELEMETRY NAVIGATION
+       ========================================================================== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-tag">CADService Electronics</div>
+      <div class="brand-title">Dossiê Técnico AOI</div>
+      <div class="brand-sub">Controle de Qualidade SMD</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-label">Visão Geral</div>
+      <a href="#escopo" class="nav-item active"><span class="nav-num">01</span>Objetivo & Escopo</a>
+      <a href="#arquitetura" class="nav-item"><span class="nav-num">02</span>Arquitetura</a>
+
+      <div class="nav-label">Mapeamento</div>
+      <a href="#telas" class="nav-item"><span class="nav-num">03</span>Inventário de Telas</a>
+      <a href="#fluxos" class="nav-item"><span class="nav-num">04</span>Fluxos do Negócio</a>
+      <a href="#api" class="nav-item"><span class="nav-num">05</span>Mapa de APIs</a>
+
+      <div class="nav-label">Segurança & Roadmap</div>
+      <a href="#riscos" class="nav-item"><span class="nav-num">06</span>Riscos & Diagnóstico</a>
+      <a href="#roadmap" class="nav-item"><span class="nav-num">07</span>Plano de Evolução</a>
+      <a href="#fontes" class="nav-item"><span class="nav-num">08</span>Fontes Técnicas</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <strong>CADService — Campinas/SP</strong><br/>
+      Autor: Carlos Alexandre Duarte<br/>
+      Versão: 1.0 &nbsp;·&nbsp; 2026
+    </div>
+  </aside>
+
+  <!-- ==========================================================================
+       MAIN CONTENT WRAPPER
+       ========================================================================== -->
+  <main class="main-wrapper">
+
+    <!-- HERO COMMAND BANNER -->
+    <header class="hero-banner">
+      <div class="hero-hud-chip">
+        <span>FACTORY TELEMETRY</span> &nbsp;|&nbsp; DOSSIÊ TÉCNICO EXECUTIVO
+      </div>
+      <h1 class="hero-title">Sistema de Controle<br/>de Falhas AOI</h1>
+      <p class="hero-desc">
+        Documento técnico consolidado contendo análise arquitetural, inventário de rotas,
+        mapeamento de endpoints REST, matriz de riscos e roadmap de evolução do sistema.
       </p>
-      <span class="badge">Frontend: Next.js + React + TS</span>
-      <span class="badge">Backend: Express + Prisma</span>
-      <span class="badge">Auth: JWT em Cookie HttpOnly</span>
-    </section>
 
-    <h2>1. Objetivo e escopo do sistema</h2>
-    <p>
-      Plataforma para controle de falhas de produção AOI, com operação por perfis (admin,
-      operador, reparo, qualidade, almoxarifado e liderança SMT), contemplando registro de falhas,
-      ciclo de OMs, requisições e relatórios analíticos.
-    </p>
-
-    <h2>2. Arquitetura e organização</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Frontend</h3>
-        <ul>
-          <li><code>frontend/app/</code>: rotas e páginas (App Router).</li>
-          <li><code>frontend/components/</code>: UI e componentes de domínio.</li>
-          <li><code>frontend/lib/api.ts</code>: wrapper de API autenticada.</li>
-          <li>Gráficos com Chart.js e notificações via toast.</li>
-        </ul>
+      <div class="hero-spec-grid">
+        <div class="spec-node">
+          <span class="spec-key">Empresa</span>
+          <span class="spec-val highlight">CADService Produtos Eletrônicos</span>
+        </div>
+        <div class="spec-node">
+          <span class="spec-key">Frontend</span>
+          <span class="spec-val">Next.js 16 · Vercel</span>
+        </div>
+        <div class="spec-node">
+          <span class="spec-key">Backend</span>
+          <span class="spec-val">Node.js Express · Render</span>
+        </div>
+        <div class="spec-node">
+          <span class="spec-key">Banco de Dados</span>
+          <span class="spec-val">PostgreSQL · Prisma ORM</span>
+        </div>
+        <div class="spec-node">
+          <span class="spec-key">Autenticação</span>
+          <span class="spec-val">JWT HttpOnly · RBAC</span>
+        </div>
       </div>
-      <div class="card">
-        <h3>Backend</h3>
+    </header>
+
+    <!-- CONTENT BODY -->
+    <div class="content-container">
+
+      <!-- ===== SECTION 1: OBJETIVO E ESCOPO ===== -->
+      <section class="doc-section" id="escopo">
+        <div class="section-header">
+          <span class="section-code">SEC.01</span>
+          <h2 class="section-title">Objetivo e Escopo do Sistema</h2>
+        </div>
+        <p>
+          O sistema de <strong>Controle de Falhas AOI</strong> é uma plataforma corporativa desenvolvida para a 
+          <strong>CADService Produtos Eletrônicos</strong> com o objetivo de gerenciar e rastrear a qualidade dos componentes e placas 
+          nas linhas de montagem de tecnologia de montagem em superfície (SMD/SMT).
+        </p>
+        <p>
+          A aplicação atende de forma integrada 5 perfis operacionais principais (RBAC):
+        </p>
+        
+        <div class="card-grid">
+          <div class="tech-card">
+            <span class="tech-card-badge">OPERADOR</span>
+            <div class="tech-card-icon">⚡</div>
+            <div class="tech-card-title">Operador de Produção</div>
+            <div class="tech-card-body">Lançamento imediato de defeitos encontrados durante a inspeção AOI e controle preciso do timer de Ordem de Manufatura (OM).</div>
+          </div>
+
+          <div class="tech-card">
+            <span class="tech-card-badge">QUALIDADE</span>
+            <div class="tech-card-icon">📊</div>
+            <div class="tech-card-title">Gestão da Qualidade</div>
+            <div class="tech-card-body">Acompanhamento de métricas estatísticas em tempo real, cálculo automatizado de DPMO, nível Sigma e Pareto de defeitos.</div>
+          </div>
+
+          <div class="tech-card">
+            <span class="tech-card-badge">REPARO</span>
+            <div class="tech-card-icon">🔧</div>
+            <div class="tech-card-title">Técnico de Reparo</div>
+            <div class="tech-card-body">Fila de placas com falhas para análise, retrabalho, alteração de status e registro de soluções aplicadas.</div>
+          </div>
+
+          <div class="tech-card">
+            <span class="tech-card-badge">ALMOXARIFADO</span>
+            <div class="tech-card-icon">📦</div>
+            <div class="tech-card-title">Almoxarifado</div>
+            <div class="tech-card-body">Gestão de requisições de componentes via Kanban interativo (pendente → separando → entregue) com alertas sonoros.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 2: ARQUITETURA ===== -->
+      <section class="doc-section" id="arquitetura">
+        <div class="section-header">
+          <span class="section-code">SEC.02</span>
+          <h2 class="section-title">Arquitetura e Organização</h2>
+        </div>
+
+        <div class="card-grid">
+          <div class="tech-card">
+            <div class="tech-card-title">🖥️ Frontend (Next.js 16)</div>
+            <div class="tech-card-body">
+              <ul>
+                <li><code>frontend/app/</code>: Páginas e rotas (App Router).</li>
+                <li><code>frontend/components/</code>: UI e componentes de negócio.</li>
+                <li><code>frontend/lib/api.ts</code>: Cliente HTTP com credenciais ativas.</li>
+                <li>Dashboards Chart.js e relatórios em PDF com jsPDF.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="tech-card">
+            <div class="tech-card-title">⚙️ Backend (Node.js Express)</div>
+            <div class="tech-card-body">
+              <ul>
+                <li><code>backend/src/routes/</code>: Definição modular de rotas.</li>
+                <li><code>backend/src/controllers/</code>: Regras de negócio.</li>
+                <li><code>backend/src/middleware/</code>: Autenticação JWT e logger.</li>
+                <li><code>backend/prisma/schema.prisma</code>: Schemas do PostgreSQL.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="tech-card">
+            <div class="tech-card-title">🗄️ Persistência de Dados</div>
+            <div class="tech-card-body">
+              <ul>
+                <li>Tabelas principais: <code>users</code>, <code>registros</code>, <code>requisicoes</code>.</li>
+                <li>Tabelas de OM: <code>oms_ativas</code>, <code>oms_pausadas</code>, <code>oms_finalizadas</code>.</li>
+                <li>Mapeamento de banco relacional com Prisma ORM.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 3: INVENTÁRIO DE TELAS ===== -->
+      <section class="doc-section" id="telas">
+        <div class="section-header">
+          <span class="section-code">SEC.03</span>
+          <h2 class="section-title">Inventário de Telas (Rotas)</h2>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Rota</th>
+                <th>Arquivo</th>
+                <th>Responsabilidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>/</code></td><td><code>frontend/app/page.tsx</code></td><td>Redirecionamento automático conforme o perfil (role).</td></tr>
+              <tr><td><code>/login</code></td><td><code>frontend/app/login/page.tsx</code></td><td>Autenticação de usuários com animação SMD ao fundo.</td></tr>
+              <tr><td><code>/admin</code></td><td><code>frontend/app/admin/page.tsx</code></td><td>Painel administrativo de gestão de usuários.</td></tr>
+              <tr><td><code>/operador</code></td><td><code>frontend/app/operador/page.tsx</code></td><td>Timer da OM e formulário de lançamento de defeitos.</td></tr>
+              <tr><td><code>/reparo</code></td><td><code>frontend/app/reparo/page.tsx</code></td><td>Kanban e tratamento de falhas em manutenção.</td></tr>
+              <tr><td><code>/qualidade</code></td><td><code>frontend/app/qualidade/page.tsx</code></td><td>Dashboard analítico, gráficos de Pareto e cálculo DPMO/Sigma.</td></tr>
+              <tr><td><code>/almoxarifado</code></td><td><code>frontend/app/almoxarifado/page.tsx</code></td><td>Gestão e atendimento de requisições de materiais.</td></tr>
+              <tr><td><code>/relatorios/controle-falhas</code></td><td><code>frontend/app/relatorios/controle-falhas/page.tsx</code></td><td>Relatório consolidado de defeitos em PDF.</td></tr>
+              <tr><td><code>/relatorios/qualidade</code></td><td><code>frontend/app/relatorios/qualidade/page.tsx</code></td><td>Relatório gerencial de índices de qualidade.</td></tr>
+              <tr><td><code>/relatorios/reparo</code></td><td><code>frontend/app/relatorios/reparo/page.tsx</code></td><td>Relatório de produtividade da equipe de reparo.</td></tr>
+              <tr><td><code>/smt/conferencia</code></td><td><code>frontend/app/smt/conferencia/page.tsx</code></td><td>Conferência SMT e classificação de defeitos por linha.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 4: FLUXOS DO NEGÓCIO ===== -->
+      <section class="doc-section" id="fluxos">
+        <div class="section-header">
+          <span class="section-code">SEC.04</span>
+          <h2 class="section-title">Fluxos Principais do Negócio</h2>
+        </div>
+
+        <div class="card-grid">
+          <div class="tech-card">
+            <div class="tech-card-title">1. Operação de Produção</div>
+            <div class="tech-card-body">
+              Login → Iniciar Ordem de Manufatura (OM) → Lançar registros de defeitos (com serial, PN e designador) → Pausar/Retomar timer → Finalizar OM.
+            </div>
+          </div>
+
+          <div class="tech-card">
+            <div class="tech-card-title">2. Fluxo de Reparo</div>
+            <div class="tech-card-body">
+              Filtrar backlog de placas com defeito → Analisar componente indicado → Efetuar retrabalho → Atualizar status para <code>reparado</code> ou <code>sucata</code>.
+            </div>
+          </div>
+
+          <div class="tech-card">
+            <div class="tech-card-title">3. Atendimento de Almoxarifado</div>
+            <div class="tech-card-body">
+              Receber solicitação de insumos → Mover para status <code>separando</code> → Separar componentes por PN → Concluir entrega (status <code>entregue</code>).
+            </div>
+          </div>
+
+          <div class="tech-card">
+            <div class="tech-card-title">4. Análise de Qualidade</div>
+            <div class="tech-card-body">
+              Filtrar períodos ou OMs → Analisar curva de Pareto → Avaliar indicador DPMO e nível Sigma → Exportar relatório gerencial para tomada de decisão.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 5: MAPA DA API ===== -->
+      <section class="doc-section" id="api">
+        <div class="section-header">
+          <span class="section-code">SEC.05</span>
+          <h2 class="section-title">Mapa Resumido da API REST</h2>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Domínio</th>
+                <th>Prefixo</th>
+                <th>Métodos</th>
+                <th>Descrição das Operações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Autenticação</td>
+                <td><code>/api/auth</code></td>
+                <td><span class="method-tag method-post">POST</span> <span class="method-tag method-get">GET</span></td>
+                <td>Login (define cookie JWT), Logout (limpa cookie) e consulta da sessão (<code>/me</code>).</td>
+              </tr>
+              <tr>
+                <td>Usuários</td>
+                <td><code>/api/users</code></td>
+                <td><span class="method-tag method-get">GET</span> <span class="method-tag method-post">POST</span> <span class="method-tag method-put">PUT</span> <span class="method-tag method-delete">DEL</span></td>
+                <td>Gestão completa de usuários e perfis (acesso exclusivo admin).</td>
+              </tr>
+              <tr>
+                <td>Registros</td>
+                <td><code>/api/registros</code></td>
+                <td><span class="method-tag method-get">GET</span> <span class="method-tag method-post">POST</span> <span class="method-tag method-put">PUT</span> <span class="method-tag method-delete">DEL</span></td>
+                <td>CRUD de defeitos, inserção em lote (batch) e atualização de status em lote.</td>
+              </tr>
+              <tr>
+                <td>Ordem Manufatura</td>
+                <td><code>/api/om</code></td>
+                <td><span class="method-tag method-post">POST</span> <span class="method-tag method-put">PUT</span> <span class="method-tag method-get">GET</span></td>
+                <td>Iniciar, pausar, retomar, finalizar OM e consultar tempos/histórico.</td>
+              </tr>
+              <tr>
+                <td>Requisições</td>
+                <td><code>/api/requisicoes</code></td>
+                <td><span class="method-tag method-get">GET</span> <span class="method-tag method-post">POST</span> <span class="method-tag method-put">PUT</span> <span class="method-tag method-delete">DEL</span></td>
+                <td>Criação de requisições de insumos, atualização de quantidades e entregas.</td>
+              </tr>
+              <tr>
+                <td>Debug / Demo</td>
+                <td><code>/api/debug</code></td>
+                <td><span class="method-tag method-get">GET</span> <span class="method-tag method-post">POST</span></td>
+                <td>Geração e limpeza de dados demonstrativos e rota de seed em ambiente seguro.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 6: RISCOS E DIAGNÓSTICO ===== -->
+      <section class="doc-section" id="riscos">
+        <div class="section-header">
+          <span class="section-code">SEC.06</span>
+          <h2 class="section-title">Diagnóstico de Riscos e Status de Resolução</h2>
+        </div>
+
+        <div class="risk-list">
+          <div class="risk-item">
+            <span class="risk-tag tag-low">RESOLVIDO</span>
+            <div class="risk-content">
+              <strong>Proteção de Rotas de OM:</strong> 
+              Todas as rotas de controle de OM possuem middleware de autenticação (<code>authenticateToken</code>) e autorização por perfil.
+            </div>
+          </div>
+
+          <div class="risk-item">
+            <span class="risk-tag tag-low">RESOLVIDO</span>
+            <div class="risk-content">
+              <strong>Endpoints Sensíveis Protegidos:</strong> 
+              Endpoints como <code>/api/relatorio-falhas</code> e <code>/api/oms/finalizadas</code> foram devidamente trancados para perfis autorizados.
+            </div>
+          </div>
+
+          <div class="risk-item">
+            <span class="risk-tag tag-low">RESOLVIDO</span>
+            <div class="risk-content">
+              <strong>Sanitização de Rotas de Debug:</strong> 
+              Rotas em <code>/api/debug</code> exigem verificação de chave de ambiente (<code>DEV_SEED_KEY</code>) ou perfil administrador.
+            </div>
+          </div>
+
+          <div class="risk-item">
+            <span class="risk-tag tag-low">RESOLVIDO</span>
+            <div class="risk-content">
+              <strong>Documentação e Deploy Sincronizados:</strong> 
+              Projeto 100% atualizado para refletir o frontend Next.js na Vercel e o backend Express no Render.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 7: PLANO DE EVOLUÇÃO ===== -->
+      <section class="doc-section" id="roadmap">
+        <div class="section-header">
+          <span class="section-code">SEC.07</span>
+          <h2 class="section-title">Plano de Evolução e Roadmap</h2>
+        </div>
+
+        <div class="roadmap-block">
+          <div class="roadmap-stage-header">
+            <span class="stage-pill pill-p0">FASE P0 · CONCLUÍDA</span>
+            <span class="stage-title">Segurança, Estabilidade & Deploy CI/CD</span>
+          </div>
+          <ul>
+            <li>✅ Proteção total de rotas com JWT HttpOnly e middleware RBAC por perfil.</li>
+            <li>✅ Inclusão de container PostgreSQL e migrations automáticas no GitHub Actions CI.</li>
+            <li>✅ Separação clara de ambiente: Frontend na Vercel e Backend no Render.</li>
+          </ul>
+        </div>
+
+        <div class="roadmap-block">
+          <div class="roadmap-stage-header">
+            <span class="stage-pill pill-p1">FASE P1 · EM ANDAMENTO</span>
+            <span class="stage-title">Qualidade Operacional & Experiência do Usuário</span>
+          </div>
+          <ul>
+            <li>✅ Implementação de Kanban interativo com drag-and-drop no Almoxarifado e Reparo.</li>
+            <li>✅ Atualizações otimistas com rollback automático em caso de falha de conexão.</li>
+            <li>⏳ Polimento dos atalhos globais de teclado (ex: <code>Space</code> para pausar OM, <code>Ctrl+S</code> para salvar).</li>
+          </ul>
+        </div>
+
+        <div class="roadmap-block">
+          <div class="roadmap-stage-header">
+            <span class="stage-pill pill-p2">FASE P2 · FUTURO</span>
+            <span class="stage-title">Evolução Arquitetural & Observabilidade</span>
+          </div>
+          <ul>
+            <li>🔹 Implementação de mensageria em tempo real (WebSockets / Socket.io) para aviso de novas falhas na tela de reparo.</li>
+            <li>🔹 Integração direta com leitores de código de barras / QR Code via câmera do tablet do operador.</li>
+            <li>🔹 Estruturação de logs centralizados (Logtail / Datadog) para monitoramento proativo de erros no backend.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== SECTION 8: FONTES TÉCNICAS ===== -->
+      <section class="doc-section" id="fontes">
+        <div class="section-header">
+          <span class="section-code">SEC.08</span>
+          <h2 class="section-title">Fontes da Leitura Técnica</h2>
+        </div>
+
         <ul>
-          <li><code>backend/src/routes/</code>: definição de endpoints.</li>
-          <li><code>backend/src/controllers/</code>: regras de negócio.</li>
-          <li><code>backend/src/middleware/</code>: autenticação e logger.</li>
-          <li><code>backend/prisma/schema.prisma</code>: modelo de dados.</li>
+          <li><code>frontend/app/**/page.tsx</code> — Módulos do frontend Next.js App Router.</li>
+          <li><code>frontend/components/index/*.tsx</code> — Componentes de UI e regras de apresentação.</li>
+          <li><code>backend/server.js</code> — Servidor principal Express e middlewares globais.</li>
+          <li><code>backend/src/routes/*.js</code> — Definições de rotas e filtros de segurança.</li>
+          <li><code>backend/prisma/schema.prisma</code> — Modelagem e tipos de dados do PostgreSQL.</li>
+          <li><code>docs/sistema/DOCUMENTACAO-TECNICA.md</code> — Especificação de arquitetura do sistema.</li>
         </ul>
+
+        <div class="callout-box">
+          <div class="callout-icon">💡</div>
+          <div class="callout-text">
+            <strong>Dossiê Mantido Continuamente:</strong> 
+            Este documento é mantido e atualizado como referência técnica oficial do projeto para apoiar
+            a tomada de decisões estratégicas e o alinhamento da diretoria da CADService Produtos Eletrônicos.
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /content-container -->
+
+    <!-- FOOTER -->
+    <footer class="doc-footer">
+      <div>
+        <strong>CADService Produtos Eletrônicos</strong> — Sistema de Controle de Falhas AOI
       </div>
-      <div class="card">
-        <h3>Dados</h3>
-        <ul>
-          <li>Entidades principais: <code>users</code>, <code>registros</code>, <code>requisicoes</code>, OMs.</li>
-          <li>Fluxo orientado por OM e status de registros/requisições.</li>
-          <li>Persistência via Prisma com provider PostgreSQL.</li>
-        </ul>
+      <div>
+        Relatório Técnico &nbsp;·&nbsp; Campinas - SP &nbsp;·&nbsp; 2026
       </div>
-    </div>
+    </footer>
 
-    <h2>3. Inventário de telas (rotas)</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Rota</th>
-          <th>Arquivo</th>
-          <th>Responsabilidade</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td><code>/</code></td><td><code>frontend/app/page.tsx</code></td><td>Redirecionamento por role.</td></tr>
-        <tr><td><code>/login</code></td><td><code>frontend/app/login/page.tsx</code></td><td>Autenticação.</td></tr>
-        <tr><td><code>/admin</code></td><td><code>frontend/app/admin/page.tsx</code></td><td>CRUD de usuários.</td></tr>
-        <tr><td><code>/operador</code></td><td><code>frontend/app/operador/page.tsx</code></td><td>Registro de falhas e ciclo da OM.</td></tr>
-        <tr><td><code>/reparo</code></td><td><code>frontend/app/reparo/page.tsx</code></td><td>Tratamento de falhas em múltiplas visões.</td></tr>
-        <tr><td><code>/qualidade</code></td><td><code>frontend/app/qualidade/page.tsx</code></td><td>Métricas de qualidade e DPMO/Sigma.</td></tr>
-        <tr><td><code>/almoxarifado</code></td><td><code>frontend/app/almoxarifado/page.tsx</code></td><td>Gestão de requisições e entregas.</td></tr>
-        <tr><td><code>/relatorios/controle-falhas</code></td><td><code>frontend/app/relatorios/controle-falhas/page.tsx</code></td><td>Relatório consolidado de falhas.</td></tr>
-        <tr><td><code>/relatorios/qualidade</code></td><td><code>frontend/app/relatorios/qualidade/page.tsx</code></td><td>Relatório analítico de qualidade.</td></tr>
-        <tr><td><code>/relatorios/reparo</code></td><td><code>frontend/app/relatorios/reparo/page.tsx</code></td><td>Relatório de reparo e produtividade.</td></tr>
-        <tr><td><code>/smt/conferencia</code></td><td><code>frontend/app/smt/conferencia/page.tsx</code></td><td>Conferência SMT e classificação de defeitos.</td></tr>
-      </tbody>
-    </table>
+  </main>
 
-    <h2>4. Fluxos principais do negócio</h2>
-    <ul>
-      <li><strong>Operação:</strong> login → iniciar OM → lançar registros → pausar/retomar/finalizar.</li>
-      <li><strong>Reparo:</strong> filtrar backlog → atualizar status de registro → exportar dados.</li>
-      <li><strong>Almoxarifado:</strong> receber requisições → ajustar itens/quantidades → concluir entrega.</li>
-      <li><strong>Qualidade:</strong> filtrar períodos/OM → analisar gráficos e indicadores industriais.</li>
-      <li><strong>Administração:</strong> gestão de usuários e permissões por role.</li>
-    </ul>
+  <script>
+    // Smooth active state observer for sidebar links
+    const sections = document.querySelectorAll('.doc-section');
+    const navItems = document.querySelectorAll('.nav-item');
 
-    <h2>5. Mapa resumido da API</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Domínio</th>
-          <th>Prefixo</th>
-          <th>Principais operações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>Autenticação</td><td><code>/api/auth</code></td><td>login, logout, sessão atual (<code>/me</code>)</td></tr>
-        <tr><td>Usuários</td><td><code>/api/users</code></td><td>listagem, criação, edição, remoção (admin)</td></tr>
-        <tr><td>Registros</td><td><code>/api/registros</code></td><td>CRUD, batch e atualização de status</td></tr>
-        <tr><td>OM</td><td><code>/api/om</code></td><td>start, pause, resume, finish, consulta por número</td></tr>
-        <tr><td>Requisições</td><td><code>/api/requisicoes</code></td><td>criação, atualização de itens/status, remoção</td></tr>
-        <tr><td>Debug</td><td><code>/api/debug</code></td><td>popular e limpar dados demo</td></tr>
-      </tbody>
-    </table>
+    const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -70% 0px',
+      threshold: 0
+    };
 
-    <h2>6. Riscos e pontos críticos</h2>
-    <ul>
-      <li><span class="risk-crit">Crítico:</span> rotas de OM sem autenticação em <code>backend/src/routes/omRoutes.js</code>.</li>
-      <li><span class="risk-crit">Crítico:</span> <code>/api/relatorio-falhas</code> público em <code>backend/server.js</code>.</li>
-      <li><span class="risk-high">Alto:</span> fallback fraco de segredo JWT no middleware de auth.</li>
-      <li><span class="risk-high">Alto:</span> rotas de debug sem bloqueio explícito por admin.</li>
-      <li><span class="risk-med">Médio:</span> divergências de documentação (README vs estrutura atual).</li>
-      <li><span class="risk-med">Médio:</span> possível inconsistência de rota de redirecionamento para qualidade na home.</li>
-    </ul>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navItems.forEach(item => item.classList.remove('active'));
+          const activeItem = document.querySelector(`.nav-item[href="#${entry.target.id}"]`);
+          if (activeItem) activeItem.classList.add('active');
+        }
+      });
+    }, observerOptions);
 
-    <h2>7. Recomendações iniciais para começar as melhorias</h2>
-    <h3>Fase P0 (segurança e estabilidade imediata)</h3>
-    <ol>
-      <li>Proteger todas as rotas de OM com <code>authenticateToken</code> e revisar autorização por role.</li>
-      <li>Fechar acesso público de <code>/api/relatorio-falhas</code> e demais endpoints sensíveis no <code>server.js</code>.</li>
-      <li>Remover fallback inseguro de <code>JWT_SECRET</code>; falhar startup sem segredo válido.</li>
-      <li>Restringir <code>/api/debug/*</code> para admin (<code>isAdmin</code>) e condicionar por ambiente.</li>
-      <li>Padronizar logout e validação de sessão para reduzir inconsistência frontend/backend.</li>
-    </ol>
-
-    <h3>Fase P1 (qualidade de código e coerência funcional)</h3>
-    <ol>
-      <li>Corrigir redirecionamentos por role na home para rotas existentes.</li>
-      <li>Padronizar documentação raiz (pastas, comandos e versões reais).</li>
-      <li>Consolidar rotas soltas do <code>server.js</code> em módulos de rotas para manutenção segura.</li>
-      <li>Adicionar testes de integração para fluxos críticos: login, OM, registros e requisições.</li>
-    </ol>
-
-    <h3>Fase P2 (evolução arquitetural)</h3>
-    <ol>
-      <li>Revisar modelagem Prisma para integridade referencial e governança de dados.</li>
-      <li>Estruturar observabilidade mínima (logs padronizados + métricas básicas).</li>
-      <li>Melhorar política de limites/rate-limit para rotas sensíveis além de login.</li>
-    </ol>
-
-    <h2>8. Fontes da leitura técnica</h2>
-    <ul>
-      <li><code>frontend/app/**/page.tsx</code></li>
-      <li><code>frontend/lib/api.ts</code></li>
-      <li><code>backend/server.js</code></li>
-      <li><code>backend/src/routes/*.js</code></li>
-      <li><code>backend/prisma/schema.prisma</code></li>
-      <li><code>README.md</code> e arquivos em <code>docs/</code></li>
-    </ul>
-
-    <div class="footer-note">
-      Documento preparado para apoiar tomada de decisão técnica e priorização de roadmap.
-      Atualize este dossiê ao final de cada ciclo de melhorias para manter rastreabilidade.
-    </div>
-  </div>
+    sections.forEach(section => observer.observe(section));
+  </script>
 </body>
 </html>
