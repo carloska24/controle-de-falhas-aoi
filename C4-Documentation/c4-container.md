@@ -46,5 +46,5 @@ graph LR
 
 - **Serviço Windows**: O backend pode ser instalado como um serviço Windows usando `nssm` (conforme scripts na pasta `scripts/`).
 - **Deploy Cloud**:
-  - Frontend: Netlify.
+  - Frontend: Vercel.
   - Backend: Render.
