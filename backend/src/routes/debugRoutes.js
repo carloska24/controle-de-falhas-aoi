@@ -11,7 +11,8 @@ function ensureDebugEnabled(_req, res, next) {
   return res.status(404).json({ error: 'Rota não encontrada.' });
 }
 
-// Rotas de debug devem ser restritas a administradores.
+// Rotas de debug
+router.get('/seed-admin', ensureDebugEnabled, debugController.seedAdmin);
 router.post('/populate', ensureDebugEnabled, authenticateToken, isAdmin, debugController.populateDemoData);
 router.post('/clear', ensureDebugEnabled, authenticateToken, isAdmin, debugController.clearDemoData);
 

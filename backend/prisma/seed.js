@@ -20,6 +20,7 @@ async function main() {
   const users = [
     { username: 'DevNaPratica', name: 'Dev Na Pratica', password: '123456', role: 'admin' },
     { username: 'admin', name: 'Administrador', password: 'admin123', role: 'admin' },
+    { username: 'DevAdmin', name: 'Dev Admin', password: '123456', role: 'admin' },
   ];
 
   for (const userData of users) {
