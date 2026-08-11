@@ -156,11 +156,16 @@ app.get(
 // a menos que sejam cruciais. O relatório mencionou removê-las.
 
 // Inicialização
+async function initApp() {
+  await omController.carregarOMsPausadas();
+  return app;
+}
+
 async function startServer() {
   console.log('startServer called');
   try {
     console.log('Loading OMs via Prisma...');
-    await omController.carregarOMsPausadas();
+    await initApp();
     console.log('OMs loaded. Starting listener...');
 
     app.listen(PORT, '0.0.0.0', () => {
@@ -180,4 +185,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, startServer };
+module.exports = { app, startServer, initApp };
