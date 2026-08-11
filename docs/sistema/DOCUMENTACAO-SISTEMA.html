@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentação Técnica — Sistema de Controle de Falhas AOI | CADService</title>
+  <meta name="description" content="Documentação técnica completa do Sistema de Controle de Falhas AOI desenvolvido para a CADService Produtos Eletrônicos." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ===== CSS RESET & TOKENS ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:      #0a0f1e;
+      --bg-surface:   #111827;
+      --bg-card:      #1a2235;
+      --bg-card-hover:#1f2a42;
+      --border:       #1e293b;
+      --border-light: #2d3f5c;
+
+      --blue:         #3b82f6;
+      --blue-light:   #60a5fa;
+      --blue-glow:    rgba(59,130,246,0.15);
+      --cyan:         #06b6d4;
+      --cyan-light:   #67e8f9;
+      --green:        #10b981;
+      --green-light:  #6ee7b7;
+      --amber:        #f59e0b;
+      --amber-light:  #fcd34d;
+      --red:          #ef4444;
+      --purple:       #8b5cf6;
+      --purple-light: #c4b5fd;
+
+      --text-primary: #f1f5f9;
+      --text-secondary:#94a3b8;
+      --text-muted:   #475569;
+
+      --radius-sm:    6px;
+      --radius-md:    10px;
+      --radius-lg:    16px;
+      --radius-xl:    24px;
+
+      --shadow-card:  0 4px 24px rgba(0,0,0,0.4);
+      --shadow-glow:  0 0 40px rgba(59,130,246,0.12);
+
+      --font-sans:    'Inter', system-ui, sans-serif;
+      --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+
+      --sidebar-w:    280px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--blue); }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-logo .icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .sidebar-logo-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .sidebar-company {
+      font-size: 11px;
+      color: var(--cyan);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 8px;
+    }
+
+    .sidebar-nav {
+      padding: 16px 12px;
+      flex: 1;
+    }
+
+    .nav-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 12px 12px 6px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      background: var(--blue-glow);
+      color: var(--blue-light);
+    }
+
+    .nav-link .num {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 18px;
+    }
+
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .sidebar-footer strong { color: var(--text-secondary); }
+
+    /* ===== MAIN CONTENT ===== */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 0;
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      position: relative;
+      padding: 72px 64px 56px;
+      background: linear-gradient(135deg, #0d1629 0%, #0a1020 50%, #0d1629 100%);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -120px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: 30%;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--blue-glow);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 99px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-light);
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
+    }
+
+    .hero-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 17px;
+      color: var(--text-secondary);
+      margin-bottom: 36px;
+      max-width: 620px;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .hero-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hero-meta-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .hero-meta-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .hero-badges {
+      margin-top: 32px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid;
+    }
+
+    .badge-blue   { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: var(--blue-light); }
+    .badge-green  { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--green-light); }
+    .badge-cyan   { background: rgba(6,182,212,0.1);  border-color: rgba(6,182,212,0.3);  color: var(--cyan-light); }
+    .badge-purple { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.3); color: var(--purple-light); }
+    .badge-amber  { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--amber-light); }
+
+    /* ===== CONTENT AREA ===== */
+    .content {
+      padding: 56px 64px;
+      max-width: 1100px;
+    }
+
+    /* ===== SECTIONS ===== */
+    .section {
+      margin-bottom: 72px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-num {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      margin-top: 32px;
+    }
+
+    h3:first-child { margin-top: 0; }
+
+    p {
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      font-size: 14.5px;
+    }
+
+    ul, ol {
+      color: var(--text-secondary);
+      padding-left: 20px;
+      margin-bottom: 16px;
+      font-size: 14.5px;
+    }
+
+    li { margin-bottom: 6px; }
+    li strong { color: var(--text-primary); }
+
+    /* ===== CARDS GRID ===== */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-light);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
+    }
+
+    .card-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ===== ARCHITECTURE DIAGRAM ===== */
+    .arch-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .arch-layer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .arch-box {
+      width: 100%;
+      max-width: 600px;
+      border: 2px solid;
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      position: relative;
+      text-align: center;
+    }
+
+    .arch-box-users  { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.05); }
+    .arch-box-front  { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.05); }
+    .arch-box-back   { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.05); }
+    .arch-box-db     { border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.05); }
+
+    .arch-box-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .arch-box-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .arch-box-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    .arch-box-users  .arch-box-tag { background: rgba(245,158,11,0.15); color: var(--amber-light); }
+    .arch-box-front  .arch-box-tag { background: rgba(59,130,246,0.15); color: var(--blue-light); }
+    .arch-box-back   .arch-box-tag { background: rgba(16,185,129,0.15); color: var(--green-light); }
+    .arch-box-db     .arch-box-tag { background: rgba(139,92,246,0.15); color: var(--purple-light); }
+
+    .arch-roles {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .arch-role {
+      font-size: 11px;
+      padding: 3px 10px;
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 99px;
+      color: var(--amber-light);
+    }
+
+    .arch-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 0;
+    }
+
+    .arch-arrow-line {
+      width: 2px;
+      height: 20px;
+      background: var(--border-light);
+    }
+
+    .arch-arrow-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+    }
+
+    .arch-arrow-head {
+      font-size: 14px;
+      color: var(--border-light);
+    }
+
+    /* ===== TABLES ===== */
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    thead {
+      background: rgba(30,41,59,0.8);
+    }
+
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 11px 16px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(30,41,59,0.3); }
+
+    td:first-child { color: var(--text-primary); font-weight: 500; }
+
+    /* ===== CODE BLOCKS ===== */
+    .code-block {
+      background: #050d1a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #a8b8d8;
+      overflow-x: auto;
+      margin-bottom: 20px;
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .code-block .comment { color: #4a5568; }
+    .code-block .key     { color: var(--blue-light); }
+    .code-block .val     { color: var(--green-light); }
+    .code-block .label   { color: var(--cyan-light); }
+    .code-block .box     { color: var(--purple-light); }
+
+    /* ===== ENDPOINT GROUPS ===== */
+    .endpoint-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .endpoint-group-header {
+      padding: 14px 20px;
+      background: rgba(30,41,59,0.5);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .endpoint-group-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .endpoint-path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .endpoint-row {
+      display: grid;
+      grid-template-columns: 64px 220px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .endpoint-row:last-child { border-bottom: none; }
+    .endpoint-row:hover { background: rgba(30,41,59,0.3); }
+
+    .method {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+
+    .method-get    { background: rgba(16,185,129,0.15); color: var(--green-light); }
+    .method-post   { background: rgba(59,130,246,0.15); color: var(--blue-light); }
+    .method-put    { background: rgba(245,158,11,0.15); color: var(--amber-light); }
+    .method-delete { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+
+    .endpoint-url {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-primary);
+    }
+
+    .endpoint-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .endpoint-roles {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .role-tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(139,92,246,0.1);
+      border: 1px solid rgba(139,92,246,0.2);
+      color: var(--purple-light);
+      white-space: nowrap;
+    }
+
+    .role-tag.admin-tag   { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.2);  color: #fca5a5; }
+    .role-tag.public-tag  { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.2); color: var(--green-light); }
+
+    /* ===== DB SCHEMA ===== */
+    .schema-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .schema-table {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .schema-table-header {
+      padding: 12px 16px;
+      background: rgba(30,41,59,0.6);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .schema-table-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan-light);
+    }
+
+    .schema-field {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 8px 16px;
+      border-bottom: 1px solid rgba(30,41,59,0.5);
+      font-size: 12.5px;
+    }
+
+    .schema-field:last-child { border-bottom: none; }
+
+    .field-name {
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      font-weight: 500;
+      min-width: 130px;
+    }
+
+    .field-type {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--blue-light);
+    }
+
+    .field-pk  { color: var(--amber); font-size: 10px; font-weight: 700; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); padding: 1px 5px; border-radius: 3px; }
+    .field-opt { color: var(--text-muted); }
+
+    .field-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* ===== RBAC GRID ===== */
+    .rbac-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .rbac-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      transition: all 0.2s;
+    }
+
+    .rbac-card:hover {
+      border-color: var(--border-light);
+      transform: translateY(-1px);
+    }
+
+    .rbac-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rbac-modules {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .rbac-mod {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rbac-mod::before { content: '→'; color: var(--text-muted); }
+
+    /* ===== TECH STACK ===== */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .tech-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tech-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .tech-version {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+    }
+
+    .tech-role {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ===== INFO BOX ===== */
+    .info-box {
+      display: flex;
+      gap: 14px;
+      padding: 18px 20px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      border: 1px solid;
+    }
+
+    .info-box-blue   { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.2); }
+    .info-box-green  { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.2); }
+    .info-box-amber  { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2); }
+
+    .info-box-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+    .info-box-content { flex: 1; }
+
+    .info-box-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .info-box-text {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ===== GLOSSARY ===== */
+    .glossary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .glossary-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+
+    .glossary-term {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan-light);
+      margin-bottom: 4px;
+    }
+
+    .glossary-def {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ===== FOOTER ===== */
+    .doc-footer {
+      padding: 40px 64px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 12.5px;
+    }
+
+    .doc-footer strong { color: var(--text-secondary); }
+
+    /* ===== PRINT ===== */
+    @media print {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .hero { padding: 32px; }
+      .content { padding: 32px; }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { transform: translateX(-100%); }
+      .main { margin-left: 0; }
+      .hero { padding: 40px 24px 32px; }
+      .content { padding: 32px 24px; }
+      .doc-footer { padding: 24px; }
+      .endpoint-row { grid-template-columns: 64px 1fr; gap: 8px; }
+      .endpoint-url, .endpoint-roles { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-logo">
+      <div class="icon">🏭</div>
+      <div>
+        <div class="sidebar-logo-text">Controle de Falhas AOI</div>
+        <div class="sidebar-logo-sub">Documentação Técnica</div>
+      </div>
+    </div>
+    <div class="sidebar-company">CADService Produtos Eletrônicos</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-title">Visão Geral</div>
+    <a href="#visao-geral" class="nav-link"><span class="num">1</span>Sobre o Sistema</a>
+    <a href="#arquitetura" class="nav-link"><span class="num">2</span>Arquitetura</a>
+
+    <div class="nav-section-title">Backend</div>
+    <a href="#backend" class="nav-link"><span class="num">3</span>Estrutura e Endpoints</a>
+    <a href="#seguranca" class="nav-link"><span class="num">4</span>Segurança</a>
+
+    <div class="nav-section-title">Frontend</div>
+    <a href="#frontend" class="nav-link"><span class="num">5</span>Módulos do Sistema</a>
+
+    <div class="nav-section-title">Dados</div>
+    <a href="#banco" class="nav-link"><span class="num">6</span>Banco de Dados</a>
+    <a href="#rbac" class="nav-link"><span class="num">7</span>Perfis de Acesso</a>
+
+    <div class="nav-section-title">Operação</div>
+    <a href="#infra" class="nav-link"><span class="num">8</span>Infraestrutura</a>
+    <a href="#testes" class="nav-link"><span class="num">9</span>Testes</a>
+    <a href="#stack" class="nav-link"><span class="num">10</span>Stack Tecnológica</a>
+    <a href="#glossario" class="nav-link"><span class="num">11</span>Glossário</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <strong>Autor:</strong> Carlos Alexandre D. Pereira<br/>
+    <strong>Versão:</strong> 1.0 &nbsp;·&nbsp; Agosto 2026
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">📄 Documentação Técnica Oficial</div>
+    <h1 class="hero-title">Sistema de Controle<br/>de Falhas AOI</h1>
+    <p class="hero-subtitle">
+      Plataforma web desenvolvida sob medida para a <strong>CADService Produtos Eletrônicos</strong>,
+      digitalizando e centralizando o controle de qualidade nas linhas de produção SMD.
+    </p>
+
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Empresa</span>
+        <span class="hero-meta-value">CADService Produtos Eletrônicos</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Desenvolvedor</span>
+        <span class="hero-meta-value">Carlos Alexandre D. Pereira</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Versão do Sistema</span>
+        <span class="hero-meta-value">1.0</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Documento</span>
+        <span class="hero-meta-value">Agosto 2026</span>
+      </div>
+    </div>
+
+    <div class="hero-badges">
+      <span class="badge badge-blue">Node.js + Express</span>
+      <span class="badge badge-cyan">Next.js + React</span>
+      <span class="badge badge-green">PostgreSQL + Prisma</span>
+      <span class="badge badge-purple">TypeScript</span>
+      <span class="badge badge-amber">Vercel + Render</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ===== 1. VISÃO GERAL ===== -->
+    <section class="section" id="visao-geral">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <h2 class="section-title">Visão Geral do Sistema</h2>
+      </div>
+
+      <div class="info-box info-box-blue">
+        <div class="info-box-icon">🏭</div>
+        <div class="info-box-content">
+          <div class="info-box-title">CADService Produtos Eletrônicos — Campinas, SP</div>
+          <div class="info-box-text">
+            Este sistema foi desenvolvido exclusivamente para a CADService Produtos Eletrônicos, empresa fabricante de produtos eletrônicos. A solução digitaliza integralmente o processo de controle de qualidade das linhas de produção SMD (Surface-Mount Technology), substituindo planilhas manuais e registros em papel por uma plataforma web centralizada e em tempo real.
+          </div>
+        </div>
+      </div>
+
+      <h3>Problema Resolvido</h3>
+      <p>Antes da implantação deste sistema, o processo de controle de qualidade na CADService era realizado de forma manual:</p>
+      <ul>
+        <li>Registros de defeitos feitos em <strong>papel ou planilhas desconectadas</strong></li>
+        <li>Sem controle preciso do <strong>tempo de produção por Ordem de Manufatura (OM)</strong></li>
+        <li>Cálculo manual e demorado de <strong>DPMO e índice Sigma</strong></li>
+        <li>Sem <strong>rastreabilidade</strong> de defeitos por componente, operador ou período</li>
+        <li>Dificuldade em identificar os <strong>principais tipos de defeito</strong> (análise de Pareto)</li>
+        <li>Processo de reparo e almoxarifado <strong>desconectado</strong> da produção</li>
+      </ul>
+
+      <h3>Solução Implementada</h3>
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">⏱️</div>
+          <div class="card-title">Timer de OM</div>
+          <div class="card-desc">Controle preciso do tempo de produção por Ordem de Manufatura com pause/resume e persistência em banco de dados.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📝</div>
+          <div class="card-title">Registro de Falhas</div>
+          <div class="card-desc">Lançamento digital de defeitos com designador, Part Number, tipo de defeito, operador e observações.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <div class="card-title">Dashboard Analítico</div>
+          <div class="card-desc">Métricas em tempo real: DPMO, Sigma, Pareto de defeitos, tendência temporal e análise por OM.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔧</div>
+          <div class="card-title">Gestão de Reparos</div>
+          <div class="card-desc">Kanban interativo de falhas aguardando reparo, com rastreabilidade completa de status.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📦</div>
+          <div class="card-title">Almoxarifado</div>
+          <div class="card-desc">Requisições de materiais em fluxo Kanban (pendente → separando → entregue) com notificações.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔐</div>
+          <div class="card-title">Controle de Acesso</div>
+          <div class="card-desc">RBAC com 5 perfis: admin, operador, reparo, qualidade e almoxarifado. Cada usuário vê apenas o que precisa.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 2. ARQUITETURA ===== -->
+    <section class="section" id="arquitetura">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <h2 class="section-title">Arquitetura do Sistema</h2>
+      </div>
+
+      <div class="arch-diagram">
+        <div class="arch-layer">
+
+          <div class="arch-box arch-box-users">
+            <div class="arch-box-title">👥 Usuários do Sistema</div>
+            <div class="arch-roles">
+              <span class="arch-role">Operador</span>
+              <span class="arch-role">Qualidade</span>
+              <span class="arch-role">Reparo</span>
+              <span class="arch-role">Almoxarifado</span>
+              <span class="arch-role">Admin</span>
+            </div>
+            <div class="arch-box-tag">Navegador Web — qualquer dispositivo na rede</div>
+          </div>
+
+          <div class="arch-arrow">
+            <div class="arch-arrow-line"></div>
+            <div class="arch-arrow-label">HTTPS — interface web</div>
+            <div class="arch-arrow-line"></div>
+            <div class="arch-arrow-head">▼</div>
+          </div>
+
+          <div class="arch-box arch-box-front">
+            <div class="arch-box-title">🖥️ Frontend — Next.js 16 + React 18 + TypeScript</div>
+            <div class="arch-box-sub">/login &nbsp; /operador &nbsp; /qualidade &nbsp; /reparo &nbsp; /almoxarifado &nbsp; /admin &nbsp; /relatorios</div>
+            <div class="arch-box-tag">☁️ Hospedado na Vercel (Cloud)</div>
+          </div>
+
+          <div class="arch-arrow">
+            <div class="arch-arrow-line"></div>
+            <div class="arch-arrow-label">REST API — HTTPS + Cookie JWT</div>
+            <div class="arch-arrow-line"></div>
+            <div class="arch-arrow-head">▼</div>
+          </div>
+
+          <div class="arch-box arch-box-back">
+            <div class="arch-box-title">⚙️ Backend — Node.js 18 + Express 5</div>
+            <div class="arch-box-sub">/api/auth &nbsp; /api/registros &nbsp; /api/om &nbsp; /api/users &nbsp; /api/requisicoes</div>
+            <div class="arch-box-tag">☁️ Hospedado no Render (Cloud) — controle-de-falhas-aoi.onrender.com</div>
+          </div>
+
+          <div class="arch-arrow">
+            <div class="arch-arrow-line"></div>
+            <div class="arch-arrow-label">Prisma ORM — queries SQL</div>
+            <div class="arch-arrow-line"></div>
+            <div class="arch-arrow-head">▼</div>
+          </div>
+
+          <div class="arch-box arch-box-db">
+            <div class="arch-box-title">🗄️ Banco de Dados — PostgreSQL 15</div>
+            <div class="arch-box-sub">users &nbsp;·&nbsp; registros &nbsp;·&nbsp; oms_ativas &nbsp;·&nbsp; oms_pausadas &nbsp;·&nbsp; oms_finalizadas &nbsp;·&nbsp; requisicoes</div>
+            <div class="arch-box-tag">☁️ Hospedado no Render — interno (não exposto)</div>
+          </div>
+
+        </div>
+      </div>
+
+      <h3>Containers e Responsabilidades</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Container</th>
+              <th>Tecnologia</th>
+              <th>Hospedagem</th>
+              <th>Responsabilidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Frontend</td>
+              <td>Next.js 16 · React 18 · TypeScript · Tailwind</td>
+              <td><span class="badge badge-blue" style="font-size:11px">Vercel</span></td>
+              <td>Interface do usuário, dashboards, formulários, exportação PDF</td>
+            </tr>
+            <tr>
+              <td>Backend API</td>
+              <td>Node.js 18 · Express 5 · JWT · Zod</td>
+              <td><span class="badge badge-green" style="font-size:11px">Render</span></td>
+              <td>Lógica de negócio, autenticação, autorização, API REST</td>
+            </tr>
+            <tr>
+              <td>Banco de Dados</td>
+              <td>PostgreSQL 15 · Prisma ORM</td>
+              <td><span class="badge badge-green" style="font-size:11px">Render</span></td>
+              <td>Persistência de usuários, registros, OMs e requisições</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 3. BACKEND ===== -->
+    <section class="section" id="backend">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <h2 class="section-title">Backend — Endpoints da API</h2>
+      </div>
+
+      <!-- Autenticação -->
+      <div class="endpoint-group">
+        <div class="endpoint-group-header">
+          <span class="badge badge-green" style="font-size:11px">AUTH</span>
+          <span class="endpoint-group-title">Autenticação</span>
+          <span class="endpoint-path">/api/auth</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-post">POST</span>
+          <span class="endpoint-url">/api/auth/login</span>
+          <span class="endpoint-desc">Login com usuário e senha — define cookie JWT HttpOnly</span>
+          <div class="endpoint-roles"><span class="role-tag public-tag">público</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-post">POST</span>
+          <span class="endpoint-url">/api/auth/logout</span>
+          <span class="endpoint-desc">Invalida o cookie de sessão</span>
+          <div class="endpoint-roles"><span class="role-tag">autenticado</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/api/auth/me</span>
+          <span class="endpoint-desc">Retorna dados do usuário autenticado atual</span>
+          <div class="endpoint-roles"><span class="role-tag">autenticado</span></div>
+        </div>
+      </div>
+
+      <!-- Registros -->
+      <div class="endpoint-group">
+        <div class="endpoint-group-header">
+          <span class="badge badge-blue" style="font-size:11px">CORE</span>
+          <span class="endpoint-group-title">Registros de Falha</span>
+          <span class="endpoint-path">/api/registros</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/api/registros</span>
+          <span class="endpoint-desc">Lista todos os registros de falha</span>
+          <div class="endpoint-roles"><span class="role-tag">todos</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-post">POST</span>
+          <span class="endpoint-url">/api/registros/batch</span>
+          <span class="endpoint-desc">Cria múltiplos registros em lote</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-put">PUT</span>
+          <span class="endpoint-url">/api/registros/:id</span>
+          <span class="endpoint-desc">Atualiza um registro completo</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span><span class="role-tag">reparo</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-put">PUT</span>
+          <span class="endpoint-url">/api/registros/:id/status</span>
+          <span class="endpoint-desc">Atualiza apenas o status de um registro</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span><span class="role-tag">reparo</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-put">PUT</span>
+          <span class="endpoint-url">/api/registros/status/:status</span>
+          <span class="endpoint-desc">Atualiza status em lote (vários IDs)</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span><span class="role-tag">reparo</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-delete">DEL</span>
+          <span class="endpoint-url">/api/registros/:id</span>
+          <span class="endpoint-desc">Remove um registro</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span><span class="role-tag">reparo</span></div>
+        </div>
+      </div>
+
+      <!-- OMs -->
+      <div class="endpoint-group">
+        <div class="endpoint-group-header">
+          <span class="badge badge-cyan" style="font-size:11px">OM</span>
+          <span class="endpoint-group-title">Ordens de Manufatura</span>
+          <span class="endpoint-path">/api/om · /api/oms</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-post">POST</span>
+          <span class="endpoint-url">/api/om/start</span>
+          <span class="endpoint-desc">Inicia uma OM e o timer de produção</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-put">PUT</span>
+          <span class="endpoint-url">/api/om/pause</span>
+          <span class="endpoint-desc">Pausa o timer (salva tempo decorrido)</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-put">PUT</span>
+          <span class="endpoint-url">/api/om/resume</span>
+          <span class="endpoint-desc">Retoma o timer da OM pausada</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-put">PUT</span>
+          <span class="endpoint-url">/api/om/finalizar</span>
+          <span class="endpoint-desc">Finaliza a OM e move para histórico</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">operator</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/api/oms?status=ativa</span>
+          <span class="endpoint-desc">Lista OMs em andamento</span>
+          <div class="endpoint-roles"><span class="role-tag">todos</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/api/oms/finalizadas</span>
+          <span class="endpoint-desc">Histórico de OMs finalizadas</span>
+          <div class="endpoint-roles"><span class="role-tag">todos</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/api/relatorio-falhas</span>
+          <span class="endpoint-desc">Relatório completo de falhas agrupadas</span>
+          <div class="endpoint-roles"><span class="role-tag admin-tag">admin</span><span class="role-tag">qualidade</span></div>
+        </div>
+      </div>
+
+      <!-- Health -->
+      <div class="endpoint-group">
+        <div class="endpoint-group-header">
+          <span class="badge badge-green" style="font-size:11px">HEALTH</span>
+          <span class="endpoint-group-title">Monitoramento</span>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/health</span>
+          <span class="endpoint-desc">Status da aplicação — retorna <code>{ status: "ok", time: "..." }</code></span>
+          <div class="endpoint-roles"><span class="role-tag public-tag">público</span></div>
+        </div>
+        <div class="endpoint-row">
+          <span class="method method-get">GET</span>
+          <span class="endpoint-url">/health/db</span>
+          <span class="endpoint-desc">Status da conexão com o banco PostgreSQL</span>
+          <div class="endpoint-roles"><span class="role-tag public-tag">público</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 4. SEGURANÇA ===== -->
+    <section class="section" id="seguranca">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <h2 class="section-title">Segurança</h2>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">🍪</div>
+          <div class="card-title">Cookie HttpOnly</div>
+          <div class="card-desc">O token JWT é armazenado em cookie HttpOnly — inacessível por JavaScript, protege contra XSS.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔑</div>
+          <div class="card-title">JWT — JSON Web Token</div>
+          <div class="card-desc">Autenticação stateless. O token carrega o perfil do usuário e é verificado a cada requisição.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <div class="card-title">Senhas com bcrypt</div>
+          <div class="card-desc">Hash bcrypt com fator de custo elevado. Senhas nunca são armazenadas em texto puro.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🚦</div>
+          <div class="card-title">Rate Limiting</div>
+          <div class="card-desc">express-rate-limit protege contra brute-force e abuso de API limitando requisições por IP.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">✅</div>
+          <div class="card-title">Validação com Zod</div>
+          <div class="card-desc">Todos os endpoints de escrita validam o corpo da requisição com schemas Zod antes de processar.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🌐</div>
+          <div class="card-title">CORS Configurado</div>
+          <div class="card-desc">Apenas origens autorizadas via variável CORS_ORIGIN podem fazer requisições ao backend.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 5. FRONTEND ===== -->
+    <section class="section" id="frontend">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <h2 class="section-title">Frontend — Módulos do Sistema</h2>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">🔐</div>
+          <div class="card-title">Login</div>
+          <div class="card-desc">Tela de autenticação com animação SMD ao fundo (componentes eletrônicos caindo), validação e feedback de erro em tempo real.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚙️</div>
+          <div class="card-title">Operador</div>
+          <div class="card-desc">
+            Painel principal: timer de OM com shimmer effect (iniciar, pausar, retomar, finalizar), formulário de lançamento de falhas e tabela interativa de registros.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <div class="card-title">Qualidade</div>
+          <div class="card-desc">
+            Dashboard com gráficos Chart.js: Pareto de defeitos, tendência temporal e análise por OM. Cálculo automático de DPMO e índice Sigma. Exportação em PDF.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔧</div>
+          <div class="card-title">Reparo</div>
+          <div class="card-desc">
+            Kanban drag-and-drop de falhas. Cards com designador e PN destacados, acento visual por status (aberto/reparado/cancelado).
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📦</div>
+          <div class="card-title">Almoxarifado</div>
+          <div class="card-desc">
+            Kanban de requisições: pendente → separando → entregue. Modal com busca interna, ações em lote, notificação sonora e atalhos Ctrl+S / Esc.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">👤</div>
+          <div class="card-title">Admin</div>
+          <div class="card-desc">
+            Gestão completa de usuários: criar, editar, remover e definir perfis. Acesso exclusivo do administrador.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📄</div>
+          <div class="card-title">Relatórios</div>
+          <div class="card-desc">
+            Geração e exportação de relatórios de qualidade em PDF com html2canvas + jsPDF.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🏭</div>
+          <div class="card-title">SMT</div>
+          <div class="card-desc">
+            Módulo de controle da linha SMT (Surface-Mount Technology).
+          </div>
+        </div>
+      </div>
+
+      <h3>Componentes de Interface (Design System)</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Componente</th><th>Descrição</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>ProTable</td><td>Tabela avançada com filtros, paginação, ordenação e seleção em lote (TanStack Table)</td></tr>
+            <tr><td>ProForm</td><td>Formulário completo de lançamento de falhas e gestão de OMs</td></tr>
+            <tr><td>ProTimer</td><td>Timer visual da OM com efeito shimmer animado</td></tr>
+            <tr><td>ProMetrics</td><td>Cards de KPIs com valores em tempo real na barra lateral</td></tr>
+            <tr><td>ProQuality</td><td>Dashboard completo de qualidade com gráficos Chart.js</td></tr>
+            <tr><td>Button / Input / Select</td><td>Componentes de formulário com variantes e estados</td></tr>
+            <tr><td>Dialog / ConfirmDialog</td><td>Modais de confirmação e diálogo com acessibilidade</td></tr>
+            <tr><td>Badge / Skeleton / Toast</td><td>Utilitários de UI para status, carregamento e notificações</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 6. BANCO DE DADOS ===== -->
+    <section class="section" id="banco">
+      <div class="section-header">
+        <div class="section-num">6</div>
+        <h2 class="section-title">Banco de Dados</h2>
+      </div>
+
+      <div class="schema-grid">
+
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">users</span>
+            <span class="badge badge-purple" style="font-size:10px">Usuários do sistema</span>
+          </div>
+          <div class="schema-field"><span class="field-name">id</span><span class="field-type">Int</span><span class="field-pk">PK</span><span class="field-desc">autoincrement</span></div>
+          <div class="schema-field"><span class="field-name">name</span><span class="field-type">String</span><span class="field-desc">nome completo</span></div>
+          <div class="schema-field"><span class="field-name">username</span><span class="field-type">String</span><span class="field-desc">único — login</span></div>
+          <div class="schema-field"><span class="field-name">password_hash</span><span class="field-type">String</span><span class="field-desc">bcrypt</span></div>
+          <div class="schema-field"><span class="field-name">role</span><span class="field-type">String</span><span class="field-desc">admin|operator|reparo|...</span></div>
+        </div>
+
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">registros</span>
+            <span class="badge badge-blue" style="font-size:10px">Falhas registradas</span>
+          </div>
+          <div class="schema-field"><span class="field-name">id</span><span class="field-type">String</span><span class="field-pk">PK</span><span class="field-desc">UUID</span></div>
+          <div class="schema-field"><span class="field-name">om</span><span class="field-type">String</span><span class="field-desc">Ordem de Manufatura</span></div>
+          <div class="schema-field"><span class="field-name">serial</span><span class="field-type">String?</span><span class="field-desc">serial da placa</span></div>
+          <div class="schema-field"><span class="field-name">designador</span><span class="field-type">String?</span><span class="field-desc">componente (C1, R5...)</span></div>
+          <div class="schema-field"><span class="field-name">tipodefeito</span><span class="field-type">String?</span><span class="field-desc">categoria do defeito</span></div>
+          <div class="schema-field"><span class="field-name">pn</span><span class="field-type">String?</span><span class="field-desc">Part Number</span></div>
+          <div class="schema-field"><span class="field-name">status</span><span class="field-type">String?</span><span class="field-desc">pendente|reparado|...</span></div>
+          <div class="schema-field"><span class="field-name">operador</span><span class="field-type">String?</span><span class="field-desc">nome do operador</span></div>
+          <div class="schema-field"><span class="field-name">createdat</span><span class="field-type">String</span><span class="field-desc">timestamp ISO</span></div>
+        </div>
+
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">oms_ativas</span>
+            <span class="badge badge-green" style="font-size:10px">OMs em produção</span>
+          </div>
+          <div class="schema-field"><span class="field-name">omNumber</span><span class="field-type">String</span><span class="field-pk">PK</span></div>
+          <div class="schema-field"><span class="field-name">startTime</span><span class="field-type">BigInt?</span><span class="field-desc">timestamp início (ms)</span></div>
+          <div class="schema-field"><span class="field-name">pausedTime</span><span class="field-type">BigInt?</span><span class="field-desc">total pausado (ms)</span></div>
+          <div class="schema-field"><span class="field-name">qtdlote</span><span class="field-type">Int?</span><span class="field-desc">quantidade do lote</span></div>
+        </div>
+
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">oms_pausadas</span>
+            <span class="badge badge-amber" style="font-size:10px">OMs em pausa</span>
+          </div>
+          <div class="schema-field"><span class="field-name">omNumber</span><span class="field-type">String</span><span class="field-pk">PK</span></div>
+          <div class="schema-field"><span class="field-name">startTime</span><span class="field-type">BigInt?</span></div>
+          <div class="schema-field"><span class="field-name">pausedTime</span><span class="field-type">BigInt?</span></div>
+          <div class="schema-field"><span class="field-name">pauseStartedAt</span><span class="field-type">BigInt?</span><span class="field-desc">momento da pausa</span></div>
+          <div class="schema-field"><span class="field-name">elapsedAtPause</span><span class="field-type">BigInt?</span><span class="field-desc">tempo ao pausar</span></div>
+        </div>
+
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">oms_finalizadas</span>
+            <span class="badge badge-cyan" style="font-size:10px">Histórico de OMs</span>
+          </div>
+          <div class="schema-field"><span class="field-name">omNumber</span><span class="field-type">String</span><span class="field-pk">PK</span></div>
+          <div class="schema-field"><span class="field-name">startTime</span><span class="field-type">BigInt?</span></div>
+          <div class="schema-field"><span class="field-name">endTime</span><span class="field-type">BigInt?</span><span class="field-desc">timestamp finalização</span></div>
+          <div class="schema-field"><span class="field-name">pausedTime</span><span class="field-type">BigInt?</span></div>
+          <div class="schema-field"><span class="field-name">qtdlote</span><span class="field-type">Int?</span></div>
+        </div>
+
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">requisicoes</span>
+            <span class="badge badge-purple" style="font-size:10px">Almoxarifado</span>
+          </div>
+          <div class="schema-field"><span class="field-name">id</span><span class="field-type">Int</span><span class="field-pk">PK</span><span class="field-desc">autoincrement</span></div>
+          <div class="schema-field"><span class="field-name">om</span><span class="field-type">String</span><span class="field-desc">OM vinculada</span></div>
+          <div class="schema-field"><span class="field-name">items</span><span class="field-type">String</span><span class="field-desc">JSON dos itens</span></div>
+          <div class="schema-field"><span class="field-name">status</span><span class="field-type">String?</span><span class="field-desc">pendente|separando|entregue</span></div>
+          <div class="schema-field"><span class="field-name">created_by</span><span class="field-type">String?</span><span class="field-desc">quem criou</span></div>
+        </div>
+
+      </div>
+
+      <div class="info-box info-box-green">
+        <div class="info-box-icon">⚡</div>
+        <div class="info-box-content">
+          <div class="info-box-title">Índices de Performance</div>
+          <div class="info-box-text">
+            A tabela <strong>registros</strong> possui 5 índices otimizando as consultas mais comuns: por OM, por status, por data, por operador e o combinado OM+status. A tabela <strong>requisicoes</strong> possui 3 índices (OM, status, data).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 7. RBAC ===== -->
+    <section class="section" id="rbac">
+      <div class="section-header">
+        <div class="section-num">7</div>
+        <h2 class="section-title">Perfis de Acesso — RBAC</h2>
+      </div>
+
+      <p>O sistema utiliza <strong>Role-Based Access Control (RBAC)</strong>. Cada usuário possui exatamente um perfil que define quais módulos e ações estão disponíveis. O perfil é verificado no backend a cada requisição — não apenas no frontend.</p>
+
+      <div class="rbac-grid">
+        <div class="rbac-card">
+          <div class="rbac-title" style="color: #fca5a5;">👑 admin</div>
+          <div class="rbac-modules">
+            <div class="rbac-mod">Todos os módulos</div>
+            <div class="rbac-mod">Gestão de usuários</div>
+            <div class="rbac-mod">Dados e configurações</div>
+            <div class="rbac-mod">Relatórios completos</div>
+          </div>
+        </div>
+        <div class="rbac-card">
+          <div class="rbac-title" style="color: var(--blue-light);">⚙️ operator</div>
+          <div class="rbac-modules">
+            <div class="rbac-mod">Painel do operador</div>
+            <div class="rbac-mod">Timer de OM</div>
+            <div class="rbac-mod">Lançamento de falhas</div>
+            <div class="rbac-mod">Ver registros</div>
+          </div>
+        </div>
+        <div class="rbac-card">
+          <div class="rbac-title" style="color: var(--amber-light);">🔧 reparo</div>
+          <div class="rbac-modules">
+            <div class="rbac-mod">Kanban de reparo</div>
+            <div class="rbac-mod">Atualizar status</div>
+            <div class="rbac-mod">Ver registros</div>
+          </div>
+        </div>
+        <div class="rbac-card">
+          <div class="rbac-title" style="color: var(--cyan-light);">📊 qualidade</div>
+          <div class="rbac-modules">
+            <div class="rbac-mod">Dashboard analítico</div>
+            <div class="rbac-mod">DPMO e Sigma</div>
+            <div class="rbac-mod">Relatórios</div>
+            <div class="rbac-mod">Gráficos Pareto</div>
+          </div>
+        </div>
+        <div class="rbac-card">
+          <div class="rbac-title" style="color: var(--green-light);">📦 almoxarifado</div>
+          <div class="rbac-modules">
+            <div class="rbac-mod">Kanban requisições</div>
+            <div class="rbac-mod">Entregar materiais</div>
+            <div class="rbac-mod">Ver registros</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 8. INFRA ===== -->
+    <section class="section" id="infra">
+      <div class="section-header">
+        <div class="section-num">8</div>
+        <h2 class="section-title">Infraestrutura e Deploy</h2>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Componente</th><th>Serviço</th><th>URL / Detalhe</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Frontend (Next.js)</td>
+              <td><span class="badge badge-blue" style="font-size:11px">Vercel</span></td>
+              <td>Deploy automático via push no GitHub</td>
+            </tr>
+            <tr>
+              <td>Backend (API)</td>
+              <td><span class="badge badge-green" style="font-size:11px">Render</span></td>
+              <td>controle-de-falhas-aoi.onrender.com</td>
+            </tr>
+            <tr>
+              <td>Banco de Dados</td>
+              <td><span class="badge badge-green" style="font-size:11px">Render PostgreSQL</span></td>
+              <td>Interno — não exposto publicamente</td>
+            </tr>
+            <tr>
+              <td>CI/CD</td>
+              <td><span class="badge badge-purple" style="font-size:11px">GitHub Actions</span></td>
+              <td>Testes automáticos a cada push</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info-box info-box-amber">
+        <div class="info-box-icon">⚙️</div>
+        <div class="info-box-content">
+          <div class="info-box-title">Variáveis de Ambiente Críticas (Backend)</div>
+          <div class="info-box-text">
+            <code>JWT_SECRET</code> — chave secreta de assinatura dos tokens (deve ser forte em produção)<br/>
+            <code>DATABASE_URL</code> — string de conexão PostgreSQL<br/>
+            <code>CORS_ORIGIN</code> — URL do frontend autorizado<br/>
+            <code>COOKIE_SECURE</code> — <code>true</code> em produção (HTTPS)<br/>
+            <code>NODE_ENV</code> — <code>production</code> em ambiente de produção
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 9. TESTES ===== -->
+    <section class="section" id="testes">
+      <div class="section-header">
+        <div class="section-num">9</div>
+        <h2 class="section-title">Testes</h2>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Arquivo</th><th>Tipo</th><th>O que testa</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>auth_cookie_flow.spec.js</td>
+              <td><span class="badge badge-blue" style="font-size:11px">Integração</span></td>
+              <td>Fluxo completo: login → autenticação → logout via cookie JWT</td>
+            </tr>
+            <tr>
+              <td>performance_registros.test.js</td>
+              <td><span class="badge badge-cyan" style="font-size:11px">Performance</span></td>
+              <td>Tempo de resposta do endpoint de registros de falha</td>
+            </tr>
+            <tr>
+              <td>performance_relatorio_falhas.test.js</td>
+              <td><span class="badge badge-cyan" style="font-size:11px">Performance</span></td>
+              <td>Tempo de resposta do relatório de falhas agrupadas</td>
+            </tr>
+            <tr>
+              <td>smoke-intranet.js</td>
+              <td><span class="badge badge-green" style="font-size:11px">Smoke</span></td>
+              <td>Endpoints principais respondendo (health, login, registros)</td>
+            </tr>
+            <tr>
+              <td>smoke-rbac-intranet.js</td>
+              <td><span class="badge badge-amber" style="font-size:11px">RBAC</span></td>
+              <td>Controle de acesso por perfil funcionando corretamente</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block"><span class="comment"># Executar toda a suite de testes</span>
+cd backend
+npm test -- --detectOpenHandles -i
+
+<span class="comment"># Smoke test (valida API online)</span>
+npm run smoke:intranet
+
+<span class="comment"># Verificar saúde da API (PowerShell)</span>
+Invoke-WebRequest -UseBasicParsing http://localhost:3001/health | ConvertFrom-Json
+</div>
+    </section>
+
+    <!-- ===== 10. STACK ===== -->
+    <section class="section" id="stack">
+      <div class="section-header">
+        <div class="section-num">10</div>
+        <h2 class="section-title">Stack Tecnológica Completa</h2>
+      </div>
+
+      <h3>Backend</h3>
+      <div class="tech-grid">
+        <div class="tech-item"><div class="tech-name">Node.js</div><div class="tech-version">v18+</div><div class="tech-role">Runtime JavaScript</div></div>
+        <div class="tech-item"><div class="tech-name">Express</div><div class="tech-version">v5.x</div><div class="tech-role">Framework web</div></div>
+        <div class="tech-item"><div class="tech-name">PostgreSQL</div><div class="tech-version">v15+</div><div class="tech-role">Banco de dados</div></div>
+        <div class="tech-item"><div class="tech-name">Prisma ORM</div><div class="tech-version">v7.x</div><div class="tech-role">ORM + migrações</div></div>
+        <div class="tech-item"><div class="tech-name">JWT</div><div class="tech-version">v9.x</div><div class="tech-role">Autenticação</div></div>
+        <div class="tech-item"><div class="tech-name">bcrypt</div><div class="tech-version">v6.x</div><div class="tech-role">Hash de senhas</div></div>
+        <div class="tech-item"><div class="tech-name">Zod</div><div class="tech-version">v3.x</div><div class="tech-role">Validação</div></div>
+        <div class="tech-item"><div class="tech-name">Rate Limit</div><div class="tech-version">v7.x</div><div class="tech-role">Proteção API</div></div>
+        <div class="tech-item"><div class="tech-name">Jest + Supertest</div><div class="tech-version">v29.x</div><div class="tech-role">Testes</div></div>
+      </div>
+
+      <h3>Frontend</h3>
+      <div class="tech-grid">
+        <div class="tech-item"><div class="tech-name">Next.js</div><div class="tech-version">v16.x</div><div class="tech-role">Framework React</div></div>
+        <div class="tech-item"><div class="tech-name">React</div><div class="tech-version">v18.x</div><div class="tech-role">Biblioteca de UI</div></div>
+        <div class="tech-item"><div class="tech-name">TypeScript</div><div class="tech-version">v5.x</div><div class="tech-role">Tipagem estática</div></div>
+        <div class="tech-item"><div class="tech-name">Tailwind CSS</div><div class="tech-version">v3.x</div><div class="tech-role">Estilização</div></div>
+        <div class="tech-item"><div class="tech-name">Framer Motion</div><div class="tech-version">v11.x</div><div class="tech-role">Animações</div></div>
+        <div class="tech-item"><div class="tech-name">Chart.js</div><div class="tech-version">v4.x</div><div class="tech-role">Gráficos</div></div>
+        <div class="tech-item"><div class="tech-name">TanStack Table</div><div class="tech-version">v8.x</div><div class="tech-role">Tabelas avançadas</div></div>
+        <div class="tech-item"><div class="tech-name">jsPDF</div><div class="tech-version">v3.x</div><div class="tech-role">Exportação PDF</div></div>
+        <div class="tech-item"><div class="tech-name">date-fns</div><div class="tech-version">v4.x</div><div class="tech-role">Manipulação de datas</div></div>
+      </div>
+    </section>
+
+    <!-- ===== 11. GLOSSÁRIO ===== -->
+    <section class="section" id="glossario">
+      <div class="section-header">
+        <div class="section-num">11</div>
+        <h2 class="section-title">Glossário</h2>
+      </div>
+
+      <div class="glossary-grid">
+        <div class="glossary-item"><div class="glossary-term">AOI</div><div class="glossary-def">Automated Optical Inspection — inspeção óptica automatizada de placas eletrônicas na linha de produção.</div></div>
+        <div class="glossary-item"><div class="glossary-term">OM</div><div class="glossary-def">Ordem de Manufatura — ordem de produção que identifica um lote de placas.</div></div>
+        <div class="glossary-item"><div class="glossary-term">SMD / SMT</div><div class="glossary-def">Surface-Mount Device / Technology — tecnologia de montagem de componentes eletrônicos na superfície da placa.</div></div>
+        <div class="glossary-item"><div class="glossary-term">DPMO</div><div class="glossary-def">Defects Per Million Opportunities — defeitos por milhão de oportunidades. Métrica padrão IPC de qualidade.</div></div>
+        <div class="glossary-item"><div class="glossary-term">Sigma (σ)</div><div class="glossary-def">Índice de qualidade estatístico. Quanto maior, melhor (6σ é praticamente zero defeitos).</div></div>
+        <div class="glossary-item"><div class="glossary-term">Pareto</div><div class="glossary-def">Análise que identifica os defeitos de maior frequência — regra 80/20 aplicada à qualidade.</div></div>
+        <div class="glossary-item"><div class="glossary-term">RBAC</div><div class="glossary-def">Role-Based Access Control — controle de acesso baseado em perfis de usuário.</div></div>
+        <div class="glossary-item"><div class="glossary-term">JWT</div><div class="glossary-def">JSON Web Token — padrão de autenticação sem estado (stateless), assinado digitalmente.</div></div>
+        <div class="glossary-item"><div class="glossary-term">PN</div><div class="glossary-def">Part Number — código único de identificação de um componente eletrônico.</div></div>
+        <div class="glossary-item"><div class="glossary-term">Designador</div><div class="glossary-def">Referência do componente na placa (ex: C1 = capacitor 1, R22 = resistor 22, U5 = CI 5).</div></div>
+        <div class="glossary-item"><div class="glossary-term">ORM</div><div class="glossary-def">Object-Relational Mapping — camada de abstração entre o código e o banco de dados relacional.</div></div>
+        <div class="glossary-item"><div class="glossary-term">CI/CD</div><div class="glossary-def">Continuous Integration / Continuous Delivery — pipeline automatizado de testes e deploy.</div></div>
+      </div>
+    </section>
+
+  </div><!-- /content -->
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    <div>
+      <strong>Sistema de Controle de Falhas AOI</strong><br/>
+      Desenvolvido por <strong>Carlos Alexandre Duarte Pereira</strong>
+    </div>
+    <div style="text-align:right">
+      <strong>CADService Produtos Eletrônicos</strong> — Campinas, SP<br/>
+      Versão 1.0 &nbsp;·&nbsp; Agosto 2026
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('.nav-link');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
