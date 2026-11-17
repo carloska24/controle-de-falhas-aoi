@@ -114,9 +114,42 @@ async function main() {
     assert.equal((await api('GET', '/api/requisicoes?limit=200')).data.meta.total, 1);
     console.log('PASS: solicitações simultâneas sem duplicação e autoria correta');
 
+    // Reproduz a seleção da primeira página: onze itens elegíveis e um aguardando SMT.
+    const requestPageRows = Array.from({ length: 12 }, (_, i) => ({
+      id: `REQUEST-PAGE-${String(i).padStart(2, '0')}`, om: 'OM-REQUEST-PAGE', qtdlote: 50,
+      designador: `R${i}`, pn: 'PN-REQUEST-PAGE', tipodefeito: i === 11 ? 'Possível Incorreto' : 'Ausente',
+    }));
+    await api('POST', '/api/registros/batch', requestPageRows, 201);
+    const requestPage = (await api('GET', '/api/registros?om=OM-REQUEST-PAGE&limit=12&page=1')).data;
+    assert.equal(requestPage.data.length, 12);
+    const mixedRequest = (await api('POST', '/api/requisicoes', {
+      registroIds: requestPage.data.map(record => record.id),
+    }, 400)).data;
+    assert.deepEqual(mixedRequest.details.invalidRecords, [{
+      id: requestPageRows[11].id, reason: 'Defeito Possível Incorreto aguarda conferência SMT.',
+    }]);
+    assert.equal(await prisma.requisicoes.count(), 1);
+    assert.equal(await prisma.requisicao_registros.count(), 2);
+    const eligibleRequestBody = { registroIds: requestPage.data.filter(record => record.tipodefeito === 'Ausente').map(record => record.id) };
+    const eligibleRequest = (await api('POST', '/api/requisicoes', eligibleRequestBody, 201)).data;
+    assert.deepEqual(eligibleRequest.summary, { selectedRecords: 11, createdRecords: 11, existingRecords: 0, createdRequests: 1 });
+    const pageRequest = await prisma.requisicoes.findUnique({ where: { id: eligibleRequest.requisicaoIds[0] } });
+    assert.deepEqual(JSON.parse(pageRequest.items), [{
+      pn: 'PN-REQUEST-PAGE', descricao: null, quantidade_requisitada: 11, quantidade_entregue: 0,
+    }]);
+    const eligibleRetry = (await api('POST', '/api/requisicoes', eligibleRequestBody)).data;
+    assert.deepEqual(eligibleRetry.summary, { selectedRecords: 11, createdRecords: 0, existingRecords: 11, createdRequests: 0 });
+    assert.deepEqual(eligibleRetry.requisicaoIds, eligibleRequest.requisicaoIds);
+    assert.match(eligibleRetry.message, /Nenhuma requisição nova/);
+    assert.equal(await prisma.requisicoes.count(), 2);
+    assert.equal(await prisma.requisicao_registros.count(), 13);
+    const unchangedPageRequest = await prisma.requisicoes.findUnique({ where: { id: pageRequest.id } });
+    assert.equal(JSON.parse(unchangedPageRequest.items)[0].quantidade_requisitada, 11);
+    console.log('PASS: seleção mista de página rejeitada; onze elegíveis criam pedido exato e retry não duplica');
+
     await api('POST', '/api/auth/logout');
     await api('GET', '/api/auth/me', undefined, 401);
-    assert.equal(await prisma.registros.count(), 251);
+    assert.equal(await prisma.registros.count(), 263);
     console.log('PASS: logout revoga cookie reapresentado sem excluir registros');
     console.log('INTEGRATION_ISOLATED_OK');
   } finally {

@@ -1,8 +1,8 @@
 const prisma = require('../config/prisma');
 const { getPagination } = require('../utils/pagination');
 
-function reject(status, message) {
-  throw Object.assign(new Error(message), { status });
+function reject(status, message, details) {
+  throw Object.assign(new Error(message), { status, details });
 }
 
 async function listRequisicoes(req, res) {
@@ -37,26 +37,38 @@ async function createRequisicao(req, res) {
         result = await prisma.$transaction(async tx => {
           const registros = await tx.registros.findMany({ where: { id: { in: registroIds } } });
           if (registros.length !== registroIds.length) reject(404, 'Um ou mais registros não foram encontrados.');
+          const invalidRecords = registros.flatMap(registro => {
+            const reasons = [];
+            const tipo = (registro.tipodefeito || '').trim();
+            if (!['Ausente', 'Danificado', 'Incorreto'].includes(tipo)) {
+              reasons.push(tipo === 'Possível Incorreto'
+                ? 'Defeito Possível Incorreto aguarda conferência SMT.'
+                : 'Defeito não elegível: use Ausente, Danificado ou Incorreto.');
+            }
+            if (!registro.pn?.trim()) reasons.push('PN não informado.');
+            return reasons.length ? [{ id: registro.id, reason: reasons.join(' ') }] : [];
+          });
+          if (invalidRecords.length) {
+            reject(400, 'A seleção contém registros que não podem gerar requisição. Revise os itens indicados.', { invalidRecords });
+          }
           const links = await tx.requisicao_registros.findMany({ where: { registro_id: { in: registroIds } } });
           const linkedIds = new Set(links.map(link => link.registro_id));
           const requisicaoIds = new Set(links.map(link => link.requisicao_id));
           const groups = new Map();
           for (const registro of registros) {
             if (linkedIds.has(registro.id)) continue;
-            if (!['Ausente', 'Danificado', 'Incorreto'].includes((registro.tipodefeito || '').trim()) || !registro.pn?.trim()) {
-              reject(400, 'Selecione apenas registros com PN e defeito Ausente, Danificado ou Incorreto.');
-            }
             if (!groups.has(registro.om)) groups.set(registro.om, []);
             groups.get(registro.om).push(registro);
           }
           for (const [om, records] of groups) {
             const items = new Map();
             for (const record of records) {
-              if (!items.has(record.pn)) items.set(record.pn, {
-                pn: record.pn, descricao: record.descricao,
+              const pn = record.pn.trim();
+              if (!items.has(pn)) items.set(pn, {
+                pn, descricao: record.descricao,
                 quantidade_requisitada: 0, quantidade_entregue: 0,
               });
-              items.get(record.pn).quantidade_requisitada++;
+              items.get(pn).quantidade_requisitada++;
             }
             const requisicao = await tx.requisicoes.create({ data: {
               om, items: JSON.stringify([...items.values()]),
@@ -68,21 +80,34 @@ async function createRequisicao(req, res) {
             })) });
             requisicaoIds.add(requisicao.id);
           }
-          return { requisicaoIds: [...requisicaoIds], created: groups.size };
+          return {
+            requisicaoIds: [...requisicaoIds].sort((a, b) => a - b),
+            summary: {
+              selectedRecords: registroIds.length,
+              createdRecords: registros.length - linkedIds.size,
+              existingRecords: linkedIds.size,
+              createdRequests: groups.size,
+            },
+          };
         }, { isolationLevel: 'Serializable' });
         break;
       } catch (error) {
         if (!['P2034', 'P2002'].includes(error.code) || attempt === 2) throw error;
       }
     }
-    res.status(result.created ? 201 : 200).json({
-      message: result.created ? `${result.created} requisições criadas com sucesso.` : 'Os registros já possuem requisições; nenhuma foi duplicada.',
+    const { summary } = result;
+    res.status(summary.createdRequests ? 201 : 200).json({
+      message: summary.createdRequests
+        ? `Requisições criadas: ${summary.createdRequests}. Registros incluídos: ${summary.createdRecords}. Registros já vinculados: ${summary.existingRecords}.`
+        : `Nenhuma requisição nova. Registros já vinculados: ${summary.existingRecords}.`,
       requisicaoIds: result.requisicaoIds,
+      summary,
     });
   } catch (error) {
     const conflict = ['P2034', 'P2002'].includes(error.code);
     res.status(error.status || (conflict ? 409 : 500)).json({
       error: error.status ? error.message : conflict ? 'Solicitação concorrente. Atualize a lista e tente novamente.' : 'Falha ao criar requisição.',
+      ...(error.status === 400 && error.details ? { details: error.details } : {}),
     });
   }
 }

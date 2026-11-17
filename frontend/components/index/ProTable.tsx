@@ -12,11 +12,13 @@ import Dialog from '@/components/ui/Dialog';
 import { format, isValid } from 'date-fns';
 import OMTimeSummary from './OMTimeSummary';
 import { useDebounce } from '@/hooks/useDebounce';
+import MaterialRequestReview from './MaterialRequestReview';
+import { reviewMaterialRequest, togglePageSelection, type MaterialRequestResult } from '@/lib/materialRequest';
 
 interface ProTableProps {
   registros: Registro[];
   onDelete: (ids: string[]) => Promise<void>;
-  onGenerateRequest: (ids: string[]) => Promise<void>;
+  onGenerateRequest: (ids: string[]) => Promise<MaterialRequestResult>;
   onAddDemo: () => Promise<void>;
   onEdit?: (id: string, data: Partial<Registro>) => Promise<void>;
   isLoading?: boolean;
@@ -40,7 +42,7 @@ export default function ProTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof Registro | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [isRequesting, setIsRequesting] = useState(false);
+  const [requestIds, setRequestIds] = useState<string[] | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
 
   // Estado para edição
@@ -194,6 +196,9 @@ export default function ProTable({
   const startIdx = (currentPage - 1) * perPage;
   const endIdx = startIdx + perPage;
   const paginatedRegistros = sortedRegistros.slice(startIdx, endIdx);
+  const allPageSelected = paginatedRegistros.length > 0 && paginatedRegistros.every(r => selectedIds.has(r.id));
+  const somePageSelected = paginatedRegistros.some(r => selectedIds.has(r.id));
+  const requestReview = useMemo(() => reviewMaterialRequest(registros, selectedIds), [registros, selectedIds]);
 
   // Ajusta página quando totalPages mudar (por exemplo, após deletar registros)
   useEffect(() => {
@@ -282,15 +287,8 @@ export default function ProTable({
   }, []);
 
   const toggleSelectAll = useCallback(() => {
-    if (!Array.isArray(paginatedRegistros)) return;
-    startTransition(() => {
-      if (selectedIds.size === paginatedRegistros.length) {
-        setSelectedIds(new Set());
-      } else {
-        setSelectedIds(new Set(paginatedRegistros.map(r => r.id)));
-      }
-    });
-  }, [paginatedRegistros, selectedIds.size]);
+    setSelectedIds(previous => togglePageSelection(previous, paginatedRegistros.map(r => r.id)));
+  }, [paginatedRegistros]);
 
   const handleDelete = async () => {
     if (selectedIds.size === 0) return;
@@ -298,15 +296,8 @@ export default function ProTable({
     setSelectedIds(new Set());
   };
 
-  const handleGenerateRequest = async () => {
-    if (selectedIds.size === 0 || isRequesting) return;
-    setIsRequesting(true);
-    try {
-      await onGenerateRequest(Array.from(selectedIds));
-      setSelectedIds(new Set());
-    } finally {
-      setIsRequesting(false);
-    }
+  const handleGenerateRequest = () => {
+    if (selectedIds.size > 0) setRequestIds(Array.from(selectedIds));
   };
 
   // Handler para duplo clique - abre modal de edição
@@ -554,18 +545,19 @@ export default function ProTable({
             variant="success"
             size="sm"
             onClick={handleGenerateRequest}
-            disabled={selectedIds.size === 0 || isRequesting}
-            aria-label={`Gerar requisição para ${selectedIds.size} registro(s) selecionado(s)`}
+            disabled={selectedIds.size === 0 || isLoading}
+            aria-label={`Revisar requisição: ${requestReview.eligible.length} aptos de ${selectedIds.size} selecionados`}
           >
-            {isRequesting ? (
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <FilePlus className="w-4 h-4" aria-hidden="true" />
-            )}
-            Requisitar
+            <FilePlus className="w-4 h-4" aria-hidden="true" />
+            Requisitar{selectedIds.size > 0 ? ` (${requestReview.eligible.length})` : ''}
           </Button>
         </div>
       </div>
+
+      <p className="mb-4 text-xs text-slate-400" role="status">
+        Selecionar todos marca os {paginatedRegistros.length} registros desta página.
+        {selectedIds.size > 0 && ` ${requestReview.eligible.length} apto(s) para requisição; ${requestReview.excluded.length} com pendência ou sem necessidade de material.`}
+      </p>
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -579,12 +571,11 @@ export default function ProTable({
               <th className="p-3 text-left w-10">
                 <input
                   type="checkbox"
-                  checked={
-                    selectedIds.size === paginatedRegistros.length && paginatedRegistros.length > 0
-                  }
+                  checked={allPageSelected}
+                  ref={element => { if (element) element.indeterminate = somePageSelected && !allPageSelected; }}
                   onChange={toggleSelectAll}
                   className={`rounded border-2 transition-all ${
-                    selectedIds.size === paginatedRegistros.length && paginatedRegistros.length > 0
+                    allPageSelected
                       ? 'border-cyan-400 bg-cyan-500/20 checked:bg-cyan-500'
                       : 'border-[#2a3d5c] bg-[#0f1a2b]'
                   }`}
@@ -989,6 +980,13 @@ export default function ProTable({
       <div className="mt-4 text-xs text-slate-500 text-center">
         Dica: Duplo clique em uma linha para editar.
       </div>
+
+      {requestIds && <MaterialRequestReview registros={registros} ids={requestIds}
+        onSubmit={onGenerateRequest} onClose={() => setRequestIds(null)}
+        onComplete={submitted => {
+          setSelectedIds(previous => new Set([...previous].filter(id => !submitted.includes(id))));
+          setRequestIds(null);
+        }} />}
 
       {/* Modal de Edição */}
       <Dialog

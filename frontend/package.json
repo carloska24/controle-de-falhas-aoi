@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:api": "node --test tests/api.test.cjs"
+    "test:api": "node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

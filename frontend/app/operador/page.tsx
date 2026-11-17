@@ -251,6 +251,8 @@ export default function IndexPage() {
       // Ignorar se estiver digitando em um input, textarea ou select
       const target = e.target as HTMLElement;
       if (
+        e.defaultPrevented ||
+        target.closest('dialog, button, a, [role="button"], [role="row"], [contenteditable="true"]') ||
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.tagName === 'SELECT'
@@ -699,22 +701,11 @@ export default function IndexPage() {
                     method: 'POST',
                     body: JSON.stringify({ registroIds: ids }),
                   });
-                  const requisicaoIds = response.requisicaoIds || [];
-                  showToast(
-                    `${requisicaoIds.length || 1} requisição(ões) gerada(s) com sucesso!`,
-                    'success'
-                  );
-                  await loadData();
+                  showToast(response.message, 'success');
+                  return response;
                 } catch (error: any) {
-                  // Verifica se é erro de duplicata
-                  if (error.message === 'duplicated_pns') {
-                    showToast(
-                      'Alguns materiais já foram requisitados anteriormente e ainda estão pendentes. Verifique a tela de Almoxarifado.',
-                      'error'
-                    );
-                  } else {
-                    showToast(error.message || 'Erro ao gerar requisição', 'error');
-                  }
+                  // O diálogo mantém o erro junto à ação e preserva a seleção para tentar novamente.
+                  throw error;
                 }
               }}
               onAddDemo={async () => {

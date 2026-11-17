@@ -119,6 +119,9 @@ test('repeating a material request returns the existing IDs instead of requestin
   await requisicoes.createRequisicao(req, second);
   expect(first.statusCode).toBe(201);
   expect(second.statusCode).toBe(200);
+  expect(first.body.summary).toEqual({ selectedRecords: 1, createdRecords: 1, existingRecords: 0, createdRequests: 1 });
+  expect(second.body.summary).toEqual({ selectedRecords: 1, createdRecords: 0, existingRecords: 1, createdRequests: 0 });
+  expect(second.body.message).toMatch('Nenhuma requisição nova');
   expect(second.body.requisicaoIds).toEqual([7]);
   expect(prisma.requisicoes.create).toHaveBeenCalledTimes(1);
   expect(prisma.requisicoes.create.mock.calls[0][0].data.created_by).toBe('operator.local');
@@ -127,11 +130,12 @@ test('repeating a material request returns the existing IDs instead of requestin
 
 test('serialization conflicts are retried without bypassing the record link', async () => {
   prisma.$transaction.mockRejectedValueOnce({ code: 'P2034' });
-  prisma.registros.findMany.mockResolvedValue([{ id: 'r1' }]);
+  prisma.registros.findMany.mockResolvedValue([{ id: 'r1', pn: 'PN-1', tipodefeito: 'Ausente' }]);
   prisma.requisicao_registros.findMany.mockResolvedValue([{ registro_id: 'r1', requisicao_id: 5 }]);
   const res = response();
   await requisicoes.createRequisicao({ body: { registroIds: ['r1'] }, user: { id: 9, email: 'operator' } }, res);
   expect(res.statusCode).toBe(200);
+  expect(res.body.summary).toEqual({ selectedRecords: 1, createdRecords: 0, existingRecords: 1, createdRequests: 0 });
   expect(prisma.$transaction).toHaveBeenCalledTimes(2);
   expect(prisma.requisicoes.create).not.toHaveBeenCalled();
 });
@@ -149,4 +153,69 @@ test('linked records cannot be deleted silently', async () => {
   const res = response();
   await registros.deleteRegistro({ params: { id: 'r1' } }, res);
   expect(res.statusCode).toBe(409);
+});
+
+test('mixed page selection with eleven eligible records and one SMT record rejects atomically', async () => {
+  const selected = Array.from({ length: 12 }, (_, i) => ({ id: `page-${i}`, om: 'OM-1', pn: 'PN-1',
+    tipodefeito: i === 11 ? 'Possível Incorreto' : 'Ausente' }));
+  prisma.registros.findMany.mockResolvedValue(selected);
+  const res = response();
+  await requisicoes.createRequisicao({ body: { registroIds: selected.map(row => row.id) }, user: { id: 1 } }, res);
+  expect(res.statusCode).toBe(400);
+  expect(res.body.details.invalidRecords).toEqual([{ id: 'page-11', reason: 'Defeito Possível Incorreto aguarda conferência SMT.' }]);
+  expect(prisma.requisicoes.create).not.toHaveBeenCalled();
+  expect(prisma.requisicao_registros.createMany).not.toHaveBeenCalled();
+});
+
+test.each(['', '   ', null, undefined])('a blank PN rejects the selection before any write: %p', async pn => {
+  prisma.registros.findMany.mockResolvedValue([{ id: 'no-pn', om: 'OM-1', pn, tipodefeito: 'Ausente' }]);
+  const res = response();
+  await requisicoes.createRequisicao({ body: { registroIds: ['no-pn'] }, user: {} }, res);
+  expect(res.statusCode).toBe(400);
+  expect(res.body.details.invalidRecords).toEqual([{ id: 'no-pn', reason: 'PN não informado.' }]);
+  expect(prisma.requisicoes.create).not.toHaveBeenCalled();
+  expect(prisma.requisicao_registros.createMany).not.toHaveBeenCalled();
+});
+
+test('eligible selections group quantities by PN within each OM and report actual counts', async () => {
+  const selected = [
+    { id: 'r1', om: 'OM-1', pn: 'PN-1', descricao: 'Resistor', tipodefeito: 'Ausente' },
+    { id: 'r2', om: 'OM-1', pn: ' PN-1 ', descricao: 'Resistor', tipodefeito: 'Danificado' },
+    { id: 'r3', om: 'OM-1', pn: 'PN-2', descricao: 'Capacitor', tipodefeito: 'Incorreto' },
+    { id: 'r4', om: 'OM-2', pn: 'PN-1', descricao: 'Resistor', tipodefeito: 'Ausente' },
+  ];
+  prisma.registros.findMany.mockResolvedValue(selected);
+  prisma.requisicao_registros.findMany.mockResolvedValue([]);
+  prisma.requisicoes.create.mockImplementation(async () => ({ id: prisma.requisicoes.create.mock.calls.length + 6 }));
+  const res = response();
+  await requisicoes.createRequisicao({ body: { registroIds: selected.map(row => row.id) }, user: { email: 'operator' } }, res);
+  expect(res.statusCode).toBe(201);
+  expect(res.body.summary).toEqual({ selectedRecords: 4, createdRecords: 4, existingRecords: 0, createdRequests: 2 });
+  expect(res.body.requisicaoIds).toEqual([7, 8]);
+  const first = prisma.requisicoes.create.mock.calls[0][0].data;
+  const second = prisma.requisicoes.create.mock.calls[1][0].data;
+  expect(first.om).toBe('OM-1');
+  expect(JSON.parse(first.items)).toEqual([
+    { pn: 'PN-1', descricao: 'Resistor', quantidade_requisitada: 2, quantidade_entregue: 0 },
+    { pn: 'PN-2', descricao: 'Capacitor', quantidade_requisitada: 1, quantidade_entregue: 0 },
+  ]);
+  expect(second.om).toBe('OM-2');
+  expect(JSON.parse(second.items)[0].quantidade_requisitada).toBe(1);
+});
+
+test('mixed existing and new eligible records return both IDs with an honest summary', async () => {
+  prisma.registros.findMany.mockResolvedValue([
+    { id: 'old', om: 'OM-1', pn: 'PN-1', tipodefeito: 'Ausente' },
+    { id: 'new', om: 'OM-1', pn: 'PN-1', tipodefeito: 'Ausente' },
+  ]);
+  prisma.requisicao_registros.findMany.mockResolvedValue([{ registro_id: 'old', requisicao_id: 7 }]);
+  prisma.requisicoes.create.mockResolvedValue({ id: 8 });
+  const res = response();
+  await requisicoes.createRequisicao({ body: { registroIds: ['old', 'new'] }, user: { email: 'operator' } }, res);
+  expect(res.statusCode).toBe(201);
+  expect(res.body.requisicaoIds).toEqual([7, 8]);
+  expect(res.body.summary).toEqual({ selectedRecords: 2, createdRecords: 1, existingRecords: 1, createdRequests: 1 });
+  expect(res.body.message).toMatch('Registros já vinculados: 1');
+  expect(JSON.parse(prisma.requisicoes.create.mock.calls[0][0].data.items)[0].quantidade_requisitada).toBe(1);
+  expect(prisma.requisicao_registros.createMany).toHaveBeenCalledWith({ data: [{ registro_id: 'new', requisicao_id: 8 }] });
 });

@@ -30,6 +30,15 @@ function loadApi(fetch, browser = false) {
 }
 
 const response = (body, status = 200) => new Response(JSON.stringify(body), { status });
+test('material validation keeps actionable server details for the review dialog', async () => {
+  const { api } = loadApi(async () => response({ error: 'Revise a seleção', details: { invalidRecords: [{ id: 'R1', reason: 'PN não informado.' }] } }, 400));
+  await assert.rejects(api.fetchAutenticado('/api/requisicoes', { method: 'POST' }), error => {
+    assert.equal(error.status, 400);
+    assert.equal(error.details.invalidRecords[0].id, 'R1');
+    assert.match(error.details.invalidRecords[0].reason, /PN/);
+    return true;
+  });
+});
 function page(total, number) {
   const offset = (number - 1) * 200;
   return {

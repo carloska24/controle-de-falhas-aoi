@@ -52,7 +52,10 @@ export async function fetchAutenticado(url: string, options: RequestInit = {}) {
     const errorData = await response.json().catch(() => ({
       error: 'Erro de comunicação',
     }));
-    throw new Error(errorData.error || `Erro na API: ${response.statusText}`);
+    throw Object.assign(new Error(errorData.error || `Erro na API: ${response.statusText}`), {
+      status: response.status,
+      details: errorData.details,
+    });
   }
 
   if (response.status === 204) return null;
