@@ -6,6 +6,40 @@ datasource db {
   provider = "postgresql"
 }
 
+enum StatusOM {
+  em_andamento
+  pausada
+  finalizada
+}
+
+model ordens_manufatura {
+  omNumber       String @id
+  status         StatusOM
+  startTime      BigInt
+  endTime        BigInt?
+  pausedTime     BigInt @default(0)
+  pauseStartedAt BigInt?
+  elapsedAtPause BigInt?
+  qtdlote        Int?
+  version        Int @default(0)
+  eventos        eventos_om[]
+
+  @@index([status])
+}
+
+model eventos_om {
+  id         String @id @default(uuid())
+  omNumber   String
+  action     String
+  actorId    Int
+  actorName  String
+  occurredAt DateTime @default(now())
+  snapshot   Json
+  ordem      ordens_manufatura @relation(fields: [omNumber], references: [omNumber])
+
+  @@index([omNumber, occurredAt])
+}
+
 model oms_ativas {
   omNumber   String @id
   startTime  BigInt?
@@ -44,6 +78,8 @@ model registros {
   status      String?
   operador    String?
   prioridade  String?
+  version     Int @default(0)
+  requisicao_vinculo requisicao_registros?
 
   @@index([om], map: "idx_registros_om")
   @@index([status], map: "idx_registros_status")
@@ -59,10 +95,20 @@ model requisicoes {
   status     String? @default("pendente")
   created_at String? @default("CURRENT_TIMESTAMP")
   created_by String?
+  registros_vinculados requisicao_registros[]
 
   @@index([om], map: "idx_requisicoes_om")
   @@index([status], map: "idx_requisicoes_status")
   @@index([created_at], map: "idx_requisicoes_created_at")
+}
+
+model requisicao_registros {
+  registro_id String @id
+  requisicao_id Int
+  registro registros @relation(fields: [registro_id], references: [id], onDelete: Restrict)
+  requisicao requisicoes @relation(fields: [requisicao_id], references: [id], onDelete: Cascade)
+
+  @@index([requisicao_id])
 }
 
 model users {
@@ -71,4 +117,5 @@ model users {
   username      String @unique
   password_hash String
   role          String @default("operator")
+  session_version Int @default(0)
 }

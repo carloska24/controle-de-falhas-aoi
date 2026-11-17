@@ -2,6 +2,8 @@
 
 Este runbook foca em ambiente interno de empresa (sem deploy cloud), com operação estável 24/7 na rede local.
 
+> Antes de atualizar o banco, siga o [procedimento de migrações/baseline](../backend/README.md). `npm run build` no backend agora apenas gera o cliente. Administrador é criado por comando explícito, nunca pelo build ou por rota HTTP. A conclusão da primeira etapa ainda não libera o sistema para uso oficial.
+
 ## 1) Objetivo operacional
 
 - Manter backend e frontend disponíveis continuamente para as estações da fábrica.
@@ -104,7 +106,7 @@ Verificações:
 1. Avisar operação sobre janela curta.
 2. `pm2 stop Aoi_Frontend` e `pm2 stop Aoi_Backend`.
 3. Atualizar código e dependências.
-4. Rodar validação básica (`npm run build` frontend, smoke de login).
+4. Rodar builds e testes em homologação. Fazer backup com restauração validada; para banco existente sem histórico, conferir baseline conforme o guia do backend. Aplicar migrações revisadas como etapa explícita, separada do build. Nunca usar `--accept-data-loss`.
 5. `pm2 restart Aoi_Backend` e `pm2 restart Aoi_Frontend`.
 6. Validar `/health`, `/health/db` e login.
 

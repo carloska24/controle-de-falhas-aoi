@@ -1,8 +1,11 @@
 const prisma = require('../config/prisma');
+const { randomUUID } = require('node:crypto');
+const { getPagination } = require('../utils/pagination');
 
 async function listRegistros(req, res) {
   try {
-    const { om, status, dataIni, dataFim, page = 1, limit = 50 } = req.query;
+    const { om, status, dataIni, dataFim } = req.query;
+    const { page, limit, skip } = getPagination(req.query);
     const isAdminUser = req.user && req.user.role === 'admin';
 
     const where = {};
@@ -19,19 +22,15 @@ async function listRegistros(req, res) {
       if (dataFim) where.createdat.lte = dataFim;
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 50;
-    const offset = (pageNum - 1) * limitNum;
-
-    const [total, registrosRaw] = await Promise.all([
-      prisma.registros.count({ where }),
-      prisma.registros.findMany({
+    const [total, registrosRaw] = await prisma.$transaction(async tx => [
+      await tx.registros.count({ where }),
+      await tx.registros.findMany({
         where,
-        orderBy: { createdat: 'desc' },
-        skip: offset,
-        take: limitNum,
+        orderBy: [{ createdat: 'desc' }, { id: 'desc' }],
+        skip,
+        take: limit,
       }),
-    ]);
+    ], { isolationLevel: 'RepeatableRead' });
 
     const registros = registrosRaw.map(r => ({
       ...r,
@@ -43,25 +42,25 @@ async function listRegistros(req, res) {
       data: registros,
       meta: {
         total: total,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Falha ao consultar registros.' });
   }
 }
 
 async function createRegistrosBatch(req, res) {
   const registros = req.body;
   const now = new Date().toISOString();
-  const operador = req.user.name || req.user.username;
+  const operador = req.user.name || req.user.email;
 
   try {
     await prisma.$transaction(async tx => {
       for (const reg of registros) {
-        const id = reg.id || 'REG-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+        const id = reg.id || 'REG-' + randomUUID();
         const r = {
           ...reg,
           id,
@@ -96,32 +95,41 @@ async function createRegistrosBatch(req, res) {
 }
 
 async function updateStatusBatch(req, res) {
-  const { ids } = req.body;
+  const { ids, versions } = req.body;
   const { status } = req.params;
 
   try {
-    await prisma.registros.updateMany({
-      where: { id: { in: ids } },
-      data: { status },
+    await prisma.$transaction(async tx => {
+      const current = await tx.registros.findMany({ where: { id: { in: ids } }, select: { id: true } });
+      if (current.length !== ids.length) throw Object.assign(new Error('Um ou mais registros não foram encontrados.'), { status: 404 });
+      const updated = await tx.registros.updateMany({
+        where: { OR: ids.map(id => ({ id, version: versions[id] })) },
+        data: { status, version: { increment: 1 } },
+      });
+      if (updated.count !== ids.length) {
+        throw Object.assign(new Error('O lote foi alterado por outro usuário. Atualize a lista e tente novamente.'), { status: 409 });
+      }
     });
     res.json({ message: `${ids.length} registros atualizados para ${status}.` });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Falha ao atualizar o lote.' });
   }
 }
 
 async function updateRegistro(req, res) {
   const { id } = req.params;
-  const data = req.body;
+  const { version, ...data } = req.body;
   try {
     const updated = await prisma.registros.update({
-      where: { id },
-      data,
+      where: { id, version },
+      data: { ...data, version: { increment: 1 } },
     });
     res.json(updated);
   } catch (err) {
     if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Registro não encontrado' });
+      const exists = await prisma.registros.findUnique({ where: { id }, select: { id: true } });
+      return res.status(exists ? 409 : 404).json({ error: exists
+        ? 'Registro alterado por outro usuário. Atualize a lista antes de salvar.' : 'Registro não encontrado.' });
     }
     res.status(500).json({ error: err.message });
   }
@@ -135,6 +143,7 @@ async function deleteRegistro(req, res) {
     });
     res.status(204).send();
   } catch (err) {
+    if (err.code === 'P2003') return res.status(409).json({ error: 'Registro vinculado a uma requisição. Preserve o histórico do material solicitado.' });
     if (err.code === 'P2025') {
       return res.status(404).json({ error: 'Registro não encontrado.' });
     }
@@ -155,6 +164,7 @@ async function deleteRegistrosBatch(req, res) {
     });
     res.status(204).send();
   } catch (err) {
+    if (err.code === 'P2003') return res.status(409).json({ error: 'O lote contém registros vinculados a requisições.' });
     console.error('Erro ao excluir registros em lote:', err);
     res.status(500).json({ error: err.message });
   }

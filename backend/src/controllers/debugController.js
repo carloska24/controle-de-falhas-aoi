@@ -71,8 +71,10 @@ async function populateDemoData(req, res) {
 
   try {
     if (clear) {
-      await prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
-      await prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
+      await prisma.$transaction([
+        prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
+        prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
+      ]);
     }
 
     const now = new Date();
@@ -134,24 +136,17 @@ async function populateDemoData(req, res) {
   }
 }
 
-async function seedAdmin(req, res) {
-  const seedKey = req.query.key || req.body.key;
-  const expectedKey = process.env.DEV_SEED_KEY || 'local-dev-2024';
-  if (seedKey !== expectedKey) {
-    return res.status(403).json({ error: 'Chave de seed inválida.' });
-  }
+async function clearDemoData(_req, res) {
   try {
-    const bcrypt = require('bcrypt');
-    const password_hash = await bcrypt.hash('123456', 10);
-    await prisma.users.upsert({
-      where: { username: 'DevAdmin' },
-      update: { password_hash, role: 'admin' },
-      create: { name: 'Dev Admin', username: 'DevAdmin', password_hash, role: 'admin' },
-    });
-    res.json({ message: 'DevAdmin criado/atualizado com sucesso.' });
+    await prisma.$transaction([
+      prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
+      prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
+    ]);
+    res.json({ message: 'Registros e requisições DEMO removidos.' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Erro ao limpar dados demo:', error);
+    res.status(500).json({ error: 'Não foi possível limpar os dados demo.' });
   }
 }
 
-module.exports = { populateDemoData, clearDemoData, seedAdmin };
+module.exports = { populateDemoData, clearDemoData };

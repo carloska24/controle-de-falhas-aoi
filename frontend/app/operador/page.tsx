@@ -23,7 +23,7 @@ import {
   Flag,
   LayoutDashboard,
 } from 'lucide-react';
-import { fetchAutenticado } from '@/lib/api';
+import { fetchAutenticado, encerrarSessao, fetchListaCompleta, getRegistroVersion } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 import { Registro, OM, Metrics } from '@/types/index';
@@ -114,8 +114,7 @@ export default function IndexPage() {
   const loadData = useCallback(async () => {
     setIsDataLoading(true);
     try {
-      const data = await fetchAutenticado('/api/registros');
-      const registrosList = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const registrosList = await fetchListaCompleta<Registro>('/api/registros');
       // Filtra registros marcados como 'Alternativo' (foram aceitos pelo SMT)
       const visibleRegistros = registrosList.filter(
         (r: Registro) => r.tipodefeito !== 'Alternativo'
@@ -360,17 +359,10 @@ export default function IndexPage() {
 
   const handleLogout = async () => {
     try {
-      // Se for admin, a limpeza é feita automaticamente no backend no endpoint /auth/logout
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (e) {
-      // Ignora erros na limpeza
+      await encerrarSessao();
+    } catch (error: any) {
+      showToast(error.message || 'Não foi possível encerrar a sessão. Tente novamente antes de deixar o terminal.', 'error');
     }
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push('/login');
   };
 
   if (loading || !user) {
@@ -748,7 +740,7 @@ export default function IndexPage() {
                 try {
                   await fetchAutenticado(`/api/registros/${id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(data),
+                    body: JSON.stringify({ ...data, version: getRegistroVersion(registros.find(r => r.id === id)) }),
                   });
                   showToast('Registro atualizado com sucesso!', 'success');
                   await loadData(); // Recarrega os dados

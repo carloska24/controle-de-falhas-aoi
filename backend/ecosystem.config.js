@@ -7,8 +7,10 @@ module.exports = {
       node_args: '-r dotenv/config',
       env: {
         PORT: 3001,
-        NODE_ENV: 'development',
-        SILENCE_LOGS: 'true'
+        NODE_ENV: 'production',
+        DEBUG_ROUTES_ENABLED: 'false',
+        LOG_LEVEL: 'info',
+        SILENCE_LOGS: 'false'
       }
     }
   ]

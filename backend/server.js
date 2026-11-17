@@ -7,6 +7,7 @@ console.log('Express loaded');
 const cors = require('cors');
 console.log('Cors loaded');
 const cookieParser = require('cookie-parser');
+const { getCorsOptions } = require('./src/config/cors');
 console.log('CookieParser loaded');
 
 const { setupLogger, morganMiddleware } = require('./src/middleware/logger');
@@ -45,32 +46,7 @@ const app = express();
 // Middlewares Globais
 app.use(morganMiddleware);
 // CORS Config
-const corsOrigin = process.env.CORS_ORIGIN;
-
-// Configuração de CORS simplificada para resolver problemas de conexão
-if (!isProduction) {
-  // Em desenvolvimento, permite qualquer origem (reflete a origem do request)
-  // Isso resolve problemas ao acessar via IP (ex: 192.168.x.x) ou localhost
-  app.use(cors({ origin: true, credentials: true }));
-  console.log('CORS: Modo desenvolvimento - Permitindo todas as origens (origin: true)');
-} else if (corsOrigin) {
-  // Em produção, respeita estritamente a variável de ambiente
-  const allowed = corsOrigin.split(',').map(s => s.trim());
-  app.use(cors({ origin: allowed, credentials: true }));
-  console.log(`CORS: Permitindo origens específicas: ${allowed.join(', ')}`);
-} else {
-  // Fallback (Intranet/Sem config)
-  app.use(
-    cors({
-      origin: function (origin, callback) {
-        // Permite requests sem origin (como curl ou apps mobile nativos) ou qualquer origem na intranet
-        callback(null, true);
-      },
-      credentials: true,
-    })
-  );
-  console.log('CORS: Modo fallback - Permitindo dinamicamente');
-}
+app.use(cors(getCorsOptions()));
 
 app.use(express.json());
 app.use(cookieParser());
@@ -157,7 +133,8 @@ app.get(
 
 // Inicialização
 async function initApp() {
-  await omController.carregarOMsPausadas();
+  // Falha ao iniciar se o banco/migrações ainda não estiverem disponíveis.
+  await prisma.ordens_manufatura.findFirst({ select: { omNumber: true } });
   return app;
 }
 

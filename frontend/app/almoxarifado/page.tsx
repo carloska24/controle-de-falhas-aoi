@@ -20,7 +20,7 @@ import {
   BellOff,
   ArrowLeft,
 } from 'lucide-react';
-import { fetchAutenticado } from '@/lib/api';
+import { fetchAutenticado, encerrarSessao, fetchListaCompleta } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 import { Requisicao } from '@/types/index';
@@ -126,8 +126,7 @@ export default function AlmoxarifadoPage() {
   const loadData = useCallback(async () => {
     setIsDataLoading(true);
     try {
-      const data = await fetchAutenticado('/api/requisicoes');
-      const requisicoes = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const requisicoes = await fetchListaCompleta<Requisicao>('/api/requisicoes');
 
       // Parse items se vier como string (SQLite)
       const parsedData = requisicoes.map((r: any) => ({
@@ -304,14 +303,10 @@ export default function AlmoxarifadoPage() {
 
   const handleLogout = async () => {
     try {
-      // Se for admin, a limpeza é feita automaticamente no backend no endpoint /auth/logout
-      await fetchAutenticado('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      await encerrarSessao();
+    } catch (error: any) {
+      showToast(error.message || 'Não foi possível encerrar a sessão. Tente novamente antes de deixar o terminal.', 'error');
     }
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push('/login');
   };
 
   const openModal = (req: Requisicao) => {

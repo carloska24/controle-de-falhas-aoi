@@ -55,7 +55,7 @@
 
 | Tecnologia | Versão | Uso |
 |:-----------|:-------|:----|
-| **Node.js** | 18+ | Runtime JavaScript |
+| **Node.js** | 22.12+ (linha 22) ou 24+ | Runtime compatível com Prisma 7.4 |
 | **Express** | ^5.1.0 | Framework HTTP |
 | **Prisma ORM** | ^7.4.1 | ORM com adapter nativo (`@prisma/adapter-pg`) |
 | **PostgreSQL** | — | Banco de dados relacional |
@@ -173,7 +173,7 @@ Autenticação via **JWT** armazenado em **HttpOnly cookie** — protegido contr
 
 ### Pré-requisitos
 
-- Node.js 18+
+- Node.js 22.12+ da linha 22 ou 24+
 - PostgreSQL instalado localmente (ou use `DATABASE_URL` apontando para Render)
 - Git
 
@@ -203,7 +203,8 @@ JWT_SECRET=seu-segredo-super-forte-aqui
 
 ```bash
 npm install          # Instala dependências
-npm run build        # Gera Prisma Client + cria tabelas + seed
+npm run build        # Gera Prisma Client, sem modificar o banco
+npm run db:migrate   # Apenas para banco vazio; banco existente exige baseline (veja backend/README.md)
 npm run dev          # Inicia com nodemon (hot reload)
 ```
 
@@ -215,7 +216,9 @@ npm install
 npm run dev          # Inicia na porta 3000
 ```
 
-> Em desenvolvimento, o Next.js faz proxy automático de `/api/*` para `localhost:3001`. Não precisa de `NEXT_PUBLIC_API_URL`.
+> Crie o primeiro administrador com `npm run admin:create` seguindo [o guia do backend](backend/README.md). O build não cria usuários. Contas de demonstração existentes precisam ser revisadas antes da produção.
+
+> Configure `NEXT_PUBLIC_API_URL` com a URL do backend acessível pelos terminais. Não use `localhost` para clientes de outra máquina.
 
 ### 4. Acesse o sistema
 
@@ -237,6 +240,8 @@ npm run dev          # Inicia na porta 3000
 | Root Directory | `backend` |
 | Build Command | `npm install && npm run build` |
 | Start Command | `npm start` |
+
+Migrações são uma etapa explícita, separada do build. Antes de usar um banco já existente, siga o procedimento de baseline em [backend/README.md](backend/README.md); não execute a migração inicial sobre tabelas existentes.
 
 **Variáveis de Ambiente:**
 
@@ -330,7 +335,7 @@ npm run dev          # Inicia na porta 3000
 - 🛡️ **Rate Limiting** no endpoint de login — proteção contra brute force
 - ✅ **Validação de inputs** com Zod — schemas tipados no backend
 - ⚡ **Optimistic Updates** — UI atualiza antes da confirmação do servidor
-- 🌱 **Seed automático** no build — banco já sobe com usuário admin
+- 🌱 **Criação explícita de administrador** por comando local, com credenciais individuais
 - 🧪 **Testes automatizados** com Jest + Supertest
 
 ---

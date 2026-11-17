@@ -1,161 +1,108 @@
-# Backend — instruções rápidas
+# Backend AOI — desenvolvimento e implantação
 
-Instruções mínimas para rodar o servidor de desenvolvimento e a suíte de testes.
+Use Node.js 22.12+ da linha 22 ou 24+, npm e PostgreSQL. As versões precisam atender aos requisitos do Prisma 7.4.1 registrados no lockfile.
 
-Pré-requisitos
+## Preparação
 
-- Node.js 18+ instalado
-- Git (opcional)
-
-Instalação
-
-1. Entre na pasta do backend:
-
-```powershell
-cd C:\Users\joaob\OneDrive\Documentos\BRANCH\controle-de-falhas-aoi\backend
-```
-
-2. Instale dependências:
+Na pasta `backend`:
 
 ```powershell
 npm ci
+Copy-Item .env.example .env
+# Edite .env com DATABASE_URL, JWT_SECRET e CORS_ORIGIN.
+npm run build
 ```
 
-# Backend — instruções completas (Windows / PowerShell)
+`npm run build` apenas gera o Prisma Client. Não conecta ao banco para aplicar schema, não aceita perda de dados e não cria usuários.
 
-Este README descreve como clonar o repositório, instalar dependências, executar a API em desenvolvimento e rodar a suíte de testes no Windows (PowerShell). Inclui exemplos de variáveis de ambiente usadas pelo projeto.
+## Banco novo e vazio
 
-Pré-requisitos
-
-- Node.js 18+ (ou 16+ compatível)
-- npm (ou yarn)
-- Git
-
-Clone (no PC da empresa)
+Confirme a URL e que o banco de destino está vazio antes de executar:
 
 ```powershell
-git clone --branch meu-trabalho-local https://github.com/carloska24/controle-de-falhas-aoi.git
-cd controle-de-falhas-aoi
+npm run db:migrate
 ```
 
-ou, se preferir clonar a branch principal e depois trocar de branch:
+A migração `20261117000000_baseline` reproduz o schema legado. Ela não contém as futuras melhorias de integridade descritas no plano de implementação.
+
+## Banco já existente
+
+Não execute a migração inicial sobre tabelas existentes. O projeto usava `db push`, sem histórico de migrações. Primeiro:
+
+1. Faça backup e valide uma restauração em banco separado.
+2. Compare o schema desse banco restaurado com `prisma/schema.prisma` usando a CLI instalada:
 
 ```powershell
-git clone https://github.com/carloska24/controle-de-falhas-aoi.git
-cd controle-de-falhas-aoi
-git fetch origin
-git checkout meu-trabalho-local
+npx --no-install prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 ```
 
-Instalar dependências (backend)
+A URL usada é `DATABASE_URL` do ambiente escolhido. Esse comando é de leitura: código 0 indica ausência de diferenças detectadas pelo Prisma; 2 indica diferenças; 1 indica erro. Diferenças precisam de revisão antes de continuar. Verifique também objetos não modelados pelo Prisma (triggers, views e permissões).
+
+3. Somente após confirmar correspondência, registre a baseline como já aplicada no banco restaurado:
 
 ```powershell
-cd backend
-npm ci
+npx --no-install prisma migrate resolve --applied 20261117000000_baseline
+npm run db:migrate
 ```
 
-Se preferir usar `npm install` em vez de `npm ci`:
+`migrate resolve` grava o histórico de migrações; não é uma verificação e não cria tabelas. Não use para esconder diferenças. Homologue a rotina na cópia antes de repetir no banco definitivo em janela acordada. Não use `--accept-data-loss`, reset ou remoção de tabelas para resolver conflitos.
+
+## Criar o primeiro administrador
+
+A criação é explícita, sem contas/senhas predefinidas e sem endpoint HTTP de seed. Defina as variáveis apenas para essa operação, com senha exclusiva de pelo menos 12 caracteres e no máximo 72 bytes (limite do bcrypt):
 
 ```powershell
-npm install
+$env:ADMIN_USERNAME = 'usuario.exclusivo'
+$env:ADMIN_NAME = 'Administrador AOI'
+$adminSecret = Read-Host 'Senha exclusiva do administrador' -AsSecureString
+$env:ADMIN_PASSWORD = [Net.NetworkCredential]::new('', $adminSecret).Password
+try {
+    npm run admin:create
+} finally {
+    Remove-Item Env:ADMIN_PASSWORD
+    Remove-Variable adminSecret
+}
 ```
 
-Variáveis de ambiente essenciais (exemplos)
+O comando recusa usuário existente e não redefine senha ou perfil. Contas antigas de demonstração permanecem no banco e precisam ser revisadas separadamente antes da implantação. Não registre senhas em comandos, logs ou Git.
 
-- `JWT_SECRET`: segredo para assinar JWTs (IMPORTANTE em produção — use um valor forte/secreto).
-- `DEV_SEED_KEY`: chave usada pelas rotas de seed em desenvolvimento. Valor padrão usado no projeto: `local-dev-2024`.
-- `PORT`: porta em que o backend irá rodar (padrão 3001).
-- `CORS_ORIGIN`: origem permitida para CORS (ex.: `http://localhost:5500` ou URL do frontend).
-- `COOKIE_SECURE`: `true` ou `false`. Em produção com HTTPS e cross-site cookies, use `true` e `COOKIE_SAMESITE=None`.
-- `NODE_ENV`: `development` (padrão) ou `production`.
+## Executar
 
-Exemplo de como definir variáveis no PowerShell (session-local):
+- Desenvolvimento: `NODE_ENV=development` e `npm run dev`.
+- Produção: `NODE_ENV=production` e `npm start`.
+- PM2: `pm2 start ecosystem.config.js` na pasta backend; o arquivo fixa produção, sem debug.
+- Configure `JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN` e atributos de cookie antes de iniciar.
+- `CORS_ORIGIN` em produção é obrigatório: lista de origens HTTP/HTTPS exatas, separadas por vírgula, sem barra final ou caminho. Exemplo: `https://aoi.empresa.local`.
+- Configure HTTPS interno e `COOKIE_SECURE=true` para a implantação definitiva. O frontend deve usar uma URL de API acessível pelos terminais.
+
+Debug só funciona com **ambas** as condições `NODE_ENV=development` e `DEBUG_ROUTES_ENABLED=true`, além de autenticação de administrador. Produção sempre bloqueia `/api/debug/populate` e `/api/debug/clear`. `/api/debug/seed-admin` foi removido em todos os ambientes. A limpeza explícita remove apenas registros e requisições com OM `DEMO-`; não administra timers de OMs.
+
+## Verificações
 
 ```powershell
-# Definir temporariamente no terminal (apenas para a sessão atual)
-$env:JWT_SECRET = "uma-senha-fraca-para-dev"
-$env:DEV_SEED_KEY = "local-dev-2024"
-$env:PORT = '3001'
-$env:CORS_ORIGIN = 'http://localhost:5500'
-$env:COOKIE_SECURE = 'false'
-$env:NODE_ENV = 'development'
+npm test -- --runInBand
+npm run test:auth
+npm run build
 ```
 
-Rodando o servidor em desenvolvimento
+A suíte padrão configura ambiente isolado e simula Prisma nos testes de autenticação: não usa o banco do `.env`. Ela verifica cookies, acesso por perfil, bloqueio de debug, configuração de produção e bootstrap administrativo. Não substitui integração com PostgreSQL, restauração ou testes na fábrica.
 
-1. A partir da pasta `backend` (após `npm ci`):
+Os antigos arquivos `performance_*.test.js` não fazem parte da suíte Jest padrão (`*.spec.js`); não são evidência de capacidade e não devem ser executados contra produção. `test:auth` agora executa a suíte de autenticação, em vez do placeholder legado.
+
+`/health` verifica a API; `/health/db` verifica uma consulta ao banco. Os scripts `smoke:intranet`, `smoke:rbac` e `probe:intranet` operam sobre o endereço configurado e devem ser usados conscientemente em homologação.
+
+O [plano por etapas](../docs/PLANO_IMPLEMENTACAO_INTRANET.md) registra as pendências antes de liberar operação oficial.
+
+## Etapa 2: banco, sessões e integração
+
+As novas migrações são aditivas: centralizam OMs preservando tabelas legadas, acrescentam versão aos registros e sessões, e vinculam registros às requisições novas. Faça backup/restore em homologação antes de executar `npm run db:migrate` em um banco existente. Estados legados ambíguos ou timestamps incompletos bloqueiam a migração de OMs para revisão.
+
+OM finalizada permanece encerrada. Login antigo sem versão de sessão precisa ser renovado. Logout encerra todas as sessões daquela conta. Edite dados por versões atuais da interface: atualização de registro/status exige `version`, e lote de status exige `versions` por ID. Requisições agora retornam `{data, meta}`. Atualize UI e API na mesma entrega.
+
+O teste de integração abaixo inicia e encerra uma instância local **descartável** com os componentes `@prisma/dev`/PGlite já fixados no lockfile. Nunca usa a URL do `.env`. As portas 55441–55443 devem estar livres. Não é teste de desempenho do PostgreSQL nativo:
 
 ```powershell
-npm run dev
+npm run test:integration:isolated
 ```
 
-Esse script usa nodemon para reiniciar automaticamente quando arquivos mudam. Deixe o terminal aberto para ver logs.
-
-Verificando saúde da API (em outro terminal):
-
-```powershell
-Invoke-WebRequest -UseBasicParsing http://localhost:3001/health | ConvertFrom-Json
-```
-
-Resposta esperada: JSON contendo algo como { "status": "ok", "time": "..." }
-
-Rodando os testes
-
-```powershell
-# a partir da raiz do repositório
-npm --prefix backend test -- --detectOpenHandles -i
-```
-
-Ou diretamente dentro de `backend`:
-
-```powershell
-cd backend
-npm test -- --detectOpenHandles -i
-```
-
-Notas de segurança e produção
-
-- Em produção, configure `JWT_SECRET` com um valor forte e não commitado.
-- Para suportar cookies cross-site (frontend hospedado em outro domínio), configure:
-  - `COOKIE_SECURE=true`
-  - `COOKIE_SAMESITE=None`
-  - Sirva via HTTPS
-- Rotas de debug/seed são protegidas por `DEV_SEED_KEY` e devem ser desabilitadas em `NODE_ENV=production`.
-
-CI
-
-- Existe um workflow de GitHub Actions em `.github/workflows/backend-tests.yml` que executa os testes do backend. Configure secrets no repositório para `JWT_SECRET` em ambientes sensíveis.
-
-Erros comuns e soluções rápidas
-
-- "Impossível conectar-se ao servidor remoto" ao acessar `/health`: verifique se o servidor está em execução no terminal onde você rodou `npm run dev`.
-- Testes Jest travando por handles abertos: o projeto já aplica `.unref()` em timers e exporta `initApp()` para testes; execute com `--detectOpenHandles` para detectar fontes.
-
-Scripts úteis (resumo)
-
-- `npm run dev` — iniciar servidor em modo dev (nodemon).
-- `npm test` — rodar testes (backend).
-
-Ajuda / contato
-
-- Se quiser, posso gerar um script PowerShell de setup (instala dependências e define variáveis temporárias) ou um arquivo `.env.example` com os valores mínimos. Diga qual prefere.
-
----
-
-Arquivo gerado automaticamente com instruções ampliadas para facilitar setup no Windows (PowerShell).
-
-# Organização de Pastas e Scripts do Backend
-
-A estrutura do backend foi organizada para facilitar manutenção e localização de arquivos:
-
-- **logs/**: Arquivos de log do backend (erros, saídas, logs do servidor, etc).
-  - **logs/old/**: Logs antigos e backups.
-- **bin/**: Scripts utilitários e de setup, como scripts de simulação, reset de admin, inicialização e arquivos auxiliares (`*.ps1`, `*.bat`, `*.json`).
-- **queries/**: Scripts de consulta, listagem e remoção de dados do banco (ex: `listar_oms.js`, `remover_om.js`, etc).
-- **scripts/**: Scripts de manutenção e automação do backend.
-  - **scripts/extra/**: Scripts de limpeza de OMs pouco usados ou redundantes.
-  - **scripts/legacy/**: Scripts antigos ou obsoletos, mantidos apenas para referência.
-
-> Mantenha apenas arquivos essenciais na raiz do backend. Use as subpastas para organizar logs, utilitários e scripts de manutenção.
-
-Se mover ou criar novos scripts, siga esse padrão para manter o projeto limpo e fácil de entender.
+`DATABASE_POOL_MAX` aceita 1 a 50 conexões (padrão 10); use 1 com PGlite. Antes de levar dados legados à operação, reconcilie os pedidos de material anteriores à criação dos vínculos; a migração não infere quais registros os originaram.

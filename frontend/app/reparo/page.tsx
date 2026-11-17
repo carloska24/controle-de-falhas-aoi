@@ -17,7 +17,7 @@ import {
   LayoutGrid,
   Table as TableIcon,
 } from 'lucide-react';
-import { fetchAutenticado } from '@/lib/api';
+import { fetchAutenticado, encerrarSessao, fetchListaCompleta, getRegistroVersion } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 import { Registro } from '@/types/index';
@@ -132,8 +132,7 @@ export default function ReparoPage() {
   const loadData = useCallback(async () => {
     setIsDataLoading(true);
     try {
-      const data = await fetchAutenticado('/api/registros');
-      const registrosList = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const registrosList = await fetchListaCompleta<Registro>('/api/registros');
 
       // Normaliza status vindos do backend para os estados usados nesta tela
       const translatedData = registrosList.map((r: Registro) => ({
@@ -259,7 +258,7 @@ export default function ReparoPage() {
       setIsDataLoading(true);
       await fetchAutenticado(`/api/registros/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: toBackendStatus(status) }),
+        body: JSON.stringify({ status: toBackendStatus(status), version: getRegistroVersion(allData.find(r => r.id === id)) }),
       });
 
       showToast(`Status atualizado para "${getStatusLabel(status)}".`, 'success');
@@ -305,6 +304,10 @@ export default function ReparoPage() {
     if (selectedItems.size === 0) return;
 
     const ids = Array.from(selectedItems);
+    if (ids.length > 200) {
+      showToast('Selecione no máximo 200 itens para uma ação em lote.', 'warning');
+      return;
+    }
 
     try {
       setIsDataLoading(true);
@@ -316,14 +319,11 @@ export default function ReparoPage() {
         });
       } else {
         const status = action === 'repair' ? 'reparado' : 'cancelado';
-        // TODO: Implementar batch status update
-        // Por enquanto, fazer chamadas individuais
-        for (const id of ids) {
-          await fetchAutenticado(`/api/registros/${id}/status`, {
-            method: 'PUT',
-            body: JSON.stringify({ status: toBackendStatus(status) }),
-          });
-        }
+        const versions = Object.fromEntries(ids.map(id => [id, getRegistroVersion(allData.find(r => r.id === id))]));
+        await fetchAutenticado(`/api/registros/status/${toBackendStatus(status)}`, {
+          method: 'PUT',
+          body: JSON.stringify({ ids, versions }),
+        });
       }
 
       showToast(`${ids.length} itens atualizados com sucesso.`, 'success');
@@ -377,13 +377,10 @@ export default function ReparoPage() {
   // Logout
   const handleLogout = async () => {
     try {
-      await fetchAutenticado('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      await encerrarSessao();
+    } catch (error: any) {
+      showToast(error.message || 'Não foi possível encerrar a sessão. Tente novamente antes de deixar o terminal.', 'error');
     }
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push('/login');
   };
 
   // Utils

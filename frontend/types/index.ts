@@ -1,5 +1,6 @@
 export interface Registro {
   id: string;
+  version?: number;
   om: string;
   qtdlote?: number;
   serial?: string;

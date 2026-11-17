@@ -27,7 +27,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { fetchAutenticado } from '@/lib/api';
+import { fetchAutenticado, encerrarSessao } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
@@ -351,26 +351,10 @@ export default function ControleFalhasPage() {
 
   const handleLogout = async () => {
     try {
-      // Se for admin, limpar dados demo antes do logout
-      if (user?.role === 'admin') {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/admin/logout`,
-          {
-            method: 'POST',
-            credentials: 'include',
-          }
-        );
-      }
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (e) {
-      // Ignora erros na limpeza
+      await encerrarSessao();
+    } catch (error: any) {
+      showToast(error.message || 'Não foi possível encerrar a sessão. Tente novamente antes de deixar o terminal.', 'error');
     }
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push('/login');
   };
 
   const handleExportCSV = () => {

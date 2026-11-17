@@ -6,6 +6,8 @@ const {
   idsArraySchema,
   registroUpdateSchema,
   registroStatusSchema,
+  registroStatusParamsSchema,
+  registroStatusBatchSchema,
 } = require('../utils/schemas');
 const { authenticateToken, hasRole } = require('../middleware/auth');
 const registroController = require('../controllers/registroController');
@@ -43,7 +45,8 @@ router.put(
   '/status/:status',
   authenticateToken,
   hasRole('admin', 'operator', 'reparo'),
-  validate(idsArraySchema),
+  validate(registroStatusParamsSchema, 'params'),
+  validate(registroStatusBatchSchema),
   registroController.updateStatusBatch
 );
 
@@ -59,6 +62,7 @@ router.delete(
   '/',
   authenticateToken,
   hasRole('admin', 'operator', 'reparo'),
+  validate(idsArraySchema),
   registroController.deleteRegistrosBatch
 );
 

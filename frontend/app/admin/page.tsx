@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LogOut, ArrowRight, Users, Shield, TrendingUp, Lock, Eye, EyeOff } from 'lucide-react';
-import { fetchAutenticado } from '@/lib/api';
+import { fetchAutenticado, encerrarSessao } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 import UsersTable from '@/components/admin/UsersTable';
@@ -304,22 +304,10 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     try {
-      if (user?.role === 'admin') {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/admin/logout`,
-          { method: 'POST', credentials: 'include' }
-        );
-      }
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (e) {
-      // Ignora erros
+      await encerrarSessao();
+    } catch (error: any) {
+      showToast(error.message || 'Não foi possível encerrar a sessão. Tente novamente antes de deixar o terminal.', 'error');
     }
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push('/login');
   };
 
   if (!user) {

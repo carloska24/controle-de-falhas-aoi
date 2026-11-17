@@ -1,10 +1,12 @@
 # Guia de Instalação do Controle de Falhas AOI (Intranet Local)
 
+> Atualização de 17/11/2026: siga também o [guia do backend](../backend/README.md). Build, migração e criação de administrador são etapas separadas. Banco existente exige verificação e baseline antes de migrar. A liberação depende do [plano por etapas](PLANO_IMPLEMENTACAO_INTRANET.md).
+
 Este guia pressupõe que estamos implantando temporariamente/definitivamente o sistema em uma máquina base (Servidor VM ou Físico) que rode o sistema operacional **Windows Server** ou **Windows 10/11 Pro** disponível na rede local da sua empresa.
 
 ## 1. Pré-Requisitos na Máquina Host
 
-- **Node.js**: Versão 20 LTS ou superior. Faça o download do instalador clássico padrão no site oficial se a máquina local ainda não tiver.
+- **Node.js**: 22.12+ da linha 22 ou 24+, compatível com o Prisma 7.4.1 usado pelo projeto.
 - **Git (Opcional, porém Recomendado)**: Para baixar/clonar o código de forma rápida e puxar atualizações futuras com segurança.
 - **PostgreSQL**: Pode baixar a versão Desktop standard ou usar Docker caso sinta-se mais experiente. Durante a instalação do DB, grave a senha do usuário `postgres`.
 
@@ -22,21 +24,23 @@ Como é na intranet, a sua máquina ganhará um IP estilo `192.168.X.Y` fornecid
    # .env File
    DATABASE_URL="postgresql://postgres:SuaSenhaAqui@localhost:5432/aoi_db?schema=public"
    PORT=3001
-   CORS_ORIGIN=http://192.168.X.Y:3000   // IP FIXO que anotamos + a Porta do Front
+   # IP fixo do frontend; sem comentário na mesma linha do valor
+   CORS_ORIGIN=http://192.168.X.Y:3000
    NODE_ENV=production
    JWT_SECRET="alguma_senha_forte_de_producao_inventada_por_voce"
    ```
 3. Abra um terminal/Powershell na pasta `backend` como Administrador e rode:
    ```bash
-   npm install
-   npx prisma generate
-   npx prisma db push
+   npm ci
+   npm run build
+   # Apenas banco novo/vazio. Para banco existente, siga a baseline no guia do backend.
+   npm run db:migrate
    ```
-4. Se rodar liso, as tabelas estarão no servidor. Mantenha ele acessível usando gerenciadores de processos (ver seção #5 abaixo).
+4. Crie o administrador com `npm run admin:create`, definindo as credenciais conforme o guia do backend. O build não cria contas. Mantenha os serviços supervisionados (seção #5).
 
 ## 4. Passo a Passo do Setup do Frontend (Next.js)
 
-1. Vá até a pasta `nextjs-frontend`
+1. Vá até a pasta `frontend`
 2. Configure o arquivo `.env` se for preciso parear as URIs do Backend (Se foi embutido dinâmico a busca de IP da API, ignore esse passo).
 3. No Powershell dessa pasta execute:
    ```bash
@@ -57,7 +61,7 @@ Você **não deve** deixar Power Shells ou janelas de comando (.bat) abertos e m
 Utilize o famoso gerenciador de instâncias do Node, o **PM2**.
 
 1. Instale ele fisicamente global no servidor via CMD Administrativo: `npm install -g pm2`
-2. No Backend execute: `pm2 start server.js --name "Aoi_Backend"`
+2. No Backend execute: `pm2 start ecosystem.config.js` (nome do processo: `aoi-backend`, modo produção e debug desativado).
 3. No Frontend execute: `pm2 start npm --name "Aoi_Frontend" -- run start`
 4. Use `pm2 save` para salvar os serviços.
 5. _Dica de Ouro Pro Windows_: Execute `npm install -g pm2-windows-startup` e siga os guias do pacote, assim caso falte energia, o servidor liga o sistema sem sequer o usuário precisar dar login.

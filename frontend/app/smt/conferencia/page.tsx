@@ -16,8 +16,9 @@ import {
   Clock,
   LogOut,
 } from 'lucide-react';
-import { fetchAutenticado } from '@/lib/api';
+import { fetchAutenticado, encerrarSessao, fetchListaCompleta, getRegistroVersion } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
+import { ToastContainer } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
@@ -25,7 +26,7 @@ import { Registro } from '@/types/index';
 
 export default function SmtConferenciaPage() {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [user, setUser] = useState<any>(null);
@@ -55,8 +56,7 @@ export default function SmtConferenciaPage() {
       // Busca todos os registros do dia/recentes
       // Como não temos um endpoint específico de filtro, vamos buscar todos e filtrar no front por enquanto
       // Em produção, criar um endpoint /api/registros?tipodefeito=Possível%20Incorreto seria melhor
-      const data = await fetchAutenticado('/api/registros');
-      const lista = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const lista = await fetchListaCompleta<Registro>('/api/registros');
 
       // Filtra apenas "Possível Incorreto"
       const pendentes = lista.filter((r: Registro) => r.tipodefeito === 'Possível Incorreto');
@@ -68,9 +68,9 @@ export default function SmtConferenciaPage() {
       );
 
       setRegistros(pendentes);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar registros:', error);
-      showToast('Erro ao carregar lista de conferência', 'error');
+      showToast(error.message || 'Erro ao carregar lista de conferência', 'error');
     } finally {
       setLoading(false);
     }
@@ -85,23 +85,14 @@ export default function SmtConferenciaPage() {
           ? ' - Validado como ERRO REAL pelo SMT'
           : ' - Validado como ALTERNATIVO pelo SMT';
 
-      // Busca o registro atual para não perder dados
+      // A versão impede sobrescrever uma alteração feita em outro terminal.
       const registroAtual = registros.find(r => r.id === id);
       if (!registroAtual) return;
 
       const payload = {
         tipodefeito: novoDefeito,
         obs: (registroAtual.obs || '') + obsAdicional,
-        // Mantém outros campos
-        om: registroAtual.om,
-        qtdlote: registroAtual.qtdlote,
-        serial: registroAtual.serial,
-        designador: registroAtual.designador,
-        pn: registroAtual.pn,
-        descricao: registroAtual.descricao,
-        status: registroAtual.status,
-        operador: registroAtual.operador,
-        prioridade: registroAtual.prioridade,
+        version: getRegistroVersion(registroAtual),
       };
 
       await fetchAutenticado(`/api/registros/${id}`, {
@@ -118,9 +109,9 @@ export default function SmtConferenciaPage() {
 
       // Remove da lista localmente
       setRegistros(prev => prev.filter(r => r.id !== id));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao processar:', error);
-      showToast('Erro ao processar ação', 'error');
+      showToast(error.message || 'Erro ao processar ação', 'error');
     } finally {
       setProcessingId(null);
     }
@@ -133,10 +124,12 @@ export default function SmtConferenciaPage() {
       r.pn?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await encerrarSessao();
+    } catch (error: any) {
+      showToast(error.message || 'Não foi possível encerrar a sessão. Tente novamente antes de deixar o terminal.', 'error');
+    }
   };
 
   return (
@@ -336,6 +329,7 @@ export default function SmtConferenciaPage() {
           </AnimatePresence>
         </div>
       </main>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

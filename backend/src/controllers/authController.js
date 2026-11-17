@@ -1,9 +1,8 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const prisma = require('../config/prisma');
-const { JWT_SECRET } = require('../middleware/auth');
-
-const isProduction = process.env.NODE_ENV === 'production';
+const { JWT_SECRET, getToken } = require('../middleware/auth');
+const { SESSION_DURATION_MS, getAuthCookieOptions } = require('../config/authCookie');
 
 async function login(req, res) {
   const { username, password } = req.body;
@@ -13,41 +12,33 @@ async function login(req, res) {
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: 'Usuário ou senha inválidos.' });
-    const tokenPayload = { email: user.username, role: user.role, id: user.id, name: user.name };
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
-
-    const cookieOptions = {
-      httpOnly: true,
-      path: '/',
-      secure: String(process.env.COOKIE_SECURE || 'false') === 'true',
-      sameSite: process.env.COOKIE_SAMESITE || 'Lax',
-      maxAge: 8 * 60 * 60 * 1000,
-    };
-
-    if (isProduction && process.env.COOKIE_DOMAIN) {
-      cookieOptions.domain = process.env.COOKIE_DOMAIN;
-    }
-
-    res.cookie('aoi_token', token, cookieOptions);
-    res.json({ user: tokenPayload });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const userPayload = { email: user.username, username: user.username, role: user.role, id: user.id, name: user.name };
+    const token = jwt.sign({ ...userPayload, sessionVersion: user.session_version }, JWT_SECRET, { expiresIn: '8h' });
+    res.cookie('aoi_token', token, { ...getAuthCookieOptions(), maxAge: SESSION_DURATION_MS });
+    res.json({ user: userPayload });
+  } catch {
+    res.status(503).json({ error: 'Não foi possível autenticar. Tente novamente.' });
   }
 }
 
 async function logout(req, res) {
+  let payload;
   try {
-    // Limpar dados de demonstração
-    await prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
-    await prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } });
-    await prisma.oms_pausadas.deleteMany({ where: { omNumber: { startsWith: 'DEMO-' } } });
-    await prisma.oms_finalizadas.deleteMany({ where: { omNumber: { startsWith: 'DEMO-' } } });
-    console.log('[Auth] Dados de DEMO limpos no logout.');
-  } catch (err) {
-    console.error('[Auth] Erro ao limpar dados de DEMO:', err);
+    payload = jwt.verify(getToken(req), JWT_SECRET);
+  } catch {
+    // Logout idempotente também limpa cookies ausentes, expirados ou antigos.
   }
-
-  res.clearCookie('aoi_token', { path: '/' });
+  if (Number.isInteger(payload?.id) && Number.isInteger(payload?.sessionVersion)) {
+    try {
+      await prisma.users.updateMany({
+        where: { id: payload.id, session_version: payload.sessionVersion },
+        data: { session_version: { increment: 1 } },
+      });
+    } catch {
+      return res.status(503).json({ error: 'Não foi possível encerrar a sessão. Tente novamente.' });
+    }
+  }
+  res.clearCookie('aoi_token', getAuthCookieOptions());
   res.json({ message: 'Desconectado' });
 }
 

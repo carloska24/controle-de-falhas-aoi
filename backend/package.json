@@ -9,14 +9,20 @@
     "smoke:intranet": "node scripts/smoke-intranet.js",
     "smoke:rbac": "node scripts/smoke-rbac-intranet.js",
     "probe:intranet": "node scripts/probe-intranet.js",
-    "test:auth": "node tests/auth_cookie_flow.test.js",
+    "test:auth": "jest --runInBand tests/auth_cookie_flow.spec.js",
     "test": "jest",
-    "build": "npx prisma generate && npx prisma db push --accept-data-loss && node prisma/seed.js"
+    "test:integration:isolated": "node scripts/test-integration-isolated.js",
+    "build": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "admin:create": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": "^20.19 || ^22.12 || >=24.0"
+  },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
@@ -40,6 +46,7 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFiles": ["<rootDir>/tests/setup.js"],
     "testTimeout": 20000,
     "testMatch": [
       "**/?(*.)+(spec).js"

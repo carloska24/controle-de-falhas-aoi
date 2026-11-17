@@ -7,9 +7,13 @@ const router = express.Router();
 
 const omController = require('../controllers/omController');
 const { authenticateToken, hasRole } = require('../middleware/auth');
+const { z } = require('zod');
+const { validate } = require('../utils/schemas');
+const omCommandSchema = z.object({ omNumber: z.string().trim().min(1).max(100) });
+const omStartSchema = omCommandSchema.extend({ qtdLote: z.coerce.number().int().min(1).optional() });
 
 // Funcional
-router.post('/start', authenticateToken, hasRole('admin', 'operator'), omController.startOM);
+router.post('/start', authenticateToken, hasRole('admin', 'operator'), validate(omStartSchema), omController.startOM);
 router.get(
   '/:omNumber',
   authenticateToken,
@@ -26,9 +30,9 @@ router.get(
 // O frontend chama /api/om/:omNumber
 // Entao precisamos cuidar da ordem.
 
-router.put('/pause', authenticateToken, hasRole('admin', 'operator'), omController.pauseOM);
-router.put('/resume', authenticateToken, hasRole('admin', 'operator'), omController.resumeOM);
-router.put('/finalizar', authenticateToken, hasRole('admin', 'operator'), omController.finishOM);
+router.put('/pause', authenticateToken, hasRole('admin', 'operator'), validate(omCommandSchema), omController.pauseOM);
+router.put('/resume', authenticateToken, hasRole('admin', 'operator'), validate(omCommandSchema), omController.resumeOM);
+router.put('/finalizar', authenticateToken, hasRole('admin', 'operator'), validate(omCommandSchema), omController.finishOM);
 
 // Relatorios e Infos Extras
 // Nota: no server.js era /api/om-time/:omNumber agora sera /api/om/time/:omNumber se eu montar router em /api/om

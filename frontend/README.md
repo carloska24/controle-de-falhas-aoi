@@ -2,6 +2,29 @@
 
 Este é o frontend migrado para **Next.js** mantendo comunicação com o **backend Express original**.
 
+## Verificações da etapa de integridade
+
+Na pasta `frontend`, execute `npm run test:api` para testar paginação completa,
+falhas entre páginas, alterações observáveis no conjunto de dados, limite de
+consulta, logout e distinção entre sessão expirada (401) e falta de permissão (403).
+Os testes usam o runner do Node e o TypeScript já instalado; não consultam servidor
+ou banco reais. Valide os tipos com `npx --no-install tsc --noEmit --incremental false`.
+
+As filas e relatórios que ainda filtram no cliente só publicam o resultado após
+carregar todas as páginas de registros/requisições (200 itens por requisição,
+limite explícito de 10.000 itens). Metadados inválidos, mudança de total, IDs
+repetidos ou páginas incompletas geram erro em vez de um resultado parcial.
+Isso remove o corte silencioso em 50 itens, mas não é uma estratégia de escala
+para todo o histórico da fábrica: filtros/agregações/exportação no servidor e
+uma consulta com snapshot devem preceder a ampliação para grandes volumes.
+Alterações concorrentes com o mesmo total e sem IDs repetidos podem não ser
+detectadas entre páginas; a consulta não representa um snapshot transacional.
+
+Todas as telas encerram a sessão pela API antes de limpar o estado local e
+navegar para o login. Falhas de rede ou de revogação são exibidas na tela atual.
+Edições de registros e ações de reparo enviam a versão recebida do servidor;
+conflitos exigem atualizar a lista, preservando alterações feitas em outro terminal.
+
 ## 🎯 Estrutura
 
 ```
@@ -105,12 +128,12 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 ## ⚠️ Notas Importantes
 
-- **Backend não muda** - Continua rodando na porta 3001
-- **Banco de dados** - Continua o mesmo (SQLite/PostgreSQL)
+- **Backend** - API Express na porta 3001, com as migrações e os contratos descritos no guia do backend
+- **Banco de dados** - PostgreSQL via Prisma
 - **Autenticação** - Cookies HttpOnly funcionam normalmente
-- **Estado em memória** - OMs em memória no backend continuam funcionando
+- **Estado das OMs** - Persistido no banco; finalização não permite reinício do mesmo número
 
 ---
 
-**Desenvolvido mantendo compatibilidade total com o backend Express original!**
+**Implante frontend e backend juntos para manter os contratos de paginação, versão e sessão compatíveis.**
 

@@ -27,7 +27,7 @@ async function createUser(req, res) {
       .status(201)
       .json({ id: newUser.id, name: newUser.name, username: newUser.username, role: newUser.role });
   } catch (err) {
-    console.error(err);
+    console.error('Erro ao criar usuário:', err.code || 'database-error');
     res.status(500).json({ error: 'Nome de usuário já cadastrado ou erro no servidor.' });
   }
 }
@@ -37,7 +37,7 @@ async function updateUser(req, res) {
   const { name, username, role, password } = req.body;
 
   try {
-    const data = { name, username, role };
+    const data = { name, username, role, session_version: { increment: 1 } };
     if (password) {
       const salt = await bcrypt.genSalt(10);
       data.password_hash = await bcrypt.hash(password, salt);

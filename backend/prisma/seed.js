@@ -1,56 +1,48 @@
-/**
- * Seed script - cria o usuário admin inicial no banco PostgreSQL
- * Executado automaticamente durante o build no Render
- */
-require('dotenv').config();
+// Bootstrap explícito: não redefine contas existentes nem roda durante o build.
 const bcrypt = require('bcrypt');
 
-// Usa o prisma direto sem o adapter (mais simples para scripts)
-const { PrismaClient } = require('@prisma/client');
-const { Pool } = require('pg');
-const { PrismaPg } = require('@prisma/adapter-pg');
-
-async function main() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
-
-  console.log('[Seed] Iniciando seed do banco de dados...');
-
-  const users = [
-    { username: 'DevNaPratica', name: 'Dev Na Pratica', password: '123456', role: 'admin' },
-    { username: 'admin', name: 'Administrador', password: 'admin123', role: 'admin' },
-    { username: 'DevAdmin', name: 'Dev Admin', password: '123456', role: 'admin' },
-  ];
-
-  for (const userData of users) {
-    const existing = await prisma.users.findUnique({
-      where: { username: userData.username },
-    });
-
-    if (existing) {
-      console.log(`[Seed] Usuário "${userData.username}" já existe, pulando.`);
-      continue;
-    }
-
-    const password_hash = await bcrypt.hash(userData.password, 10);
-    await prisma.users.create({
-      data: {
-        name: userData.name,
-        username: userData.username,
-        password_hash,
-        role: userData.role,
-      },
-    });
-    console.log(`[Seed] Usuário "${userData.username}" criado com sucesso!`);
+function getAdminCredentials(env) {
+  const username = (env.ADMIN_USERNAME || '').trim();
+  const name = (env.ADMIN_NAME || '').trim();
+  const password = env.ADMIN_PASSWORD || '';
+  if (!username || !name || password.trim().length < 12 || Buffer.byteLength(password, 'utf8') > 72) {
+    throw new Error('Defina ADMIN_USERNAME, ADMIN_NAME e ADMIN_PASSWORD (mínimo 12 caracteres e máximo 72 bytes).');
   }
-
-  console.log('[Seed] Seed concluído!');
-  await prisma.$disconnect();
-  await pool.end();
+  return { username, name, password };
 }
 
-main().catch((err) => {
-  console.error('[Seed] Erro ao executar seed:', err);
-  process.exit(1);
-});
+async function createAdmin(prisma, env) {
+  const { username, name, password } = getAdminCredentials(env);
+  const existing = await prisma.users.findUnique({ where: { username } });
+  if (existing) {
+    throw new Error('Usuário já existe. Nenhuma senha ou permissão foi alterada.');
+  }
+  const password_hash = await bcrypt.hash(password, 12);
+  await prisma.users.create({ data: { username, name, password_hash, role: 'admin' } });
+}
+
+async function main() {
+  require('dotenv').config();
+  getAdminCredentials(process.env); // Valida antes de criar conexão com o banco.
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL é obrigatório.');
+  const { PrismaClient } = require('@prisma/client');
+  const { PrismaPg } = require('@prisma/adapter-pg');
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  });
+  try {
+    await createAdmin(prisma, process.env);
+    console.log('Administrador criado com sucesso.');
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+if (require.main === module) {
+  main().catch(() => {
+    console.error('Falha ao criar administrador. Verifique as variáveis ADMIN_*, a conexão e se o usuário já existe.');
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { createAdmin };
