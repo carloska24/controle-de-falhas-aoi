@@ -616,10 +616,10 @@ export default function ProForm({
                 onChange={e => onSelectPausedOM(e.target.value || null)}
                 className="!bg-[#0f1a2b] border-[#2a3d5c] text-[#eaf0ff] text-xs"
               >
-                <option value="">Filtrar OM Pausada</option>
+                <option value="">🟢 Filtrar OM Pausada</option>
                 {pausedOMs.map(om => (
                   <option key={om.omNumber} value={om.omNumber}>
-                    {om.omNumber} ({om.qtdlote || '?'} placas)
+                    🟢 {om.omNumber} ({om.qtdlote || '?'} placas)
                   </option>
                 ))}
               </Select>
