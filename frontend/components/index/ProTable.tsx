@@ -13,11 +13,14 @@ import { format, isValid } from 'date-fns';
 import OMTimeSummary from './OMTimeSummary';
 import { useDebounce } from '@/hooks/useDebounce';
 import MaterialRequestReview from './MaterialRequestReview';
+import { useActionConfirmation } from '@/components/ActionConfirmation';
+import { snapshotRecordSelection } from '@/lib/actionConfirmation';
+import { getRegistroVersion } from '@/lib/api';
 import { reviewMaterialRequest, togglePageSelection, type MaterialRequestResult } from '@/lib/materialRequest';
 
 interface ProTableProps {
   registros: Registro[];
-  onDelete: (ids: string[]) => Promise<void>;
+  onDelete: (ids: string[], versions: Record<string, number>, signal: AbortSignal) => Promise<void>;
   onGenerateRequest: (ids: string[]) => Promise<MaterialRequestResult>;
   onAddDemo: () => Promise<void>;
   onEdit?: (id: string, data: Partial<Registro>) => Promise<void>;
@@ -44,6 +47,8 @@ export default function ProTable({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [requestIds, setRequestIds] = useState<string[] | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
+  const { requestConfirmation, confirmationDialog } = useActionConfirmation();
+  const [deleteSelectionError, setDeleteSelectionError] = useState('');
 
   // Estado para edição
   const [editingRegistro, setEditingRegistro] = useState<Registro | null>(null);
@@ -290,10 +295,25 @@ export default function ProTable({
     setSelectedIds(previous => togglePageSelection(previous, paginatedRegistros.map(r => r.id)));
   }, [paginatedRegistros]);
 
-  const handleDelete = async () => {
-    if (selectedIds.size === 0) return;
-    await onDelete(Array.from(selectedIds));
-    setSelectedIds(new Set());
+  const handleDelete = () => {
+    if (selectedIds.size === 0 || isLoading) return;
+    setDeleteSelectionError('');
+    try {
+      const records = snapshotRecordSelection(registros, Array.from(selectedIds));
+      const ids = records.map(record => record.id);
+      const versions = Object.fromEntries(records.map(record => [record.id, getRegistroVersion(record)]));
+      requestConfirmation({
+        title: 'Excluir registros de falhas?',
+        description: 'A exclusão é permanente e não pode ser desfeita pelo sistema. Confira todos os registros abaixo. Registros vinculados a requisições de material são protegidos pelo servidor.',
+        confirmLabel: `Excluir ${ids.length} registro(s)`, records,
+        onConfirm: async signal => {
+          await onDelete(ids, versions, signal);
+          setSelectedIds(previous => new Set([...previous].filter(id => !ids.includes(id))));
+        },
+      });
+    } catch (error) {
+      setDeleteSelectionError((error as Error).message);
+    }
   };
 
   const handleGenerateRequest = () => {
@@ -335,6 +355,7 @@ export default function ProTable({
   // Navegação por teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
       // Ctrl/Cmd + F para focar busca
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
@@ -560,6 +581,7 @@ export default function ProTable({
       </p>
 
       {/* Table */}
+      {deleteSelectionError && <p role="alert" className="mb-4 text-sm text-red-200">{deleteSelectionError}</p>}
       <div className="overflow-x-auto">
         <table
           className="w-max min-w-full border-collapse"
@@ -981,6 +1003,7 @@ export default function ProTable({
         Dica: Duplo clique em uma linha para editar.
       </div>
 
+      {confirmationDialog}
       {requestIds && <MaterialRequestReview registros={registros} ids={requestIds}
         onSubmit={onGenerateRequest} onClose={() => setRequestIds(null)}
         onComplete={submitted => {

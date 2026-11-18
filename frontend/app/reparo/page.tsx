@@ -25,6 +25,8 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
 import DemoBadge from '@/components/ui/DemoBadge';
+import { useActionConfirmation } from '@/components/ActionConfirmation';
+import { snapshotRecordSelection } from '@/lib/actionConfirmation';
 
 type RepairStatus = 'aberto' | 'reparado' | 'cancelado';
 
@@ -58,6 +60,7 @@ const toBackendStatus = (status: RepairStatus): string => {
 export default function ReparoPage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
+  const { requestConfirmation, confirmationDialog } = useActionConfirmation();
   const [loading, setLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -281,60 +284,49 @@ export default function ReparoPage() {
 
   const handleMoverAberto = async (id: string) => updateRegistroStatus(id, 'aberto');
 
-  const handleExcluir = async (id: string) => {
+  const reviewRepairAction = (action: 'repair' | 'cancel' | 'delete', ids: string[]) => {
+    if (isDataLoading || ids.length === 0) return;
     try {
-      setIsDataLoading(true);
-      await fetchAutenticado('/api/registros', {
-        method: 'DELETE',
-        body: JSON.stringify({ ids: [id] }),
+      const records = snapshotRecordSelection(allData, ids);
+      const submitted = records.map(record => record.id);
+      const versions = Object.fromEntries(records.map(record => [record.id, getRegistroVersion(record)]));
+      const labels = {
+        delete: { title: 'Excluir registros de falhas?', confirm: 'Excluir', description: 'A exclusão é permanente e não pode ser desfeita pelo sistema. Confira todos os registros abaixo. Registros vinculados a requisições de material são protegidos pelo servidor.' },
+        repair: { title: 'Marcar registros como reparados?', confirm: 'Marcar como reparados', description: 'Todos os registros abaixo serão marcados como reparados e sairão da fila de abertos. Confirme que os reparos foram concluídos fisicamente. O histórico dos registros será preservado.' },
+        cancel: { title: 'Cancelar reparos selecionados?', confirm: 'Cancelar reparos', description: 'Todos os registros abaixo serão marcados como cancelados e sairão da fila de abertos. Os registros continuarão no histórico; esta ação não os exclui.' },
+      }[action];
+      requestConfirmation({
+        title: labels.title, description: labels.description,
+        confirmLabel: labels.confirm + ' · ' + submitted.length + ' registro(s)', records,
+        onConfirm: async signal => {
+          setIsDataLoading(true);
+          try {
+            if (action === 'delete') {
+              await fetchAutenticado('/api/registros', { method: 'DELETE', body: JSON.stringify({ ids: submitted, versions }), signal });
+            } else {
+              const status = action === 'repair' ? 'reparado' : 'cancelado';
+              await fetchAutenticado('/api/registros/status/' + status, {
+                method: 'PUT', body: JSON.stringify({ ids: submitted, versions }), signal,
+              });
+            }
+            signal.throwIfAborted();
+            setAllData(previous => action === 'delete' ? previous.filter(record => !submitted.includes(record.id))
+              : previous.map(record => submitted.includes(record.id) ? { ...record, status: action === 'repair' ? 'reparado' : 'cancelado', version: versions[record.id] + 1 } : record));
+            showToast(submitted.length + (action === 'delete' ? ' registro(s) excluído(s).' : ' registro(s) atualizado(s).'), 'success');
+            setSelectedItems(previous => new Set([...previous].filter(id => !submitted.includes(id))));
+            void loadData();
+          } finally {
+            setIsDataLoading(false);
+          }
+        },
       });
-
-      showToast('Registro excluído com sucesso.', 'success');
-      await loadData();
-      setSelectedItems(new Set());
-    } catch (error: any) {
-      showToast(`Erro ao excluir registro: ${error.message}`, 'error');
-    } finally {
-      setIsDataLoading(false);
+    } catch (error) {
+      showToast((error as Error).message, 'warning');
     }
   };
 
-  // Batch actions
-  const handleBatchAction = async (action: 'repair' | 'cancel' | 'delete') => {
-    if (selectedItems.size === 0) return;
-
-    const ids = Array.from(selectedItems);
-    if (ids.length > 200) {
-      showToast('Selecione no máximo 200 itens para uma ação em lote.', 'warning');
-      return;
-    }
-
-    try {
-      setIsDataLoading(true);
-
-      if (action === 'delete') {
-        await fetchAutenticado('/api/registros', {
-          method: 'DELETE',
-          body: JSON.stringify({ ids }),
-        });
-      } else {
-        const status = action === 'repair' ? 'reparado' : 'cancelado';
-        const versions = Object.fromEntries(ids.map(id => [id, getRegistroVersion(allData.find(r => r.id === id))]));
-        await fetchAutenticado(`/api/registros/status/${toBackendStatus(status)}`, {
-          method: 'PUT',
-          body: JSON.stringify({ ids, versions }),
-        });
-      }
-
-      showToast(`${ids.length} itens atualizados com sucesso.`, 'success');
-      await loadData();
-      setSelectedItems(new Set());
-    } catch (error: any) {
-      showToast(`Erro na ação em lote: ${error.message}`, 'error');
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
+  const handleExcluir = (id: string) => reviewRepairAction('delete', [id]);
+  const handleBatchAction = (action: 'repair' | 'cancel' | 'delete') => reviewRepairAction(action, Array.from(selectedItems));
 
   // Export
   const exportData = () => {
@@ -1340,6 +1332,7 @@ export default function ReparoPage() {
         )}
       </div>
 
+      {confirmationDialog}
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 

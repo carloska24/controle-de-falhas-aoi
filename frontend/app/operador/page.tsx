@@ -39,10 +39,12 @@ import ProTable from '@/components/index/ProTable';
 import ProMetrics from '@/components/index/ProMetrics';
 import ProQuality from '@/components/index/ProQuality';
 import ProQuickLinks from '@/components/index/ProQuickLinks';
+import { useActionConfirmation } from '@/components/ActionConfirmation';
 
 export default function IndexPage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
+  const { requestConfirmation, confirmationDialog } = useActionConfirmation();
   const [isPending, startTransition] = useTransition();
   const [isDataLoading, setIsDataLoading] = useState(false);
 
@@ -264,6 +266,36 @@ export default function IndexPage() {
     updateMetrics();
   }, [updateMetrics]);
 
+  const confirmFinishOM = useCallback(async () => {
+    if (!activeOM || (!omState.isRunning && !omState.isPaused)) return;
+    if (omRequests.current!.isPending()) {
+      showToast('Aguarde a operação atual da OM antes de revisar a finalização.', 'warning');
+      return;
+    }
+    if (!omSync.isSynchronized) {
+      showToast('Aguarde a sincronização da OM antes de finalizar.', 'warning');
+      return;
+    }
+    const omNumber = activeOM;
+    requestConfirmation({
+      title: 'Finalizar ordem de manufatura?', omNumber,
+      description: 'A OM ficará encerrada e não poderá ser iniciada novamente com o mesmo número. Eventual reabertura exige um fluxo específico. Campos ainda não gravados não serão incluídos nos registros.',
+      confirmLabel: 'Finalizar OM',
+      onConfirm: async signal => {
+        const omData = await requestOM('/api/om/finalizar', {
+          method: 'PUT', body: JSON.stringify({ omNumber }),
+        });
+        signal.throwIfAborted();
+        setOmState({ elapsed: omData.elapsed || 0, isRunning: false, isPaused: false, omNumber: null });
+        setOmTimeSummary({ startTime: omData.startTime || null, endTime: omData.endTime || null, elapsed: omData.elapsed || 0 });
+        localStorage.removeItem('omEmAndamento');
+        showToast(`OM ${omNumber} finalizada!`, 'success');
+        void loadData();
+        void loadOMs();
+      },
+    });
+  }, [activeOM, omState.isRunning, omState.isPaused, omSync.isSynchronized, requestConfirmation, requestOM, setOmState, showToast, loadData, loadOMs]);
+
   // Atalhos de teclado
   useEffect(() => {
     if (loading || !user) return;
@@ -273,6 +305,7 @@ export default function IndexPage() {
       const target = e.target as HTMLElement;
       if (
         e.defaultPrevented ||
+        document.querySelector('dialog[open]') ||
         target.closest('dialog, button, a, [role="button"], [role="row"], [contenteditable="true"]') ||
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
@@ -345,43 +378,16 @@ export default function IndexPage() {
         }
       }
 
-      // Ctrl+Enter - Finalizar OM
+      // O atalho abre a mesma revisão do botão; não finaliza diretamente.
       if (e.ctrlKey && e.key === 'Enter' && activeOM) {
         e.preventDefault();
-        try {
-          const omData = await requestOM('/api/om/finalizar', {
-            method: 'PUT',
-            body: JSON.stringify({ omNumber: activeOM }),
-          });
-          const finalizadaOM = activeOM; // Guardar o número da OM antes de atualizar
-          setOmState({
-            elapsed: omData.elapsed || 0,
-            isRunning: false,
-            isPaused: false,
-            omNumber: null,
-          });
-          // Salva resumo de tempo para exibição
-          setOmTimeSummary({
-            startTime: omData.startTime || null,
-            endTime: omData.endTime || null,
-            elapsed: omData.elapsed || 0,
-          });
-          // NÃO limpar activeOM e activeOMQtdLote aqui - manter para que o card de qualidade possa calcular
-          // Esses valores serão limpos quando uma nova OM for iniciada ou quando o usuário clicar em "Limpar"
-          localStorage.removeItem('omEmAndamento');
-          showToast(`OM ${finalizadaOM} finalizada!`, 'success');
-          await loadData();
-          await loadOMs();
-        } catch (error: any) {
-          if (error instanceof OMSupersededError) return;
-          showToast(error.message || 'Erro ao finalizar OM', 'error');
-        }
+        confirmFinishOM();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [user, loading, activeOM, omState.isRunning, omState.isPaused, loadOMs, loadData, omSync.isSynchronized, requestOM]);
+  }, [user, loading, activeOM, omState.isRunning, omState.isPaused, loadOMs, loadData, omSync.isSynchronized, requestOM, confirmFinishOM]);
 
   // Filtrar registros - deve estar antes do return condicional
   const filteredRegistros = useMemo(() => {
@@ -571,37 +577,7 @@ export default function IndexPage() {
                   showToast(error.message || 'Erro ao retomar OM', 'error');
                 }
               }}
-              onFinishOM={async () => {
-                if (!activeOM) return;
-                try {
-                  const omData = await requestOM('/api/om/finalizar', {
-                    method: 'PUT',
-                    body: JSON.stringify({ omNumber: activeOM }),
-                  });
-                  const finalizadaOM = activeOM; // Guardar o número da OM antes de atualizar
-                  setOmState({
-                    elapsed: omData.elapsed || 0,
-                    isRunning: false,
-                    isPaused: false,
-                    omNumber: null,
-                  });
-                  // Salva resumo de tempo para exibição
-                  setOmTimeSummary({
-                    startTime: omData.startTime || null,
-                    endTime: omData.endTime || null,
-                    elapsed: omData.elapsed || 0,
-                  });
-                  // NÃO limpar activeOM e activeOMQtdLote aqui - manter para que o card de qualidade possa calcular
-                  // Esses valores serão limpos quando uma nova OM for iniciada ou quando o usuário clicar em "Limpar"
-                  localStorage.removeItem('omEmAndamento');
-                  showToast(`OM ${finalizadaOM} finalizada!`, 'success');
-                  await loadData();
-                  await loadOMs();
-                } catch (error: any) {
-                  if (error instanceof OMSupersededError) return;
-                  showToast(error.message || 'Erro ao finalizar OM', 'error');
-                }
-              }}
+              onFinishOM={confirmFinishOM}
               onNewOM={() => {
                 if (!canClearOM()) return;
                 setActiveOM(null);
@@ -689,31 +665,16 @@ export default function IndexPage() {
               registros={filteredRegistros}
               isLoading={isDataLoading || isPending}
               omTimeSummary={omTimeSummary || undefined}
-              onDelete={async (ids: string[]) => {
-                // Optimistic UI Update - remove imediatamente
-                const deletedIds = new Set(ids);
-                const beforeDelete = [...registros];
-                const optimisticRegistros = registros.filter(r => !deletedIds.has(r.id));
-
-                startTransition(() => {
-                  setRegistros(optimisticRegistros);
+              onDelete={async (ids, versions, signal) => {
+                // Só atualizar a lista após a confirmação do servidor.
+                await fetchAutenticado('/api/registros', {
+                  method: 'DELETE', body: JSON.stringify({ ids, versions }), signal,
                 });
-
-                try {
-                  // Backend espera DELETE /api/registros com body { ids: [...] }
-                  await fetchAutenticado('/api/registros', {
-                    method: 'DELETE',
-                    body: JSON.stringify({ ids }),
-                  });
-                  showToast(`${ids.length} registro(s) excluído(s)`, 'success');
-                  await loadData(); // Sincroniza com servidor
-                } catch (error: any) {
-                  // Rollback em caso de erro
-                  startTransition(() => {
-                    setRegistros(beforeDelete);
-                  });
-                  showToast(error.message || 'Erro ao excluir registros', 'error');
-                }
+                signal.throwIfAborted();
+                const deleted = new Set(ids);
+                setRegistros(previous => previous.filter(record => !deleted.has(record.id)));
+                showToast(ids.length + ' registro(s) excluído(s)', 'success');
+                void loadData();
               }}
               onGenerateRequest={async (ids: string[]) => {
                 try {
@@ -784,6 +745,7 @@ export default function IndexPage() {
         </div>
       </div>
 
+      {confirmationDialog}
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>

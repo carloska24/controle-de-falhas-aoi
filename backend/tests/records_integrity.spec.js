@@ -152,7 +152,7 @@ test('mixed/missing material selections never silently create a partial request'
 test('linked records cannot be deleted silently', async () => {
   prisma.registros.delete.mockRejectedValue({ code: 'P2003' });
   const res = response();
-  await registros.deleteRegistro({ params: { id: 'r1' } }, res);
+  await registros.deleteRegistro({ params: { id: 'r1' }, body: { version: 0 } }, res);
   expect(res.statusCode).toBe(409);
 });
 

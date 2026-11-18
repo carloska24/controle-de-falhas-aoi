@@ -34,7 +34,7 @@ async function main() {
         const response = await fetch(base + endpoint, { method, headers: {
           'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}),
         }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15000) });
-        const data = await response.json();
+        const data = response.status === 204 ? null : await response.json();
         assert.equal(response.status, expected, `${method} ${endpoint}: ${JSON.stringify(data)}`);
         return { response, data };
       })();
@@ -56,7 +56,11 @@ async function main() {
         IF NEW."omNumber" = 'LOCK-FINISH-FIRST' AND NEW.status = 'finalizada' THEN PERFORM pg_advisory_xact_lock(11002); END IF;
         IF NEW."omNumber" = 'LOCK-PAUSE-FIRST' AND NEW.status = 'pausada' THEN PERFORM pg_advisory_xact_lock(11003); END IF;
         RETURN NEW; END $$;
-        CREATE TRIGGER test_hold_transition AFTER UPDATE ON ordens_manufatura FOR EACH ROW EXECUTE FUNCTION test_hold_transition();`);
+        CREATE TRIGGER test_hold_transition AFTER UPDATE ON ordens_manufatura FOR EACH ROW EXECUTE FUNCTION test_hold_transition();
+        CREATE FUNCTION test_hold_record_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF NEW.om = 'LOCK-DELETE' THEN PERFORM pg_advisory_xact_lock(11004); END IF;
+        RETURN NEW; END $$;
+        CREATE TRIGGER test_hold_record_update AFTER UPDATE ON registros FOR EACH ROW EXECUTE FUNCTION test_hold_record_update();`);
       async function waitForLock(pattern) {
         const until = Date.now() + 3000;
         while (Date.now() < until) {
@@ -115,6 +119,20 @@ async function main() {
       assert.equal(await prisma.registros.findUnique({ where: { id: 'ROLLBACK-FIRST' } }), null);
       assert.equal(await prisma.registros.count({ where: { om: { in: ['BATCH-A', 'BATCH-B'] } } }), 4);
       console.log('PASS: lotes com OMs em ordem inversa concluem; falha de item reverte o lote');
+      await api('POST', '/api/om/start', { omNumber: 'LOCK-DELETE', qtdLote: 10 });
+      await api('POST', '/api/registros/batch', [record('LOCK-DELETE', 'DELETE-A'), record('LOCK-DELETE', 'DELETE-B')], 201);
+      await gated(11004, async release => {
+        const edit = api('PUT', '/api/registros/DELETE-B', { version: 0, serial: 'CORRIGIDO-EM-OUTRO-TERMINAL' });
+        await waitForLock('%UPDATE%registros%');
+        const deletion = api('DELETE', '/api/registros', { ids: ['DELETE-A', 'DELETE-B'], versions: { 'DELETE-A': 0, 'DELETE-B': 0 } }, 409);
+        await waitForLock('%DELETE FROM%registros%');
+        await release(); await Promise.all([edit, deletion]);
+      });
+      assert.equal(await prisma.registros.count({ where: { om: 'LOCK-DELETE' } }), 2);
+      assert.equal((await prisma.registros.findUnique({ where: { id: 'DELETE-B' } })).version, 1);
+      await api('DELETE', '/api/registros', { ids: ['DELETE-A', 'DELETE-B'], versions: { 'DELETE-A': 0, 'DELETE-B': 1 } }, 204);
+      assert.equal(await prisma.registros.count({ where: { om: 'LOCK-DELETE' } }), 0);
+      console.log('PASS: edição concorrente impede exclusão da versão não revisada e reverte o lote inteiro');
       console.log('POSTGRES_OM_RECORD_CONCURRENCY_OK');
     } finally {
       await controlClient.query('SELECT pg_advisory_unlock_all()');

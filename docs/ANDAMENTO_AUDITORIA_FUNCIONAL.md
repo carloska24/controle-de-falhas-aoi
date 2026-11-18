@@ -35,8 +35,8 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Requisição de materiais | Seleção mista, erros e duplicidade | Concluída em `72f95ce`. |
 | Atalhos em componentes interativos | UX-01 | Proteção básica incluída em `72f95ce`; manter a regressão. |
 | Estado da OM entre terminais | UX-02 | Concluído em `498fbef`. |
-| Integridade de novos lançamentos | Estado e versão da OM no servidor | Concluído nesta etapa. |
-| Confirmações de ações importantes | UX-03 | Próxima etapa, preservando o visual. |
+| Integridade de novos lançamentos | Estado e versão da OM no servidor | Concluído em `b03fcad`. |
+| Confirmações de ações importantes | UX-03 | Concluído nesta etapa, preservando o visual. |
 | Totais, filtros, CSV e estados de reparo | UX-04, UX-05, UX-11 | Pendente. |
 | Definições de indicadores de qualidade | UX-06 | Pendente de definição com o processo de Qualidade. |
 | Administração, datas, entregas e filas SMT | UX-07 a UX-10 | Pendente. |
@@ -189,4 +189,81 @@ destino da pasta. Se não conseguir parar o servidor, preserva os arquivos e inf
 o erro. Não instala serviço do Windows. A execução desta etapa usou os binários
 oficiais 18.7; o preview local permanece na base persistente de demonstração.
 
-Próxima etapa: UX-03, confirmações de ações importantes, mantendo a identidade visual.
+## UX-03 — confirmação de ações importantes
+
+### Causa e fluxo corrigido
+
+Excluir na tabela do operador e no Centro de Reparos enviava DELETE imediatamente.
+O operador removia linhas antes da resposta do servidor; em falha, a seleção podia
+ser limpa mesmo sem excluir. O atalho de finalização também encerrava a OM direto.
+
+- Revisão antes de exclusão individual/lote, com quantidade total, OM, serial
+  completo e designador, incluindo registros selecionados em outras páginas.
+- Texto explícito sobre exclusão permanente, sem oferecer Desfazer. O servidor
+  continua protegendo registros vinculados a requisições de material.
+- Lotes de reparo e cancelamento mostram os alvos e a consequência operacional;
+  cancelamento de reparo preserva o registro, diferentemente de exclusão.
+- Finalização da OM usa um único caminho de revisão para callback e atalho;
+  informa número, encerramento sem reinício e campos ainda não gravados.
+  Não abre enquanto outra consulta/comando de seleção de OM está pendente.
+- Abrir, voltar ou pressionar Escape não envia a operação. O alvo revisado fica
+  fixo até fechar; clique repetido não troca o alvo nem reenvia a confirmação.
+- Não remover linhas antes da confirmação da API. Em erro, manter seleção e
+  revisão abertas com mensagem persistente; exigir fechar e conferir novamente.
+- Prazo de dez segundos, aborto da requisição e bloqueio de repetição automática.
+  Timeout é resultado incerto: cancelar no cliente não comprova rollback.
+  Consultas de atualização após sucesso não prendem o diálogo aberto.
+- Diálogo nativo no mesmo padrão da revisão de materiais: foco inicial na opção
+  de voltar, navegação de foco entre ações, Escape e retorno ao gatilho quando
+  ainda existe. Atalhos globais não atuam com diálogo nativo aberto.
+
+### Concorrência e contrato da exclusão
+
+A revisão identificou que um registro poderia mudar entre abrir e confirmar a
+exclusão. Corrigido no servidor, além da confirmação da interface:
+
+- `DELETE /api/registros` exige `{ ids, versions }`, com IDs únicos e a versão de
+  cada registro apresentado. Entre um e 200 registros por ação.
+- `DELETE /api/registros/:id` exige `{ version }`.
+- O lote exclui por pares de ID/versão na mesma transação. Se o total excluído
+  diferir da seleção, lança 409 e reverte o lote inteiro, inclusive itens válidos.
+- Alvos alterados/removidos e vínculos com materiais retornam conflito; payload
+  antigo sem versões retorna 400. Não anunciar sucesso para zero linhas.
+- Publicar frontend/API juntos, atualizar clientes e recarregar abas antigas.
+  Sem migrações, remoção de histórico existente ou exceção administrativa.
+
+### Verificação desta etapa
+
+- 102 testes backend e 42 frontend aprovados. Novos cenários cobrem cancelamento,
+  duplo envio, resultado incerto, conclusão tardia após desmontagem, seleção de
+  outras páginas e exclusões por versão/quantidade.
+- TypeScript e build de produção aprovados.
+- Integração isolada: exclusões sem versão recusadas; lote com item alterado,
+  ausente ou vinculado é revertido; exclusão válida individual/lote confirmada;
+  repetição de uma exclusão concluída retorna conflito.
+- PostgreSQL nativo 18.7: edição segura o lock de um registro enquanto o DELETE
+  de lote aguarda; ao confirmar a edição, a exclusão detecta versão divergente,
+  retorna conflito e preserva todos os registros do lote.
+- Revisão independente encontrou e confirmou a resolução de três pontos:
+  exclusão por versão, contexto de OM pendente e espera sem prazo no diálogo.
+- Navegador: revisão de 24 selecionados em duas páginas, identificadores completos,
+  Escape sem excluir e foco devolvido ao botão; exclusão individual em reparo
+  abre a revisão e pode ser cancelada sem alterar o registro.
+- Reparo: alteração externa durante uma revisão de dois registros resultou em
+  conflito sem conclusão parcial; após recarregar, o lote válido foi reparado.
+- Versão final: Tab e Shift+Tab permanecem entre as ações do diálogo, Espaço na
+  opção de voltar não pausa a OM, e conflito leva o foco ao botão Fechar.
+  O atalho abriu a revisão sem finalizar; a confirmação explícita encerrou uma
+  única vez a OM de ensaio, que terminou finalizada com os dois registros mantidos.
+- Os ensaios de alteração ocorreram em `AUDIT-CONFIRM-*`, com dois registros
+  fictícios. Os 251 registros de `OM-TESTE-ETAPA2` continuam preservados.
+- AST: todos os atributos anteriores de classe/estilo preservados: operador 23,
+  reparo 162, tabela 92, formulário 64 e timer 41. A tabela recebeu apenas uma
+  mensagem condicional de erro; as novas confirmações seguem o padrão existente.
+
+Esta etapa mantém exclusão física como operação existente. Caso o sistema seja
+registro oficial, definir com Qualidade retenção e substituição por cancelamento
+com motivo e trilha de auditoria antes da adoção definitiva. Não foi introduzida
+uma política de retenção ou reabertura de OM implicitamente.
+
+Próxima etapa: UX-04 e UX-11, totais, filtros e CSV do relatório de controle de falhas.

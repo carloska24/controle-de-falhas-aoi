@@ -129,7 +129,7 @@ async function main() {
     assert.equal(await prisma.requisicoes.count(), 1);
     assert.equal(await prisma.requisicao_registros.count(), 2);
     assert.equal((await prisma.requisicoes.findFirst()).created_by, credentials.username);
-    await api('DELETE', `/api/registros/${rows[0].id}`, undefined, 409);
+    await api('DELETE', `/api/registros/${rows[0].id}`, { version: 1 }, 409);
     assert.equal((await api('GET', '/api/requisicoes?limit=200')).data.meta.total, 1);
     console.log('PASS: solicitações simultâneas sem duplicação e autoria correta');
 
@@ -166,6 +166,24 @@ async function main() {
     const unchangedPageRequest = await prisma.requisicoes.findUnique({ where: { id: pageRequest.id } });
     assert.equal(JSON.parse(unchangedPageRequest.items)[0].quantidade_requisitada, 11);
     console.log('PASS: seleção mista de página rejeitada; onze elegíveis criam pedido exato e retry não duplica');
+
+    const deletionRows = ['DELETE-A', 'DELETE-B', 'DELETE-C'].map(id => record({ id, omVersion: 2 }));
+    await api('POST', '/api/registros/batch', deletionRows, 201);
+    await api('DELETE', '/api/registros', { ids: ['DELETE-A'] }, 400);
+    await api('DELETE', '/api/registros/DELETE-A', undefined, 400);
+    await api('PUT', '/api/registros/DELETE-B', { version: 0, serial: 'CORRIGIDO-EM-OUTRO-TERMINAL' });
+    await api('DELETE', '/api/registros', { ids: ['DELETE-A', 'DELETE-B'], versions: { 'DELETE-A': 0, 'DELETE-B': 0 } }, 409);
+    assert.ok(await prisma.registros.findUnique({ where: { id: 'DELETE-A' } }));
+    await api('DELETE', '/api/registros', { ids: ['DELETE-A', 'MISSING-RECORD'], versions: { 'DELETE-A': 0, 'MISSING-RECORD': 0 } }, 409);
+    assert.ok(await prisma.registros.findUnique({ where: { id: 'DELETE-A' } }));
+    await api('DELETE', '/api/registros', { ids: ['DELETE-A', rows[0].id], versions: { 'DELETE-A': 0, [rows[0].id]: 1 } }, 409);
+    assert.ok(await prisma.registros.findUnique({ where: { id: 'DELETE-A' } }));
+    await api('DELETE', '/api/registros/DELETE-B', { version: 0 }, 409);
+    await api('DELETE', '/api/registros/DELETE-B', { version: 1 }, 204);
+    await api('DELETE', '/api/registros', { ids: ['DELETE-A', 'DELETE-C'], versions: { 'DELETE-A': 0, 'DELETE-C': 0 } }, 204);
+    await api('DELETE', '/api/registros', { ids: ['DELETE-A'], versions: { 'DELETE-A': 0 } }, 409);
+    assert.equal(await prisma.registros.count({ where: { id: { in: deletionRows.map(row => row.id) } } }), 0);
+    console.log('PASS: exclusão exige versões revisadas, reverte lote alterado/ausente/vinculado e só confirma contagem integral');
 
     await api('POST', '/api/auth/logout');
     await api('GET', '/api/auth/me', undefined, 401);

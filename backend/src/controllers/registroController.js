@@ -109,36 +109,41 @@ async function updateRegistro(req, res) {
 
 async function deleteRegistro(req, res) {
   const { id } = req.params;
+  const { version } = req.body;
   try {
     await prisma.registros.delete({
-      where: { id },
+      where: { id, version },
     });
     res.status(204).send();
   } catch (err) {
     if (err.code === 'P2003') return res.status(409).json({ error: 'Registro vinculado a uma requisição. Preserve o histórico do material solicitado.' });
     if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Registro não encontrado.' });
+      return res.status(409).json({ error: 'Registro alterado ou removido. Atualize a lista antes de revisar a exclusão novamente.' });
     }
-    console.error('Erro ao excluir registro:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Erro ao excluir registro:', err.code || 'unexpected_error');
+    res.status(500).json({ error: 'Não foi possível confirmar a exclusão. Atualize a lista antes de tentar novamente.' });
   }
 }
 
 async function deleteRegistrosBatch(req, res) {
-  const { ids } = req.body;
+  const { ids, versions } = req.body;
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'Lista de IDs inválida.' });
   }
 
   try {
-    await prisma.registros.deleteMany({
-      where: { id: { in: ids } },
+    await prisma.$transaction(async tx => {
+      const deleted = await tx.registros.deleteMany({
+        where: { OR: ids.map(id => ({ id, version: versions[id] })) },
+      });
+      if (deleted.count !== ids.length) throw Object.assign(new Error('Um ou mais registros foram alterados ou removidos. Atualize a lista e revise a exclusão novamente.'), { status: 409 });
     });
     res.status(204).send();
   } catch (err) {
     if (err.code === 'P2003') return res.status(409).json({ error: 'O lote contém registros vinculados a requisições.' });
-    console.error('Erro ao excluir registros em lote:', err);
-    res.status(500).json({ error: err.message });
+    if (err.status === 409) return res.status(409).json({ error: err.message });
+    console.error('Erro ao excluir registros em lote:', err.code || 'unexpected_error');
+    res.status(500).json({ error: 'Não foi possível confirmar a exclusão. Atualize a lista antes de tentar novamente.' });
   }
 }
 

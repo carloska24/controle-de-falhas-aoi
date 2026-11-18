@@ -3,11 +3,12 @@ const router = express.Router();
 const {
   validate,
   registrosBatchSchema,
-  idsArraySchema,
   registroUpdateSchema,
   registroStatusSchema,
   registroStatusParamsSchema,
   registroStatusBatchSchema,
+  registrosDeleteSchema,
+  registroDeleteSchema,
 } = require('../utils/schemas');
 const { authenticateToken, hasRole } = require('../middleware/auth');
 const registroController = require('../controllers/registroController');
@@ -57,12 +58,12 @@ router.put(
   validate(registroUpdateSchema),
   registroController.updateRegistro
 );
-router.delete('/:id', authenticateToken, hasRole('admin', 'operator', 'reparo'), registroController.deleteRegistro);
+router.delete('/:id', authenticateToken, hasRole('admin', 'operator', 'reparo'), validate(registroDeleteSchema), registroController.deleteRegistro);
 router.delete(
   '/',
   authenticateToken,
   hasRole('admin', 'operator', 'reparo'),
-  validate(idsArraySchema),
+  validate(registrosDeleteSchema),
   registroController.deleteRegistrosBatch
 );
 

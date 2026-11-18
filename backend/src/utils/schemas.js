@@ -77,6 +77,8 @@ const registroStatusParamsSchema = z.object({ status: registroStatusValue });
 const registroStatusBatchSchema = idsArraySchema.extend({ versions: z.record(registroVersion) })
   .refine(({ ids, versions }) => new Set(ids).size === ids.length && ids.every(id => Object.hasOwn(versions, id)),
     { message: 'Envie IDs únicos e a versão de cada registro.' });
+const registrosDeleteSchema = registroStatusBatchSchema;
+const registroDeleteSchema = z.object({ version: registroVersion });
 const requisicoesCreateSchema = z.object({ registroIds: z.array(z.string().min(1)).min(1).max(200) })
   .refine(({ registroIds }) => new Set(registroIds).size === registroIds.length,
     { message: 'IDs de registros devem ser únicos.' });
@@ -123,6 +125,8 @@ module.exports = {
   registroStatusSchema,
   registroStatusParamsSchema,
   registroStatusBatchSchema,
+  registrosDeleteSchema,
+  registroDeleteSchema,
   requisicoesCreateSchema,
   requisicaoStatusSchema,
   requisicaoItensSchema,
