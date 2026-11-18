@@ -65,7 +65,8 @@ export async function fetchAutenticado(url: string, options: RequestInit = {}) {
 // As telas atuais filtram/exportam no cliente. Carregue todas as páginas antes
 // de publicar o resultado; nunca apresente a primeira página como o conjunto inteiro.
 export async function fetchListaCompleta<T extends { id: string | number }>(
-  endpoint: '/api/registros' | '/api/requisicoes'
+  endpoint: '/api/registros' | '/api/requisicoes',
+  signal?: AbortSignal
 ): Promise<T[]> {
   const maxItens = 10000;
   const limite = 200;
@@ -75,7 +76,8 @@ export async function fetchListaCompleta<T extends { id: string | number }>(
   let paginasEsperadas = 1;
 
   for (let pagina = 1; pagina <= paginasEsperadas; pagina++) {
-    const resposta = await fetchAutenticado(`${endpoint}?page=${pagina}&limit=${limite}`);
+    signal?.throwIfAborted();
+    const resposta = await fetchAutenticado(`${endpoint}?page=${pagina}&limit=${limite}`, { signal });
     const meta = resposta?.meta;
     if (!Array.isArray(resposta?.data) || !meta ||
         !Number.isSafeInteger(meta.total) || meta.total < 0 ||

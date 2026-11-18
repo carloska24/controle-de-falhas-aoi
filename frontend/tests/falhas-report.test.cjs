@@ -4,11 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
-const context = { exports: {}, URLSearchParams };
-vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../lib/falhasReport.ts'), 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-}).outputText, context);
-const { parseFalhasSnapshot, parseReportOptions, reportPage, reportQuery, serializeFalhasCSV, reportDay } = context.exports;
+function loadSource(name, dependencies = {}) {
+  const context = { exports: {}, URLSearchParams, require: dependency => dependencies[dependency] };
+  const source = fs.readFileSync(path.join(__dirname, '../lib', name + '.ts'), 'utf8');
+  vm.runInNewContext(ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, context);
+  return context.exports;
+}
+const { parseFalhasSnapshot, parseReportOptions, reportPage, reportQuery, serializeFalhasCSV, reportDay } = loadSource('falhasReport', { './csv': loadSource('csv') });
 const row = extra => ({ id: '1', om: 'OM-A', qtdlote: 500, pn: 'PN-1', serial: 'SN-1', designador: 'R1', tipodefeito: 'Ausente', descricao: 'Resistor', operador: 'Operador', status: 'pendente', prioridade: 'media', createdat: '2026-11-18T12:00:00Z', ...extra });
 const snapshot = records => ({ data: records, options: { oms: ['OM-A', 'OM-B'], defeitos: ['Ausente'], statuses: ['pendente'] }, meta: { complete: true, total: records.length, maxRecords: 10000, generatedAt: '2026-11-18T12:00:00Z', timeZone: 'America/Sao_Paulo', invalidDates: 0 } });
 test('paging shows 12 of 251 while the confirmed dataset and export retain all 251', () => {

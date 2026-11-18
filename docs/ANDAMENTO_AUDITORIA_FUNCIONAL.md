@@ -37,8 +37,8 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Estado da OM entre terminais | UX-02 | Concluído em `498fbef`. |
 | Integridade de novos lançamentos | Estado e versão da OM no servidor | Concluído em `b03fcad`. |
 | Confirmações de ações importantes | UX-03 | Concluído em `fb28665`. |
-| Totais, filtros e CSV do controle de falhas | UX-04 e UX-11 | Concluído em `codex/corrigir-relatorio-falhas`. |
-| Estados e contagens do relatório de reparo | UX-05 | Próxima etapa. |
+| Totais, filtros e CSV do controle de falhas | UX-04 e UX-11 | Concluído em `633da0f`. |
+| Estados e contagens do relatório de reparo | UX-05 | Concluído em `codex/corrigir-relatorio-reparo`. |
 | Definições de indicadores de qualidade | UX-06 | Pendente de definição com o processo de Qualidade. |
 | Administração, datas, entregas e filas SMT | UX-07 a UX-10 | Pendente. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
@@ -306,4 +306,25 @@ disponível para seus consumidores. A validação de datas usa funções dispon�
 no PostgreSQL 15, versão indicada na documentação do sistema. O ensaio nativo
 executado nesta etapa usou a versão 18.7.
 
-Próxima etapa da auditoria: estados e contagens do relatório de reparo, UX-05.
+## UX-05 — estados e contagens do relatório de reparo
+
+O relatório descartava os estados atuais `pendente` e `em_analise` durante a
+carga. Centro e relatório agora compartilham a classificação. A fila agrupa
+pendências e análises em **Abertos**. O relatório usa o mesmo grupo no cartão e
+no filtro, com **Em análise** disponível para consulta específica. Os registros
+históricos continuam visíveis, inclusive aliases de conclusão e cancelamento.
+
+O conjunto filtrado alimenta contagens, gráficos, tabela e CSV. A tabela exibe
+a página atual e o total. Carregamento e erro bloqueiam a exportação. O CSV
+preserva a data de atualização vazia quando ausente. O gráfico temporal foi
+rotulado com o evento disponível, a criação do registro. O tempo médio depende
+de uma data de conclusão e segue indisponível enquanto esse evento não existir.
+
+Verificação no navegador com `OM-TESTE-ETAPA2`: **251 registros, 250 abertos e
+1 concluído** nas duas telas. Com o filtro de abertos, a última página exibiu
+10 de 250 e o CSV baixado tinha 250 linhas de dados e 10 colunas. O intervalo
+invertido bloqueou a exportação, com recuperação ao corrigir as datas. Foram
+aprovados 55 testes de frontend e o build, incluindo a checagem do TypeScript.
+
+A próxima definição da auditoria é UX-06, critérios dos indicadores de
+aprovação de placas com o processo de Qualidade.

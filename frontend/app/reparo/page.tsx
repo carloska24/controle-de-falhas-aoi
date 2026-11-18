@@ -28,34 +28,7 @@ import DemoBadge from '@/components/ui/DemoBadge';
 import { useActionConfirmation } from '@/components/ActionConfirmation';
 import { snapshotRecordSelection } from '@/lib/actionConfirmation';
 
-type RepairStatus = 'aberto' | 'reparado' | 'cancelado';
-
-const normalizeRegistroStatus = (status?: string | null): RepairStatus => {
-  if (!status) return 'aberto';
-  const normalized = status.toLowerCase().trim();
-  if (
-    normalized === 'requisição_gerada' ||
-    normalized === 'requisicao_gerada' ||
-    normalized === 'pendente' ||
-    normalized === 'em_andamento' ||
-    normalized === 'em andamento' ||
-    normalized === 'em_analise' ||
-    normalized === 'em análise' ||
-    normalized === 'analise'
-  ) {
-    return 'aberto';
-  }
-  if (normalized === 'sucata') return 'cancelado';
-  if (normalized === 'concluido' || normalized === 'concluído') return 'reparado';
-  if (normalized === 'cancelado') return 'cancelado';
-  if (normalized === 'reparado') return 'reparado';
-  return 'aberto';
-};
-
-const toBackendStatus = (status: RepairStatus): string => {
-  if (status === 'aberto') return 'pendente';
-  return status;
-};
+import { repairQueueStatus as normalizeStatus, repairStatusLabels, toBackendRepairStatus, type RepairStatus } from '@/lib/repairStatus';
 
 export default function ReparoPage() {
   const router = useRouter();
@@ -140,7 +113,7 @@ export default function ReparoPage() {
       // Normaliza status vindos do backend para os estados usados nesta tela
       const translatedData = registrosList.map((r: Registro) => ({
         ...r,
-        status: normalizeRegistroStatus(r.status),
+        status: normalizeStatus(r.status),
       }));
 
       // Se estiver em modo demo, incluir todos os dados; caso contrário, filtrar DEMO
@@ -184,7 +157,7 @@ export default function ReparoPage() {
       filtered = filtered.filter(item => item.om === omFilter);
     }
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(item => normalizeRegistroStatus(item.status) === statusFilter);
+      filtered = filtered.filter(item => normalizeStatus(item.status) === statusFilter);
     }
 
     // Sort
@@ -223,12 +196,6 @@ export default function ReparoPage() {
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
 
-  // Função helper para normalizar status (usada em vários lugares)
-  const normalizeStatus = useCallback(
-    (status?: string | null): RepairStatus => normalizeRegistroStatus(status),
-    []
-  );
-
   // KPIs
   const kpis = useMemo(() => {
     const urgentes = filteredData.filter(
@@ -239,7 +206,7 @@ export default function ReparoPage() {
     const concluidos = filteredData.filter(r => normalizeStatus(r.status) === 'reparado').length;
 
     return { urgentes, abertos, cancelados, concluidos };
-  }, [filteredData, normalizeStatus]);
+  }, [filteredData]);
 
   // Get unique values for filters
   const uniqueOms = useMemo(
@@ -261,7 +228,7 @@ export default function ReparoPage() {
       setIsDataLoading(true);
       await fetchAutenticado(`/api/registros/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: toBackendStatus(status), version: getRegistroVersion(allData.find(r => r.id === id)) }),
+        body: JSON.stringify({ status: toBackendRepairStatus(status), version: getRegistroVersion(allData.find(r => r.id === id)) }),
       });
 
       showToast(`Status atualizado para "${getStatusLabel(status)}".`, 'success');
@@ -386,14 +353,7 @@ export default function ReparoPage() {
     return map[status || 'aberto'] || 'bg-slate-600 text-slate-200';
   };
 
-  const getStatusLabel = (status?: string) => {
-    const map: Record<string, string> = {
-      aberto: 'Aberto',
-      reparado: 'Reparado',
-      cancelado: 'Cancelado',
-    };
-    return map[status || 'aberto'] || status || '—';
-  };
+  const getStatusLabel = (status: RepairStatus) => repairStatusLabels[status];
 
   const formatDate = (date: string) => {
     const d = new Date(date);

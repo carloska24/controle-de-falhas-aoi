@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -37,7 +37,10 @@ import Button from '@/components/ui/Button';
 import DemoBadge from '@/components/ui/DemoBadge';
 import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
-import { Registro } from '@/types/index';
+import type { Registro } from '@/types/index';
+import { repairStatus, repairStatusLabels } from '@/lib/repairStatus';
+import { filterRepairReport, normalizedRepairPriority, serializeRepairCSV, summarizeRepairReport } from '@/lib/repairReport';
+import { reportDay, reportPage } from '@/lib/falhasReport';
 
 ChartJS.register(
   CategoryScale,
@@ -55,13 +58,12 @@ export default function RelatorioReparoPage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isDataLoading, setIsDataLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Data
-  const [allData, setAllData] = useState<Registro[]>([]);
-  const [filteredData, setFilteredData] = useState<Registro[]>([]);
+  const [report, setReport] = useState<{ rows: Registro[]; status: 'loading' | 'ready' | 'error'; error?: string }>({ rows: [], status: 'loading' });
+  const activeRequest = useRef<AbortController | null>(null);
 
   // Filters
   const [dateRange, setDateRange] = useState('all');
@@ -112,159 +114,54 @@ export default function RelatorioReparoPage() {
   };
 
   const loadData = useCallback(async () => {
-    setIsDataLoading(true);
+    activeRequest.current?.abort();
+    const request = new AbortController();
+    activeRequest.current = request;
+    const timer = setTimeout(() => request.abort(), 20000);
+    setReport(previous => ({ rows: previous.rows, status: 'loading' }));
     try {
-      const registrosList = await fetchListaCompleta<Registro>('/api/registros');
-
-      // Filtrar apenas registros que foram para reparo (status != 'aberto')
-      const reparosData = registrosList.filter(
-        (r: Registro) =>
-          r.status === 'reparado' ||
-          r.status === 'em_andamento' ||
-          r.status === 'cancelado' ||
-          r.status === 'aberto'
-      );
-
-      // Verificar modo demo novamente para garantir que está atualizado
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentDemoMode = urlParams.get('demo') === 'true';
-
-      // Filtrar DEMO baseado no modo demo
-      if (currentDemoMode && user?.role === 'admin') {
-        // Modo demo: mostrar todos os dados incluindo DEMO
-        setAllData(reparosData);
-      } else {
-        // Modo normal: filtrar dados DEMO
-        setAllData(reparosData.filter((r: Registro) => !r.om?.startsWith('DEMO-')));
-      }
-      setIsDataLoading(false);
-    } catch (error: any) {
-      console.error('Erro ao carregar dados de reparo:', error);
-      showToast(error.message || 'Erro ao carregar dados', 'error');
-      setIsDataLoading(false);
+      const rows = await fetchListaCompleta<Registro>('/api/registros', request.signal);
+      request.signal.throwIfAborted();
+      if (activeRequest.current !== request) return;
+      const includeDemo = isDemoMode && user?.role === 'admin';
+      setReport({ rows: includeDemo ? rows : rows.filter(row => !row.om.startsWith('DEMO-')), status: 'ready' });
+    } catch (error) {
+      if (activeRequest.current !== request) return;
+      setReport(previous => ({ rows: previous.rows, status: 'error', error: request.signal.aborted
+        ? 'A consulta do relatório excedeu o tempo de espera.'
+        : error instanceof Error ? error.message : 'Não foi possível carregar o relatório.' }));
+    } finally {
+      clearTimeout(timer);
     }
-  }, [user?.role, showToast]);
+  }, [isDemoMode, user?.role]);
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
+    if (!user) return;
+    void loadData();
+    return () => {
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+    };
   }, [user, loadData]);
 
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...allData];
+  const invalidPeriod = dateRange === 'custom' && !!startDate && !!endDate && startDate > endDate;
+  const ready = report.status === 'ready' && !invalidPeriod;
+  const problem = invalidPeriod ? 'A data inicial deve ser anterior ou igual à final.' : report.error;
+  const filteredData = useMemo(() => ready ? filterRepairReport(report.rows, {
+    dateRange, startDate, endDate, om: omFilter, status: statusFilter,
+    prioridade: prioridadeFilter, operador: operadorFilter,
+  }) : [], [ready, report.rows, dateRange, startDate, endDate, omFilter, statusFilter, prioridadeFilter, operadorFilter]);
 
-    // Filtro por período
-    if (dateRange === 'custom') {
-      if (startDate) {
-        const start = new Date(startDate + 'T00:00:00');
-        filtered = filtered.filter(d => new Date(d.createdat) >= start);
-      }
-      if (endDate) {
-        const end = new Date(endDate + 'T23:59:59');
-        filtered = filtered.filter(d => new Date(d.createdat) <= end);
-      }
-    } else if (dateRange !== 'all') {
-      const dias = parseInt(dateRange, 10);
-      if (!isNaN(dias)) {
-        const dataLimite = new Date();
-        dataLimite.setDate(dataLimite.getDate() - dias);
-        filtered = filtered.filter(d => new Date(d.createdat) >= dataLimite);
-      }
-    }
-
-    // Filtro por OM
-    if (omFilter !== 'all') {
-      filtered = filtered.filter(d => d.om === omFilter);
-    }
-
-    // Filtro por status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(d => d.status === statusFilter);
-    }
-
-    // Filtro por prioridade
-    if (prioridadeFilter !== 'all') {
-      filtered = filtered.filter(d => d.prioridade === prioridadeFilter);
-    }
-
-    // Filtro por operador
-    if (operadorFilter) {
-      filtered = filtered.filter(d =>
-        d.operador?.toLowerCase().includes(operadorFilter.toLowerCase())
-      );
-    }
-
-    setFilteredData(filtered);
-    // Resetar página quando filtros mudarem
-    setCurrentPage(1);
-  }, [
-    allData,
-    dateRange,
-    startDate,
-    endDate,
-    omFilter,
-    statusFilter,
-    prioridadeFilter,
-    operadorFilter,
-  ]);
-
-  // Paginação dos dados filtrados
-  const paginatedData = useMemo(() => {
-    const startIdx = (currentPage - 1) * itemsPerPage;
-    const endIdx = startIdx + itemsPerPage;
-    return filteredData.slice(startIdx, endIdx);
-  }, [filteredData, currentPage, itemsPerPage]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
-
-  // KPIs
-  const kpis = useMemo(() => {
-    const totalReparos = filteredData.length;
-    const concluidos = filteredData.filter(r => r.status === 'reparado').length;
-    const pendentes = filteredData.filter(r => r.status === 'aberto').length;
-    const emAndamento = filteredData.filter(r => r.status === 'em_andamento').length;
-    const urgentes = filteredData.filter(
-      r => r.prioridade === 'urgente' || r.prioridade === 'alta'
-    ).length;
-    const taxaConclusao = totalReparos > 0 ? ((concluidos / totalReparos) * 100).toFixed(1) : '0.0';
-
-    // Calcular tempo médio de reparo (em dias)
-    const reparosConcluidos = filteredData.filter(r => r.status === 'reparado');
-    let tempoMedio = '-';
-    if (reparosConcluidos.length > 0) {
-      // Assumindo que updatedAt tem a data de conclusão
-      const tempos = reparosConcluidos
-        .filter(r => r.createdat && r.updatedat)
-        .map(r => {
-          const inicio = new Date(r.createdat);
-          const fim = new Date(r.updatedat || r.createdat);
-          return (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24); // dias
-        });
-
-      if (tempos.length > 0) {
-        const media = tempos.reduce((a, b) => a + b, 0) / tempos.length;
-        tempoMedio = media.toFixed(1);
-      }
-    }
-
-    return {
-      totalReparos,
-      concluidos,
-      pendentes,
-      emAndamento,
-      urgentes,
-      taxaConclusao,
-      tempoMedio,
-    };
-  }, [filteredData]);
+  useEffect(() => { setCurrentPage(1); }, [report.rows, dateRange, startDate, endDate, omFilter, statusFilter, prioridadeFilter, operadorFilter]);
+  const pagination = reportPage(filteredData, currentPage, itemsPerPage);
+  const kpis = useMemo(() => summarizeRepairReport(filteredData), [filteredData]);
+  const taxaConclusao = kpis.total ? (kpis.counts.reparado * 100 / kpis.total).toFixed(1) + '%' : '—';
 
   // Unique values for filters
   const uniqueOms = useMemo(() => {
-    const oms = Array.from(new Set(allData.map(r => r.om)));
+    const oms = Array.from(new Set(report.rows.map(r => r.om)));
     return ['all', ...oms];
-  }, [allData]);
+  }, [report.rows]);
 
   const handleLogout = async () => {
     try {
@@ -275,94 +172,44 @@ export default function RelatorioReparoPage() {
   };
 
   const handleExportCSV = () => {
-    const csvContent = [
-      [
-        'OM',
-        'PN',
-        'Serial',
-        'Designador',
-        'Tipo Defeito',
-        'Status',
-        'Prioridade',
-        'Operador',
-        'Data Criação',
-        'Data Atualização',
-      ].join(','),
-      ...filteredData.map(r =>
-        [
-          r.om || '',
-          r.pn || '',
-          r.serial || '',
-          r.designador || '',
-          r.tipodefeito || '',
-          r.status || '',
-          r.prioridade || '',
-          r.operador || '',
-          r.createdat || '',
-          r.updatedat || r.createdat || '',
-        ]
-          .map(v => `"${v}"`)
-          .join(',')
-      ),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    if (!ready || !filteredData.length) return;
+    const blob = new Blob([serializeRepairCSV(filteredData)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `relatorio-reparo-${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = url;
+    link.download = 'relatorio-reparo-' + reportDay(new Date().toISOString()) + '.csv';
     link.click();
-    showToast('CSV exportado com sucesso!', 'success');
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(filteredData.length + ' registro(s) exportado(s) em CSV.', 'success');
   };
 
-  // Gráfico: Status de Reparos
   const statusData = useMemo(() => {
-    const statusCount = filteredData.reduce((acc, r) => {
-      const status = r.status || 'pendente';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
+    const states = ['reparado', 'em_analise', 'pendente', 'cancelado'] as const;
     return {
-      labels: Object.keys(statusCount),
-      datasets: [
-        {
-          data: Object.values(statusCount),
-          backgroundColor: [
-            'rgba(34, 197, 94, 0.8)', // verde - reparado
-            'rgba(245, 158, 11, 0.8)', // laranja - em_andamento
-            'rgba(239, 68, 68, 0.8)', // vermelho - aberto
-            'rgba(107, 114, 128, 0.8)', // cinza - cancelado
-          ],
-          borderColor: ['#22c55e', '#f59e0b', '#ef4444', '#6b7280'],
-          borderWidth: 2,
-        },
-      ],
+      labels: states.map(state => repairStatusLabels[state]),
+      datasets: [{
+        data: states.map(state => kpis.counts[state]),
+        backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(107, 114, 128, 0.8)'],
+        borderColor: ['#22c55e', '#f59e0b', '#ef4444', '#6b7280'],
+        borderWidth: 2,
+      }],
     };
-  }, [filteredData]);
+  }, [kpis.counts]);
 
   // Gráfico: Tendência Temporal
   const tendenciaData = useMemo(() => {
-    const reparosPorDia = filteredData.reduce((acc, r) => {
-      const dataObj = new Date(r.createdat);
-      const ano = dataObj.getFullYear();
-      const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
-      const dia = String(dataObj.getDate()).padStart(2, '0');
-      const data = `${ano}-${mes}-${dia}`;
-      acc[data] = (acc[data] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const sortedData = Object.entries(reparosPorDia).sort((a, b) => {
-      const dateA = new Date(a[0] + 'T00:00:00');
-      const dateB = new Date(b[0] + 'T00:00:00');
-      return dateA.getTime() - dateB.getTime();
-    });
+    const registrosPorDia = new Map<string, number>();
+    for (const record of filteredData) {
+      const day = reportDay(record.createdat);
+      if (day !== 'Data inválida') registrosPorDia.set(day, (registrosPorDia.get(day) || 0) + 1);
+    }
+    const sortedData = [...registrosPorDia.entries()].sort(([a], [b]) => a.localeCompare(b));
 
     return {
       labels: sortedData.map(item => item[0]),
       datasets: [
         {
-          label: 'Reparos por Dia',
+          label: 'Registros criados por dia',
           data: sortedData.map(item => item[1]),
           borderColor: '#3b82f6',
           borderWidth: 3,
@@ -379,10 +226,10 @@ export default function RelatorioReparoPage() {
   // Gráfico: Prioridades
   const prioridadesData = useMemo(() => {
     const prioridades = filteredData.reduce((acc, r) => {
-      const p = r.prioridade || 'sem prioridade';
+      const p = normalizedRepairPriority(r.prioridade) || 'sem prioridade';
       acc[p] = (acc[p] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, Object.create(null) as Record<string, number>);
 
     return {
       labels: Object.keys(prioridades),
@@ -489,10 +336,10 @@ export default function RelatorioReparoPage() {
             <div className="flex items-center gap-3 mb-2">
               <Wrench className="w-5 h-5 text-blue-400" />
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Total de Reparos
+                Total de Registros
               </div>
             </div>
-            <p className="text-4xl font-black text-blue-400">{kpis.totalReparos}</p>
+            <p className="text-4xl font-black text-blue-400">{ready ? kpis.total : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -507,7 +354,7 @@ export default function RelatorioReparoPage() {
                 Concluídos
               </div>
             </div>
-            <p className="text-4xl font-black text-green-400">{kpis.concluidos}</p>
+            <p className="text-4xl font-black text-green-400">{ready ? kpis.counts.reparado : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -519,10 +366,10 @@ export default function RelatorioReparoPage() {
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-orange-400" />
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Pendentes
+                Abertos
               </div>
             </div>
-            <p className="text-4xl font-black text-orange-400">{kpis.pendentes}</p>
+            <p className="text-4xl font-black text-orange-400" title="Inclui registros pendentes e em análise">{ready ? kpis.abertos : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -537,7 +384,7 @@ export default function RelatorioReparoPage() {
                 Taxa Conclusão
               </div>
             </div>
-            <p className="text-4xl font-black text-purple-400">{kpis.taxaConclusao}%</p>
+            <p className="text-4xl font-black text-purple-400">{ready ? taxaConclusao : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -552,7 +399,7 @@ export default function RelatorioReparoPage() {
                 Urgentes
               </div>
             </div>
-            <p className="text-4xl font-black text-red-400">{kpis.urgentes}</p>
+            <p className="text-4xl font-black text-red-400">{ready ? kpis.urgentes : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -567,8 +414,8 @@ export default function RelatorioReparoPage() {
                 Tempo Médio
               </div>
             </div>
-            <p className="text-2xl font-black text-cyan-400">
-              {kpis.tempoMedio} {kpis.tempoMedio !== '-' && 'dias'}
+            <p className="text-2xl font-black text-cyan-400" title="Disponível quando houver data registrada de conclusão do reparo">
+              —
             </p>
           </motion.div>
         </div>
@@ -597,24 +444,26 @@ export default function RelatorioReparoPage() {
             {dateRange === 'custom' && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  <label htmlFor="reparo-data-inicio" className="block text-sm font-semibold text-slate-300 mb-2">
                     Data Início
                   </label>
                   <input
+                    id="reparo-data-inicio"
                     type="date"
                     value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
+                    onInput={e => setStartDate(e.currentTarget.value)}
                     className="w-full bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  <label htmlFor="reparo-data-fim" className="block text-sm font-semibold text-slate-300 mb-2">
                     Data Fim
                   </label>
                   <input
+                    id="reparo-data-fim"
                     type="date"
                     value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
+                    onInput={e => setEndDate(e.currentTarget.value)}
                     className="w-full bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
                   />
                 </div>
@@ -647,8 +496,8 @@ export default function RelatorioReparoPage() {
                 className="w-full bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
               >
                 <option value="all">Todos</option>
-                <option value="aberto">Aberto</option>
-                <option value="em_andamento">Em Andamento</option>
+                <option value="aberto">Abertos (pendentes e em análise)</option>
+                <option value="em_analise">Em análise</option>
                 <option value="reparado">Reparado</option>
                 <option value="cancelado">Cancelado</option>
               </select>
@@ -682,11 +531,11 @@ export default function RelatorioReparoPage() {
           </div>
 
           <div className="flex gap-4 mt-4">
-            <Button onClick={loadData} variant="primary">
+            <Button onClick={loadData} variant="primary" disabled={report.status === 'loading'}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar
             </Button>
-            <Button onClick={handleExportCSV} variant="success">
+            <Button onClick={handleExportCSV} variant="success" disabled={!ready || filteredData.length === 0}>
               <Download className="w-4 h-4 mr-2" />
               Exportar CSV
             </Button>
@@ -696,6 +545,8 @@ export default function RelatorioReparoPage() {
             </Button>
           </div>
         </motion.div>
+
+        {problem && <p role="alert" className="mb-4 text-sm text-red-200">{problem}</p>}
 
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -743,10 +594,10 @@ export default function RelatorioReparoPage() {
         >
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold">Registros de Reparo</h3>
-            <div className="text-sm text-slate-400">Mostrando {filteredData.length} registros</div>
+            <div className="text-sm text-slate-400">{ready ? `Mostrando ${pagination.records.length} de ${filteredData.length} registros` : 'Consulta não confirmada'}</div>
           </div>
 
-          {isDataLoading ? (
+          {report.status === 'loading' ? (
             <div className="text-center py-10">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
             </div>
@@ -791,12 +642,12 @@ export default function RelatorioReparoPage() {
                         <td colSpan={9} className="text-center py-12 text-slate-400">
                           <div className="flex flex-col items-center gap-3">
                             <Wrench className="w-12 h-12 opacity-20" />
-                            <p>Nenhum registro encontrado</p>
+                            <p>{problem ? 'Consulta não confirmada' : 'Nenhum registro encontrado'}</p>
                           </div>
                         </td>
                       </tr>
                     ) : (
-                      paginatedData.map((registro, idx) => (
+                      pagination.records.map((registro, idx) => (
                         <tr
                           key={registro.id || idx}
                           className={`border-b border-slate-700/50 hover:bg-slate-800/60 transition-colors ${
@@ -859,20 +710,12 @@ export default function RelatorioReparoPage() {
                           <td className="py-4 px-5">
                             <Badge
                               variant={
-                                registro.status === 'reparado'
-                                  ? 'success'
-                                  : registro.status === 'em_andamento'
-                                  ? 'info'
-                                  : registro.status === 'aberto'
-                                  ? 'warning'
-                                  : registro.status === 'cancelado'
-                                  ? 'danger'
-                                  : 'default'
+                                ({ reparado: 'success', em_analise: 'info', pendente: 'warning', cancelado: 'danger' } as const)[repairStatus(registro.status)]
                               }
                               size="md"
                               className="px-3 py-1 font-bold shadow-sm"
                             >
-                              {registro.status || '-'}
+                              {repairStatusLabels[repairStatus(registro.status)]}
                             </Badge>
                           </td>
                           <td className="py-4 px-5">
@@ -907,10 +750,11 @@ export default function RelatorioReparoPage() {
                           <td className="py-4 px-5">
                             <div className="flex flex-col">
                               <span className="font-mono text-sm text-slate-300 font-medium">
-                                {new Date(registro.createdat).toLocaleDateString('pt-BR')}
+                                {new Date(registro.createdat).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                               </span>
                               <span className="text-[10px] text-slate-500 font-mono">
                                 {new Date(registro.createdat).toLocaleTimeString('pt-BR', {
+                                  timeZone: 'America/Sao_Paulo',
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
@@ -926,8 +770,8 @@ export default function RelatorioReparoPage() {
 
               {/* Paginação */}
               <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
                 onPageChange={setCurrentPage}
                 totalItems={filteredData.length}
                 itemsPerPage={itemsPerPage}

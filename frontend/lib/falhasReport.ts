@@ -1,4 +1,5 @@
 import type { Registro } from '@/types';
+import { serializeCSV } from './csv';
 
 export interface ReportFilters {
   dateRange: string; startDate: string; endDate: string; om: string;
@@ -62,22 +63,16 @@ const columns: [string, (row: Registro) => unknown][] = [
   ['Prioridade', row => row.prioridade], ['Data', row => (row as Registro & { createdatOriginal?: string }).createdatOriginal ?? row.createdat],
 ];
 
-function csvCell(value: unknown): string {
-  let text = value == null ? '' : String(value);
-  // Tratar texto potencialmente interpretável como fórmula, inclusive após espaços/controles.
-  if (/^[\s\u0000-\u001f]*[=+\-@＝＋－＠]/u.test(text) || /^[\t\r\n\u0000]/.test(text)) text = "'" + text;
-  return '"' + text.replace(/"/g, '""') + '"';
+export function serializeFalhasCSV(records: Registro[]): string {
+  return serializeCSV(records, columns);
 }
 
-export function serializeFalhasCSV(records: Registro[]): string {
-  return '\ufeff' + [columns.map(([header]) => csvCell(header)).join(','),
-    ...records.map(row => columns.map(([, accessor]) => csvCell(accessor(row))).join(','))].join('\r\n') + '\r\n';
-}
+const factoryDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
 
 export function reportDay(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return 'Data inválida';
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const parts = factoryDay.formatToParts(date);
   const part = (type: string) => parts.find(value => value.type === type)?.value;
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
