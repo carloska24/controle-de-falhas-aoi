@@ -17,6 +17,7 @@ Referência: [auditoria de UX/UI](AUDITORIA_UX_UI_2026-11-17.md).
 |---|---|---|
 | Diagnóstico por causa raiz | `code-showcase-systematic-debugging` | Reprodução antes da correção e cenários de regressão. |
 | Revisão técnica | `code-review-and-quality` | Correção, estrutura, concorrência, segurança e evidência de testes. |
+| Validação no servidor | `backend-security-coder` | Estado e versão da OM, consultas parametrizadas e respostas sem detalhes internos. |
 | Arquitetura e contratos | `architect-review` | Disponível para mudanças com impacto arquitetural nas próximas etapas. |
 | Testes de API e regras | Node test runner, Jest e integração isolada já existentes | Testes de sincronização sem nova dependência. |
 | Operação no navegador | Ferramentas de navegador já disponíveis | Pausa/retomada externa, conexão e formulário. |
@@ -33,8 +34,9 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 |---|---|---|
 | Requisição de materiais | Seleção mista, erros e duplicidade | Concluída em `72f95ce`. |
 | Atalhos em componentes interativos | UX-01 | Proteção básica incluída em `72f95ce`; manter a regressão. |
-| Estado da OM entre terminais | UX-02 | Concluído nesta etapa. |
-| Ações importantes e integridade dos lançamentos | UX-03 e validação do estado da OM no servidor | Próxima etapa. |
+| Estado da OM entre terminais | UX-02 | Concluído em `498fbef`. |
+| Integridade de novos lançamentos | Estado e versão da OM no servidor | Concluído nesta etapa. |
+| Confirmações de ações importantes | UX-03 | Próxima etapa, preservando o visual. |
 | Totais, filtros, CSV e estados de reparo | UX-04, UX-05, UX-11 | Pendente. |
 | Definições de indicadores de qualidade | UX-06 | Pendente de definição com o processo de Qualidade. |
 | Administração, datas, entregas e filas SMT | UX-07 a UX-10 | Pendente. |
@@ -91,7 +93,7 @@ em andamento e interface ainda pausada após mais de cinco segundos.
 - Versão final no navegador: opção ainda listada como pausada carregou o estado
   em andamento do servidor; restauração, pausa e finalização locais aprovadas.
 
-### Limites e próximo controle
+### Limites da sincronização
 
 Sincronização periódica tem atraso: até cinco segundos em condições normais;
 falhas de rede podem acrescentar o timeout. Não é comunicação em tempo real.
@@ -99,10 +101,92 @@ Timeout ou cancelamento no cliente não comprovam rollback de um comando no serv
 a próxima consulta reconcilia o estado que foi efetivamente confirmado no banco.
 
 A consulta feita antes do envio reduz o risco na interface, mas não substitui uma
-validação transacional no servidor. A revisão confirmou que `/api/registros/batch`
-ainda permite criar registros sem verificar o estado da OM; o teste de integração
-atual inclusive insere registros em uma OM já finalizada. Tratar esse ponto na
-próxima etapa, com testes próprios e compatibilidade explícita para dados legados.
-Essa mudança de contrato fica separada da sincronização para não interromper
-importações e dados legados sem uma regra de compatibilidade definida.
-Esta etapa não altera a regra desse endpoint nem certifica prontidão para produção.
+validação transacional no servidor. Em `498fbef`, `/api/registros/batch` ainda
+permitia criar registros sem verificar o estado da OM. A etapa abaixo fecha essa
+lacuna. A sincronização isoladamente não certifica prontidão para produção.
+
+## Integridade — novos lançamentos em OM ativa
+
+### Causa reproduzida e correção
+
+Antes da correção, o batch aceitava uma OM pausada, finalizada ou inexistente,
+sem conferir sua versão. Uma pausa ou finalização entre a consulta da interface
+e o POST ainda permitia uma gravação indevida. Os testes novos falharam contra
+a implementação anterior e passaram após a correção.
+
+- Exigir `omVersion` inteiro não negativo em cada item de
+  `POST /api/registros/batch`. O operador envia a versão confirmada na consulta
+  imediatamente anterior ao lançamento.
+- Na mesma transação, bloquear as linhas das OMs com `SELECT ... FOR UPDATE`,
+  em ordem estável, e validar todas antes do primeiro insert. A criação usa
+  isolamento `ReadCommitted`, lendo o estado confirmado após aguardar o lock.
+- Recusar OM inexistente com 404; pausada, finalizada ou versão divergente com 409;
+  payload sem versão válida com 400. Não existe exceção para administrador.
+- As transições de OM executam UPDATE na mesma linha; por isso aguardam o lock
+  da gravação, ou fazem a gravação aguardar a transição, conforme a ordem efetiva.
+  A transição existente não configura isolamento Serializable explicitamente.
+- Um erro de inserção em qualquer item reverte o lote inteiro. Duplicidade de ID
+  retorna conflito e orienta atualizar a lista. Erros internos não expõem SQL.
+- Pausar e retomar incrementa a versão; um lançamento da versão anterior continua
+  inválido mesmo quando a OM já está novamente em andamento.
+- O payload da página recebeu apenas `omVersion`; layout, classes, cores, ícones
+  e animações não foram alterados.
+
+Mecanismo de bloqueio: [documentação do PostgreSQL](https://www.postgresql.org/docs/18/explicit-locking.html).
+Consulta com parâmetros: [documentação do Prisma](https://www.prisma.io/docs/orm/v7/prisma-client/using-raw-sql/raw-queries).
+
+### Compatibilidade e publicação
+
+Não há migração ou remoção de dados. Registros históricos, inclusive os sem OM
+cadastrada, continuam consultáveis e editáveis pelos fluxos existentes. O PUT de
+registros mantém seu contrato anterior, inclusive a possibilidade de alterar OM;
+esta etapa protege criação via batch, não todas as alterações do histórico.
+
+Publicar frontend e API juntos e recarregar abas antigas. Clientes e integrações
+que criam registros devem consultar a OM e enviar `omVersion`; requisições sem
+esse campo são recusadas. Importação histórica que precise de outra regra exige
+um fluxo próprio; não foi criado bypass no endpoint operacional.
+
+Timeout e falha de conexão não comprovam ausência de commit. Atualizar a lista
+antes de repetir uma gravação de resultado incerto. Idempotência geral dos
+lançamentos permanece fora desta etapa.
+
+### Verificação
+
+- 96 testes backend e 35 frontend aprovados; TypeScript e build de produção aprovados.
+- Conferência por AST contra `498fbef`: preservados os 23 atributos de classe/estilo
+  da página do operador, 64 do formulário e 41 do timer.
+- Integração isolada aprovada: histórico preservado após migrações, rejeições de
+  estado/versão, rollback de lote, paginação de 251 registros, requisições e logout.
+- PostgreSQL nativo 18.7, cluster temporário exclusivo: gravação primeiro faz o
+  encerramento aguardar; pausa/finalização primeiro faz o lançamento aguardar e
+  ser recusado. As barreiras de teste verificam esperas reais no banco.
+- Dois lotes com OMs em ordem inversa concluem; falha por ID duplicado no segundo
+  item não deixa o primeiro gravado. Versão antiga após retomada é recusada.
+- Revisão independente aprovada; ajustada a limpeza do cluster temporário quando
+  a preparação falha antes de iniciar o servidor.
+- Ambiente local atualizado preservando a base persistente e a sessão existente.
+  No navegador, lançamento válido em `AUDIT-REG-20261118` criou um único registro.
+  A API local recusou OM pausada, versão ausente, versão antiga e OM finalizada.
+  Pausa e finalização externas bloquearam Gravar e preservaram o rascunho.
+  `OM-TESTE-ETAPA2` permaneceu pausada com seus 251 registros originais.
+
+### Como repetir o teste de concorrência nativo
+
+Instalar ou extrair os binários do PostgreSQL de uma
+[fonte oficial](https://www.postgresql.org/download/windows/). Em PowerShell,
+na pasta `backend`:
+
+```powershell
+$env:AOI_POSTGRES_BIN = 'C:\Tools\PostgreSQL\bin'
+npm run test:integration:postgres
+```
+
+O helper ignora o banco configurado no `.env`, cria seu próprio cluster em pasta
+temporária, usa senha aleatória e porta dinâmica somente em `127.0.0.1`, aplica
+migrações e encerra o cluster ao terminar. Antes da exclusão recursiva, confere o
+destino da pasta. Se não conseguir parar o servidor, preserva os arquivos e informa
+o erro. Não instala serviço do Windows. A execução desta etapa usou os binários
+oficiais 18.7; o preview local permanece na base persistente de demonstração.
+
+Próxima etapa: UX-03, confirmações de ações importantes, mantendo a identidade visual.

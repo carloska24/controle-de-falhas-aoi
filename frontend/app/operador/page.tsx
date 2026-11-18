@@ -485,6 +485,7 @@ export default function IndexPage() {
                   // Prepara dados completos conforme o backend espera
                   const registroData = {
                     om: data.om,
+                    omVersion: snapshot.version,
                     qtdlote: data.qtdlote,
                     serial: data.serial || null,
                     designador: data.designador,

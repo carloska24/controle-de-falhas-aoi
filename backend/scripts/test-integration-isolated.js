@@ -26,7 +26,8 @@ async function main() {
       await pool.query(readFileSync(path.join(__dirname, '../prisma/migrations/20261117000000_baseline/migration.sql'), 'utf8'));
       await pool.query(`INSERT INTO oms_ativas ("omNumber", "startTime", "pausedTime", qtdlote) VALUES ('LEGACY-A', 1000, 0, 10);
         INSERT INTO oms_pausadas ("omNumber", "startTime", "pausedTime", "pauseStartedAt", "elapsedAtPause", qtdlote) VALUES ('LEGACY-P', 1000, 100, 4000, 2900, 20);
-        INSERT INTO oms_finalizadas ("omNumber", "startTime", "endTime", "pausedTime", qtdlote) VALUES ('LEGACY-F', 1000, 5000, 100, 30);`);
+        INSERT INTO oms_finalizadas ("omNumber", "startTime", "endTime", "pausedTime", qtdlote) VALUES ('LEGACY-F', 1000, 5000, 100, 30);
+        INSERT INTO registros (id, om, designador, tipodefeito, pn, createdat, status) VALUES ('LEGACY-RECORD', 'LEGACY-UNLINKED', 'R0', 'Ausente', 'PN-OLD', '2020-01-01T00:00:00Z', 'pendente');`);
     } finally { await pool.end(); }
     const cli = async args => promisify(execFile)(process.execPath, [require.resolve('prisma/build/index.js'), ...args], {
       cwd: path.join(__dirname, '..'), env: process.env, timeout: 60000,
@@ -38,7 +39,8 @@ async function main() {
     assert.equal(await prisma.ordens_manufatura.count(), 3);
     assert.equal(await prisma.oms_ativas.count(), 1);
     assert.equal((await prisma.ordens_manufatura.findUnique({ where: { omNumber: 'LEGACY-P' } })).elapsedAtPause, 2900n);
-    console.log('PASS: baseline e migrações preservam OMs legadas');
+    assert.equal((await prisma.registros.findUnique({ where: { id: 'LEGACY-RECORD' } })).om, 'LEGACY-UNLINKED');
+    console.log('PASS: baseline e migrações preservam OMs e registros legados');
 
     const credentials = { username: 'integration-admin', password: randomBytes(18).toString('hex') };
     await require('../prisma/seed').createAdmin(prisma, { ADMIN_USERNAME: credentials.username,
@@ -77,18 +79,35 @@ async function main() {
     assert.equal(await prisma.eventos_om.count({ where: { omNumber: 'OM-INTEGRATION' } }), 4);
     console.log('PASS: OM atômica, auditoria, rollback e finalização irreversível');
 
+    const record = extra => ({ id: 'REJECTED', om: 'OM-RECORDS', omVersion: 0, qtdlote: 300, designador: 'R1', tipodefeito: 'Ausente', ...extra });
+    await api('POST', '/api/registros/batch', [record({ om: 'OM-INTEGRATION', omVersion: 3 })], 409);
+    await api('POST', '/api/registros/batch', [record({ om: 'MISSING-OM' })], 404);
+    await api('POST', '/api/registros/batch', [record({ omVersion: undefined })], 400);
+    await api('POST', '/api/om/start', { omNumber: 'OM-RECORDS', qtdLote: 300 });
+    await api('PUT', '/api/om/pause', { omNumber: 'OM-RECORDS' });
+    await api('POST', '/api/registros/batch', [record()], 409);
+    await api('PUT', '/api/om/resume', { omNumber: 'OM-RECORDS' });
+    await api('POST', '/api/registros/batch', [record()], 409);
+    await api('POST', '/api/registros/batch', [record({ omVersion: 2 }), record({ id: 'REJECTED-2', om: 'LEGACY-P' })], 409);
+    assert.equal(await prisma.registros.count(), 1);
+    console.log('PASS: criação exige OM ativa e versão atual; lote misto recusado sem escrita');
+
     const rows = Array.from({ length: 251 }, (_, i) => ({ id: `INTEGRATION-${String(i).padStart(4, '0')}`,
-      om: 'OM-INTEGRATION', qtdlote: 300, designador: `R${i}`, tipodefeito: 'Ausente', pn: 'PN-TEST' }));
+      om: 'OM-RECORDS', omVersion: 2, qtdlote: 300, designador: `R${i}`, tipodefeito: 'Ausente', pn: 'PN-TEST' }));
     await api('POST', '/api/registros/batch', rows.slice(0, 200), 201);
     await api('POST', '/api/registros/batch', rows.slice(200), 201);
-    const first = (await api('GET', '/api/registros?limit=200&page=1')).data;
-    const second = (await api('GET', '/api/registros?limit=200&page=2')).data;
+    const first = (await api('GET', '/api/registros?om=OM-RECORDS&limit=200&page=1')).data;
+    const second = (await api('GET', '/api/registros?om=OM-RECORDS&limit=200&page=2')).data;
     assert.equal(first.meta.total, 251);
     assert.equal(first.data.length, 200);
     assert.equal(second.data.length, 51);
     assert.equal(new Set([...first.data, ...second.data].map(r => r.id)).size, 251);
     await api('GET', '/api/registros?limit=201', undefined, 400);
-    console.log('PASS: 251 registros completos e paginação validada');
+    await api('POST', '/api/registros/batch', [record({ id: 'ROLLBACK-FIRST', omVersion: 2 }), record({ id: rows[0].id, omVersion: 2 })], 409);
+    assert.equal(await prisma.registros.findUnique({ where: { id: 'ROLLBACK-FIRST' } }), null);
+    await api('PUT', '/api/registros/LEGACY-RECORD', { version: 0, obs: 'Histórico preservado' });
+    assert.equal((await prisma.registros.findUnique({ where: { id: 'LEGACY-RECORD' } })).om, 'LEGACY-UNLINKED');
+    console.log('PASS: 251 registros completos, rollback SQL e histórico legado preservado');
 
     await api('PUT', `/api/registros/${rows[0].id}`, { obs: 'nova observação', version: 0 });
     await api('PUT', `/api/registros/${rows[0].id}`, { obs: 'versão antiga', version: 0 }, 409);
@@ -115,8 +134,9 @@ async function main() {
     console.log('PASS: solicitações simultâneas sem duplicação e autoria correta');
 
     // Reproduz a seleção da primeira página: onze itens elegíveis e um aguardando SMT.
+    await api('POST', '/api/om/start', { omNumber: 'OM-REQUEST-PAGE', qtdLote: 50 });
     const requestPageRows = Array.from({ length: 12 }, (_, i) => ({
-      id: `REQUEST-PAGE-${String(i).padStart(2, '0')}`, om: 'OM-REQUEST-PAGE', qtdlote: 50,
+      id: `REQUEST-PAGE-${String(i).padStart(2, '0')}`, om: 'OM-REQUEST-PAGE', omVersion: 0, qtdlote: 50,
       designador: `R${i}`, pn: 'PN-REQUEST-PAGE', tipodefeito: i === 11 ? 'Possível Incorreto' : 'Ausente',
     }));
     await api('POST', '/api/registros/batch', requestPageRows, 201);
@@ -149,7 +169,7 @@ async function main() {
 
     await api('POST', '/api/auth/logout');
     await api('GET', '/api/auth/me', undefined, 401);
-    assert.equal(await prisma.registros.count(), 263);
+    assert.equal(await prisma.registros.count(), 264);
     console.log('PASS: logout revoga cookie reapresentado sem excluir registros');
     console.log('INTEGRATION_ISOLATED_OK');
   } finally {

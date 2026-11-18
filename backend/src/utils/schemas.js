@@ -58,6 +58,7 @@ const registroUpdateSchema = z.object({
 const registroBatchItemSchema = z.object({
   id: z.string().optional(),
   om: z.string().min(1),
+  omVersion: z.number().int().nonnegative(),
   qtdlote: z.coerce.number().int().min(1).max(2147483647),
   serial: z.string().optional().nullable(),
   designador: z.string().min(1),

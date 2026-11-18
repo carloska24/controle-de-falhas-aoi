@@ -75,7 +75,8 @@ test('general and status updates require valid version and lot/state', () => {
 });
 
 test('creation rejects oversized batches and duplicate material selections', () => {
-  const row = { om: 'OM', qtdlote: 10, designador: 'R1', tipodefeito: 'Ausente' };
+  const row = { om: 'OM', omVersion: 0, qtdlote: 10, designador: 'R1', tipodefeito: 'Ausente' };
+  expect(registrosBatchSchema.safeParse(Array.from({ length: 200 }, () => row)).success).toBe(true);
   expect(registrosBatchSchema.safeParse(Array.from({ length: 201 }, () => row)).success).toBe(false);
   expect(requisicoesCreateSchema.safeParse({ registroIds: ['r1', 'r1'] }).success).toBe(false);
 });

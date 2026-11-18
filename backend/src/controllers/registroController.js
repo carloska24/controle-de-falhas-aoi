@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
-const { randomUUID } = require('node:crypto');
+const { createRegistros } = require('../services/registroCreationService');
+const { OMError } = require('../services/omService');
 const { getPagination } = require('../utils/pagination');
 
 async function listRegistros(req, res) {
@@ -53,44 +54,15 @@ async function listRegistros(req, res) {
 }
 
 async function createRegistrosBatch(req, res) {
-  const registros = req.body;
-  const now = new Date().toISOString();
-  const operador = req.user.name || req.user.email;
-
   try {
-    await prisma.$transaction(async tx => {
-      for (const reg of registros) {
-        const id = reg.id || 'REG-' + randomUUID();
-        const r = {
-          ...reg,
-          id,
-          createdat: reg.createdat || now,
-          status: 'pendente',
-          operador: operador,
-        };
-
-        await tx.registros.create({
-          data: {
-            id: r.id,
-            om: r.om,
-            qtdlote: r.qtdlote,
-            serial: r.serial,
-            designador: r.designador,
-            tipodefeito: r.tipodefeito,
-            pn: r.pn,
-            descricao: r.descricao,
-            obs: r.obs,
-            createdat: r.createdat,
-            status: r.status,
-            operador: r.operador,
-            prioridade: r.prioridade,
-          },
-        });
-      }
-    });
-    res.status(201).json({ message: `${registros.length} registros criados com sucesso.` });
+    const count = await createRegistros(req.body, req.user);
+    res.status(201).json({ message: `${count} registros criados com sucesso.` });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (err instanceof OMError) return res.status(err.status).json({ error: err.message });
+    if (err.code === 'P2002') return res.status(409).json({ error: 'Um dos registros já existe. Atualize a lista antes de tentar novamente.' });
+    if (['P2034', 'P2028'].includes(err.code)) return res.status(409).json({ error: 'A OM está em processamento por outra operação. Atualize o estado e tente novamente.' });
+    console.error('[Registros] Falha ao gravar lote:', err.code || 'unexpected_error');
+    res.status(500).json({ error: 'Falha ao registrar o lote. Atualize a lista antes de tentar novamente.' });
   }
 }
 
