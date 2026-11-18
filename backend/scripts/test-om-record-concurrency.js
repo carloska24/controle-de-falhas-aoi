@@ -35,7 +35,7 @@ async function main() {
           'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}),
         }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15000) });
         const data = response.status === 204 ? null : await response.json();
-        assert.equal(response.status, expected, `${method} ${endpoint}: ${JSON.stringify(data)}`);
+        assert.ok([expected].flat().includes(response.status), `${method} ${endpoint}: ${JSON.stringify(data)}`);
         return { response, data };
       })();
       pending.add(request);
@@ -77,7 +77,7 @@ async function main() {
         const release = async () => { if (!released) { await controlClient.query('SELECT pg_advisory_unlock($1)', [key]); released = true; } };
         try { await work(release); } finally { await release(); }
       }
-      const record = (om, id, omVersion = 0) => ({ id, om, omVersion, qtdlote: 10, designador: 'R1', pn: 'PN-TEST', tipodefeito: 'Ausente' });
+      const record = (om, id, omVersion = 0) => ({ id, om, omVersion, qtdlote: 10, serial: id, designador: 'R1', pn: 'PN-TEST', tipodefeito: 'Ausente' });
 
       await api('POST', '/api/om/start', { omNumber: 'LOCK-SAVE-FIRST', qtdLote: 10 });
       await gated(11001, async release => {
@@ -133,6 +133,25 @@ async function main() {
       await api('DELETE', '/api/registros', { ids: ['DELETE-A', 'DELETE-B'], versions: { 'DELETE-A': 0, 'DELETE-B': 1 } }, 204);
       assert.equal(await prisma.registros.count({ where: { om: 'LOCK-DELETE' } }), 0);
       console.log('PASS: edição concorrente impede exclusão da versão não revisada e reverte o lote inteiro');
+
+      const inspectionOM = 'LOCK-INSPECTION';
+      await api('POST', '/api/om/start', { omNumber: inspectionOM, qtdLote: 5 });
+      const saveInspection = (serial, expected) => api(
+        'POST', `/api/om/${inspectionOM}/inspecoes`, { serial, omVersion: 0 }, expected,
+      );
+      const sameBoard = await Promise.all([
+        saveInspection('0001', [200, 201]),
+        saveInspection('0001', [200, 201]),
+      ]);
+      assert.deepEqual(sameBoard.map(({ response }) => response.status).sort(), [200, 201]);
+      await Promise.all([
+        saveInspection('0002', [200, 201]),
+        api('POST', '/api/registros/batch', [{ ...record(inspectionOM, 'LOCK-INSPECTION-FAULT'), serial: '0002' }], 201),
+      ]);
+      await api('PUT', '/api/om/finalizar', { omNumber: inspectionOM });
+      assert.deepEqual((await api('GET', `/api/om/inspecoes/resumo?om=${inspectionOM}`)).data,
+        { inspectedBoards: 2, approvedBoards: 1 });
+      console.log('PASS: terminais simultâneos deduplicam a placa e preservam o apontamento da primeira passagem');
       console.log('POSTGRES_OM_RECORD_CONCURRENCY_OK');
     } finally {
       await controlClient.query('SELECT pg_advisory_unlock_all()');

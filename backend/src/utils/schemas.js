@@ -39,6 +39,11 @@ const registroCreateSchema = z.object(registroBase);
 
 const registroStatusValue = z.enum(['pendente', 'em_analise', 'reparado', 'cancelado', 'sucata']);
 const registroVersion = z.number().int().nonnegative();
+const serialPlaca = z.string().trim().max(200);
+const inspecaoPlacaSchema = z.object({
+  serial: serialPlaca.min(1),
+  omVersion: registroVersion,
+});
 
 const registroUpdateSchema = z.object({
   version: registroVersion,
@@ -60,7 +65,7 @@ const registroBatchItemSchema = z.object({
   om: z.string().min(1),
   omVersion: z.number().int().nonnegative(),
   qtdlote: z.coerce.number().int().min(1).max(2147483647),
-  serial: z.string().optional().nullable(),
+  serial: serialPlaca.optional().nullable(),
   designador: z.string().min(1),
   tipodefeito: z.string().min(1),
   pn: z.string().optional().nullable(),
@@ -115,6 +120,7 @@ function validate(schema, source = 'body') {
 
 module.exports = {
   validate,
+  inspecaoPlacaSchema,
   loginSchema,
   userCreateSchema,
   userUpdateSchema,

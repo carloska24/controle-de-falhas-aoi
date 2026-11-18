@@ -204,26 +204,12 @@ export default function RelatorioQualidadePage() {
       DEFEITOS_POSICIONAMENTO.includes(d.tipodefeito)
     ).length;
 
-    // Calcular total de unidades inspecionadas
-    const totalInspecionadas = uniqueFilteredData.reduce(
-      (sum, item) => sum + (item.qtdlote || 1),
-      0
-    );
-
-    // Calcular Yield
-    const yieldPercent =
-      totalInspecionadas > 0
-        ? (((totalInspecionadas - totalFalhas) / totalInspecionadas) * 100).toFixed(2)
-        : '0.00';
-
     return {
       totalFalhas,
       principalDefeito: principalDefeito ? `${principalDefeito[0]} (${principalDefeito[1]})` : '—',
       falhasSoldagem,
       falhasPosicionamento,
       contagemDefeitos,
-      totalInspecionadas,
-      yieldPercent,
     };
   }, [uniqueFilteredData]);
 

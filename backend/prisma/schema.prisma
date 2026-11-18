@@ -22,9 +22,23 @@ model ordens_manufatura {
   elapsedAtPause BigInt?
   qtdlote        Int?
   version        Int @default(0)
+  rastreamentoInspecao Boolean @default(true)
   eventos        eventos_om[]
+  inspecoes      placas_inspecionadas[]
 
   @@index([status])
+}
+
+model placas_inspecionadas {
+  omNumber     String
+  serial       String
+  temFalha     Boolean
+  registradaEm DateTime @default(now())
+  registradaPor Int
+  ordem        ordens_manufatura @relation(fields: [omNumber], references: [omNumber])
+
+  @@id([omNumber, serial])
+  @@index([registradaEm])
 }
 
 model eventos_om {

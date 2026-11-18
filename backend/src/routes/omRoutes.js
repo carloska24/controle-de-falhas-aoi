@@ -8,12 +8,14 @@ const router = express.Router();
 const omController = require('../controllers/omController');
 const { authenticateToken, hasRole } = require('../middleware/auth');
 const { z } = require('zod');
-const { validate } = require('../utils/schemas');
+const { validate, inspecaoPlacaSchema } = require('../utils/schemas');
 const omCommandSchema = z.object({ omNumber: z.string().trim().min(1).max(100) });
 const omStartSchema = omCommandSchema.extend({ qtdLote: z.coerce.number().int().min(1).optional() });
 
 // Funcional
 router.post('/start', authenticateToken, hasRole('admin', 'operator'), validate(omStartSchema), omController.startOM);
+router.get('/inspecoes/resumo', authenticateToken, hasRole('admin', 'operator', 'qualidade'), omController.getResumoInspecoes);
+router.post('/:omNumber/inspecoes', authenticateToken, hasRole('admin', 'operator'), validate(inspecaoPlacaSchema), omController.registrarInspecao);
 router.get(
   '/:omNumber',
   authenticateToken,

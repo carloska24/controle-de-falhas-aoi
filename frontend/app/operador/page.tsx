@@ -40,6 +40,7 @@ import ProMetrics from '@/components/index/ProMetrics';
 import ProQuality from '@/components/index/ProQuality';
 import ProQuickLinks from '@/components/index/ProQuickLinks';
 import { useActionConfirmation } from '@/components/ActionConfirmation';
+import type { ConfirmedBoardCounts } from '@/lib/qualityApproval';
 
 export default function IndexPage() {
   const router = useRouter();
@@ -100,6 +101,24 @@ export default function IndexPage() {
     endTime: number | null;
     elapsed: number;
   } | null>(null);
+  const finishedOM = omTimeSummary?.endTime ? activeOM : null;
+  const [boardSummary, setBoardSummary] = useState<{
+    om: string;
+    counts: ConfirmedBoardCounts;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user || !finishedOM) return;
+    const controller = new AbortController();
+    fetchAutenticado(`/api/om/inspecoes/resumo?om=${encodeURIComponent(finishedOM)}`, { signal: controller.signal })
+      .then(counts => {
+        if (!controller.signal.aborted) setBoardSummary({ om: finishedOM, counts });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setBoardSummary(null);
+      });
+    return () => controller.abort();
+  }, [user, finishedOM]);
 
   const checkAuth = async () => {
     try {
@@ -483,6 +502,26 @@ export default function IndexPage() {
               omState={omState}
               registros={registros}
               isSynchronized={omSync.isSynchronized}
+              onSaveWithoutFailure={async (omNumber, serial) => {
+                try {
+                  const snapshot = await omSync.refresh();
+                  if (!snapshot || snapshot.omNumber !== omNumber || snapshot.status !== 'em_andamento') {
+                    throw new Error('Confirme se a OM está em andamento para registrar a placa.');
+                  }
+                  const result = await fetchAutenticado(`/api/om/${encodeURIComponent(omNumber)}/inspecoes`, {
+                    method: 'POST',
+                    body: JSON.stringify({ serial, omVersion: snapshot.version }),
+                  });
+                  if (result.temFalha) {
+                    throw new Error(`O serial ${serial} já tem falha registrada na OM.`);
+                  }
+                  if (result.jaRegistrada) showToast(`A placa ${serial} já foi registrada nesta OM.`, 'info');
+                  else showToast(`Placa ${serial} registrada sem falha.`, 'success');
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Erro ao registrar a placa.', 'error');
+                  throw error;
+                }
+              }}
               onSubmit={async data => {
                 try {
                   const snapshot = await omSync.refresh();
@@ -731,12 +770,8 @@ export default function IndexPage() {
 
             {/* Qualidade */}
             <ProQuality
-              registros={filteredRegistros}
-              selectedIds={[]}
-              activeOM={activeOM}
-              activeOMQtdLote={activeOMQtdLote}
-              omState={omState}
-              finishedOMs={finishedOMs}
+              isOMFinished={!!finishedOM}
+              confirmedCounts={boardSummary?.om === finishedOM ? boardSummary?.counts : null}
             />
 
             {/* Links Rápidos */}

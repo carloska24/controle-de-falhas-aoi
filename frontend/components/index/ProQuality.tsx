@@ -1,44 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Award, Clock } from 'lucide-react';
-import { Registro, OM } from '@/types/index';
+import { calculateBoardApproval, type ConfirmedBoardCounts } from '@/lib/qualityApproval';
 
 interface ProQualityProps {
-  registros: Registro[];
-  selectedIds: string[];
-  activeOM?: string | null;
-  activeOMQtdLote?: number | null;
-  omState?: {
-    isRunning: boolean;
-    isPaused: boolean;
-    omNumber: string | null;
-  };
-  finishedOMs?: OM[];
+  isOMFinished: boolean;
+  confirmedCounts?: ConfirmedBoardCounts | null;
 }
 
-function normalizeOmStatus(status?: string): 'running' | 'paused' | 'finished' | 'unknown' {
-  const normalized = String(status || '')
-    .trim()
-    .toLowerCase();
-
-  if (['running', 'em_andamento', 'em andamento', 'ativa', 'ativo'].includes(normalized)) {
-    return 'running';
-  }
-  if (['paused', 'pausada', 'pausado'].includes(normalized)) {
-    return 'paused';
-  }
-  if (['finished', 'finalizada', 'finalizado', 'concluida', 'concluída'].includes(normalized)) {
-    return 'finished';
-  }
-  return 'unknown';
-}
-
-// Função para determinar status da qualidade baseado no aproveitamento
+// Faixas usadas apenas para a aparência do selo.
 function getQualityStatus(yieldPercent: number): {
   status: 'excelente' | 'bom' | 'medio' | 'ruim' | 'reprovado';
-  label: string;
   textColor: string;
   borderColor: string;
   bgGradient: string;
@@ -49,7 +22,6 @@ function getQualityStatus(yieldPercent: number): {
   if (yieldPercent > 90) {
     return {
       status: 'excelente',
-      label: 'Excelente',
       textColor: 'text-slate-300',
       borderColor: 'border-slate-400',
       bgGradient: 'from-slate-600/30 to-slate-800/30',
@@ -60,7 +32,6 @@ function getQualityStatus(yieldPercent: number): {
   } else if (yieldPercent >= 80) {
     return {
       status: 'bom',
-      label: 'Bom',
       textColor: 'text-yellow-300',
       borderColor: 'border-yellow-400',
       bgGradient: 'from-yellow-600/30 to-amber-700/30',
@@ -71,7 +42,6 @@ function getQualityStatus(yieldPercent: number): {
   } else if (yieldPercent >= 70) {
     return {
       status: 'medio',
-      label: 'Médio',
       textColor: 'text-slate-300',
       borderColor: 'border-slate-400',
       bgGradient: 'from-slate-500/30 to-gray-600/30',
@@ -82,7 +52,6 @@ function getQualityStatus(yieldPercent: number): {
   } else if (yieldPercent >= 50) {
     return {
       status: 'ruim',
-      label: 'Ruim',
       textColor: 'text-orange-300',
       borderColor: 'border-orange-400',
       bgGradient: 'from-orange-600/30 to-red-700/30',
@@ -93,7 +62,6 @@ function getQualityStatus(yieldPercent: number): {
   } else {
     return {
       status: 'reprovado',
-      label: 'Reprovado',
       textColor: 'text-red-400',
       borderColor: 'border-red-500',
       bgGradient: 'from-red-700/30 to-rose-900/30',
@@ -104,50 +72,15 @@ function getQualityStatus(yieldPercent: number): {
   }
 }
 
-export default function ProQuality({ 
-  registros, 
-  selectedIds,
-  activeOM,
-  activeOMQtdLote,
-  omState,
-  finishedOMs = [],
-}: ProQualityProps) {
+export default function ProQuality({ isOMFinished, confirmedCounts }: ProQualityProps) {
   const reduceMotion = useReducedMotion();
-
-  // Verificar se a OM está finalizada
-  const isOMFinished = useMemo(() => {
-    if (!activeOM) return false;
-    
-    // Verificar se está na lista de OMs finalizadas
-    const isInFinishedList = finishedOMs.some(
-      om => om.omNumber === activeOM && normalizeOmStatus(String(om.status)) === 'finished'
-    );
-    
-    // OU verificar se a OM atual não está rodando nem pausada e omState.omNumber é null (foi finalizada)
-    const currentOMFinished = (omState?.omNumber === null || omState?.omNumber !== activeOM) && 
-                              !omState?.isRunning && 
-                              !omState?.isPaused;
-    
-    // OU verificar se a OM está na lista de finalizadas
-    return isInFinishedList || currentOMFinished;
-  }, [activeOM, finishedOMs, omState]);
-
-  // Calcular qualidade quando OM está finalizada
-  const qualityData = useMemo(() => {
-    if (!isOMFinished || !activeOMQtdLote || activeOMQtdLote === 0) {
-      return null;
-    }
-
-    const totalFalhas = registros.filter(r => r.om === activeOM).length;
-    const yieldPercent = ((activeOMQtdLote - totalFalhas) / activeOMQtdLote) * 100;
-    
-    return {
-      yield: yieldPercent,
-      totalInspecionado: activeOMQtdLote,
-      totalFalhas,
-      ...getQualityStatus(yieldPercent),
-    };
-  }, [isOMFinished, activeOM, activeOMQtdLote, registros]);
+  const approval = isOMFinished ? calculateBoardApproval(confirmedCounts) : null;
+  const qualityData = approval && {
+    yield: approval.percent,
+    totalInspecionado: approval.inspectedBoards,
+    placasComFalha: approval.inspectedBoards - approval.approvedBoards,
+    ...getQualityStatus(approval.percent),
+  };
 
   if (reduceMotion) {
     return (
@@ -164,13 +97,13 @@ export default function ProQuality({
             className={`p-5 bg-gradient-to-br ${qualityData.bgGradient} rounded-xl border ${qualityData.borderColor}/40`}
           >
             <div className="text-center space-y-3">
-              <div className="text-2xl font-extrabold text-white">{qualityData.label}</div>
+              <div className="text-2xl font-extrabold text-white">Primeira passagem AOI</div>
               <div className="text-4xl font-black tabular-nums text-white">
                 {qualityData.yield.toFixed(1)}%
               </div>
               <div className="text-sm text-slate-300">
-                Inspecionadas: <span className="font-bold">{qualityData.totalInspecionado}</span> · Falhas:{' '}
-                <span className="font-bold">{qualityData.totalFalhas}</span>
+                Placas registradas: <span className="font-bold">{qualityData.totalInspecionado}</span> · Com falha:{' '}
+                <span className="font-bold">{qualityData.placasComFalha}</span>
               </div>
             </div>
           </div>
@@ -178,9 +111,9 @@ export default function ProQuality({
           <div className="p-5 bg-gradient-to-br from-[#0f1a2b]/40 to-[#1a2535]/40 rounded-xl border border-[#314566]/50">
             <div className="flex flex-col items-center justify-center space-y-3 text-center">
               <Clock className="w-9 h-9 text-slate-400" />
-              <div className="text-lg font-semibold text-[#B4C6E3]">Aguardando finalização da OM...</div>
+              <div className="text-lg font-semibold text-[#B4C6E3]">{isOMFinished ? 'Aprovação indisponível' : 'Aguardando finalização da OM...'}</div>
               <div className="text-sm text-[#7A8FA8]">
-                O selo de qualidade será exibido assim que a OM for finalizada.
+                {isOMFinished ? 'Aguardando contagem real de placas inspecionadas.' : 'A aprovação depende da medição de inspeção da OM.'}
               </div>
             </div>
           </div>
@@ -649,7 +582,7 @@ export default function ProQuality({
                              '0 0 20px rgba(248,113,113,0.5)',
                 }}
               >
-                {qualityData.label}
+                Primeira passagem AOI
               </div>
               
               {/* Porcentagem exata - Fonte grande e amigável */}
@@ -675,18 +608,18 @@ export default function ProQuality({
                 }}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <span className="opacity-70">Inspecionadas:</span>
+                  <span className="opacity-70">Placas registradas:</span>
                   <span className="font-bold text-[#D1D9E8]">{qualityData.totalInspecionado}</span>
                 </div>
                 <div className="flex items-center justify-center gap-2">
-                  <span className="opacity-70">Falhas:</span>
+                  <span className="opacity-70">Com falha:</span>
                   <span 
                     className="font-bold"
                     style={{
-                      color: qualityData.totalFalhas > 0 ? '#F87171' : '#86EFAC',
+                      color: qualityData.placasComFalha > 0 ? '#F87171' : '#86EFAC',
                     }}
                   >
-                    {qualityData.totalFalhas}
+                    {qualityData.placasComFalha}
                   </span>
                 </div>
               </div>
@@ -729,7 +662,7 @@ export default function ProQuality({
                   color: '#B4C6E3',
                 }}
               >
-                Aguardando finalização da OM...
+                {isOMFinished ? 'Aprovação indisponível' : 'Aguardando finalização da OM...'}
               </div>
               <div 
                 className="text-sm"
@@ -739,7 +672,7 @@ export default function ProQuality({
                   color: '#7A8FA8',
                 }}
               >
-                O selo de qualidade será exibido assim que a OM for finalizada.
+                {isOMFinished ? 'Aguardando contagem real de placas inspecionadas.' : 'A aprovação depende da medição de inspeção da OM.'}
               </div>
             </div>
           </div>

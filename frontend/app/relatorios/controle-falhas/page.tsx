@@ -37,7 +37,6 @@ import OMTimeSummary from '@/components/index/OMTimeSummary';
 import DemoBadge from '@/components/ui/DemoBadge';
 import { useFalhasReport } from '@/hooks/useFalhasReport';
 import { reportQuery, reportPage, serializeFalhasCSV, reportDay } from '@/lib/falhasReport';
-import type { Registro } from '@/types';
 
 ChartJS.register(
   CategoryScale,
@@ -72,8 +71,6 @@ const DEFEITOS_POSICIONAMENTO = [
   'Polaridade Incorreta',
   'Levantado',
 ];
-
-interface GrupoOM { om: string; qtdlote: number; falhas: Registro[]; }
 
 export default function ControleFalhasPage() {
   const router = useRouter();
@@ -151,14 +148,6 @@ export default function ControleFalhasPage() {
   const pagination = reportPage(allFalhas, currentPage, itemsPerPage);
   const totalItems = report.snapshot?.meta.total || 0;
   const totalPages = pagination.totalPages;
-  const filteredData = useMemo(() => {
-    const groups = new Map<string, GrupoOM>();
-    for (const row of allFalhas) {
-      if (!groups.has(row.om)) groups.set(row.om, { om: row.om, qtdlote: row.qtdlote || 0, falhas: [] });
-      groups.get(row.om)!.falhas.push(row);
-    }
-    return [...groups.values()];
-  }, [report.snapshot]);
   useEffect(() => { setCurrentPage(1); }, [query]);
 
   // Respostas de uma seleção anterior não podem substituir o resumo da OM atual.
@@ -179,7 +168,7 @@ export default function ControleFalhasPage() {
   // KPIs
   const kpis = useMemo(() => {
     const totalFalhas = allFalhas.length;
-    const omsAfetadas = new Set(filteredData.map(g => g.om)).size;
+    const omsAfetadas = new Set(allFalhas.map(row => row.om)).size;
 
     const contagemDefeitos = allFalhas.reduce((acc, f) => {
       const tipo = f.tipodefeito?.trim() || 'Não informado';
@@ -188,21 +177,13 @@ export default function ControleFalhasPage() {
     }, Object.create(null) as Record<string, number>);
 
     const principalDefeito = Object.entries(contagemDefeitos).sort((a, b) => b[1] - a[1])[0];
-    const totalInspecionadas = filteredData.reduce((sum, g) => sum + (g.qtdlote || 0), 0);
-    const taxaQualidade =
-      totalInspecionadas > 0
-        ? (((totalInspecionadas - totalFalhas) / totalInspecionadas) * 100).toFixed(2)
-        : '0.00';
-
     return {
       totalFalhas,
       omsAfetadas,
       principalDefeito: principalDefeito ? `${principalDefeito[0]} (${principalDefeito[1]})` : '—',
-      taxaQualidade,
       contagemDefeitos,
-      totalInspecionadas,
     };
-  }, [allFalhas, filteredData]);
+  }, [allFalhas]);
 
   // Opções independentes da página e dos filtros da própria opção.
   const uniqueOms = ['all', ...new Set([...(report.options?.oms || []), ...(omFilter === 'all' ? [] : [omFilter])])];
@@ -428,9 +409,9 @@ export default function ControleFalhasPage() {
             className="bg-gradient-to-br from-slate-800 via-green-900/20 to-slate-900 border border-green-500/20 rounded-xl p-6"
           >
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Estimativa de Qualidade
+              Aprovação de placas
             </div>
-            <p className="text-4xl font-black text-green-400" title="Cálculo legado por ocorrências/lote; não mede aprovação de placas. Definição a validar com Qualidade.">{report.ready && kpis.totalInspecionadas > 0 && kpis.totalFalhas <= kpis.totalInspecionadas ? kpis.taxaQualidade + '%' : '—'}</p>
+            <p className="text-4xl font-black text-green-400" title="Aguardando contagem real de placas inspecionadas." aria-label="Aprovação indisponível">—</p>
           </motion.div>
         </div>
 

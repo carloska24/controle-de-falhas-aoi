@@ -20,12 +20,13 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line, Radar } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
-import { encerrarSessao, fetchListaCompleta } from '@/lib/api';
+import { encerrarSessao, fetchAutenticado, fetchListaCompleta } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/Toast';
 import { Registro } from '@/types/index';
 import Button from '@/components/ui/Button';
 import DemoBadge from '@/components/ui/DemoBadge';
+import { calculateBoardApproval, type ConfirmedBoardCounts } from '@/lib/qualityApproval';
 // Registrar componentes do Chart.js
 ChartJS.register(
   CategoryScale,
@@ -65,54 +66,6 @@ const DEFEITOS_POSICIONAMENTO = [
 ];
 const DEFEITOS_VALIDOS = new Set([...DEFEITOS_SOLDAGEM, ...DEFEITOS_POSICIONAMENTO]);
 
-// Função para calcular DPMO e nível Sigma
-// Baseado em faixas aproximadas de Six Sigma
-function calcularDPMOeSigma(
-  numeroFalhas: number,
-  unidadesInspecionadas: number,
-  oportunidadesPorUnidade: number
-): { dpmo: number; sigma: number; nivelSigma: string } {
-  // Calcular DPMO
-  const dpmo =
-    unidadesInspecionadas > 0 && oportunidadesPorUnidade > 0 && numeroFalhas > 0
-      ? (numeroFalhas * 1000000) / (unidadesInspecionadas * oportunidadesPorUnidade)
-      : 0;
-
-  // Estimar nível Sigma baseado em faixas aproximadas
-  // Tabela de referência Six Sigma (aproximada)
-  let sigma = 0;
-  let nivelSigma = '—';
-
-  if (dpmo === 0) {
-    sigma = 6;
-    nivelSigma = '6σ';
-  } else if (dpmo <= 3.4) {
-    sigma = 6;
-    nivelSigma = '6σ';
-  } else if (dpmo <= 233) {
-    sigma = 5;
-    nivelSigma = '5σ';
-  } else if (dpmo <= 6210) {
-    sigma = 4;
-    nivelSigma = '4σ';
-  } else if (dpmo <= 66807) {
-    sigma = 3;
-    nivelSigma = '3σ';
-  } else if (dpmo <= 308537) {
-    sigma = 2;
-    nivelSigma = '2σ';
-  } else {
-    sigma = 1;
-    nivelSigma = '1σ';
-  }
-
-  return {
-    dpmo: Math.round(dpmo * 100) / 100, // Arredondar para 2 casas decimais
-    sigma,
-    nivelSigma,
-  };
-}
-
 export default function QualidadePage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
@@ -124,14 +77,19 @@ export default function QualidadePage() {
   // Data
   const [allData, setAllData] = useState<Registro[]>([]);
   const [filteredData, setFilteredData] = useState<Registro[]>([]);
+  const [inspectedOMs, setInspectedOMs] = useState<string[]>([]);
 
   // Filters
   const [dateRange, setDateRange] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [omFilter, setOmFilter] = useState('all');
+  const [boardSummary, setBoardSummary] = useState<{
+    query: string;
+    counts: ConfirmedBoardCounts | null;
+  } | null>(null);
 
-  // DPMO Configuration (IPC Standard)
+  // Parâmetros de DPMO salvos no navegador.
   const [showDPMOConfig, setShowDPMOConfig] = useState(false);
   const [dpmoConfig, setDpmoConfig] = useState({
     componentesPorPlaca: 0,
@@ -178,7 +136,7 @@ export default function QualidadePage() {
     setDpmoConfigSaved(true);
     setShowDPMOConfig(false);
     showToast(
-      'Configuração DPMO salva com sucesso! O cálculo será atualizado automaticamente.',
+      'Parâmetros de DPMO salvos neste navegador.',
       'success'
     );
   };
@@ -245,6 +203,60 @@ export default function QualidadePage() {
     }
   }, [user, loadData]);
 
+  useEffect(() => {
+    if (!user) return;
+    const controller = new AbortController();
+    fetchAutenticado('/api/oms/finalizadas', { signal: controller.signal })
+      .then((oms: { omNumber: string; rastreamentoInspecao: boolean }[]) => {
+        if (!controller.signal.aborted) {
+          setInspectedOMs(oms.filter(om => om.rastreamentoInspecao && !om.omNumber.startsWith('DEMO-'))
+            .map(om => om.omNumber));
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setInspectedOMs([]);
+      });
+    return () => controller.abort();
+  }, [user, allData]);
+
+  const inspectionQuery = useMemo(() => {
+    const query = new URLSearchParams();
+    if (omFilter !== 'all') query.set('om', omFilter);
+    if (dateRange === 'custom') {
+      if (startDate) query.set('inicio', new Date(startDate + 'T00:00:00').toISOString());
+      if (endDate) {
+        const nextDay = new Date(endDate + 'T00:00:00');
+        nextDay.setDate(nextDay.getDate() + 1);
+        query.set('fim', nextDay.toISOString());
+      }
+    } else if (dateRange !== 'all') {
+      const dias = parseInt(dateRange, 10);
+      if (!isNaN(dias)) {
+        const start = new Date();
+        start.setDate(start.getDate() - dias);
+        query.set('inicio', start.toISOString());
+      }
+    }
+    return query.toString();
+  }, [dateRange, startDate, endDate, omFilter, allData]);
+
+  useEffect(() => {
+    if (!user || (dateRange === 'custom' && startDate && endDate && startDate > endDate)) return;
+    const controller = new AbortController();
+    fetchAutenticado(`/api/om/inspecoes/resumo?${inspectionQuery}`, { signal: controller.signal })
+      .then(counts => {
+        if (!controller.signal.aborted) setBoardSummary({ query: inspectionQuery, counts });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setBoardSummary({ query: inspectionQuery, counts: null });
+      });
+    return () => controller.abort();
+  }, [user, inspectionQuery, dateRange, startDate, endDate, allData]);
+
+  const boardApproval = boardSummary?.query === inspectionQuery
+    ? calculateBoardApproval(boardSummary.counts)
+    : null;
+
   // Apply filters
   useEffect(() => {
     let filtered = [...allData];
@@ -303,74 +315,6 @@ export default function QualidadePage() {
       DEFEITOS_POSICIONAMENTO.includes(d.tipodefeito)
     ).length;
 
-    // Calcular DPMO (Defeitos por Milhão de Oportunidades) - Norma IPC
-    // Fórmula: DPMO = (Defeitos / (Unidades Inspecionadas × Oportunidades por Unidade)) × 1.000.000
-    // Oportunidades por Placa = Componentes + Pads SMD (somar ambos)
-    // Total de Oportunidades = Total de Placas × Oportunidades por Placa
-    //
-    // Segundo IPC-A-610 e IPC-7912:
-    // Oportunidades = Componentes montados + Pads SMD (juntas soldadas)
-    // Exemplo: 100 componentes + 1900 pads SMD = 2000 oportunidades por placa
-
-    // IMPORTANTE: Agrupar placas por OM para evitar duplicação
-    // Se houver múltiplos registros da mesma OM, usar apenas o qtdlote da OM (maior valor)
-    // Se houver OMs diferentes, somar os qtdlotes de cada OM
-    const qtdPlacasPorOM = new Map<string, number>();
-
-    uniqueFilteredData.forEach(item => {
-      const om = item.om;
-      const qtdlote = item.qtdlote || 1;
-
-      // Armazenar quantidade de placas por OM (pegamos o maior valor se houver duplicatas)
-      // Isso garante que cada OM seja contada apenas uma vez (mesma OM = mesmo lote)
-      if (!qtdPlacasPorOM.has(om) || qtdPlacasPorOM.get(om)! < qtdlote) {
-        qtdPlacasPorOM.set(om, qtdlote);
-      }
-    });
-
-    // Calcular total de unidades inspecionadas (placas) - usando agrupamento por OM
-    // Somar as placas de cada OM única (evita duplicação quando há múltiplos registros da mesma OM)
-    // Se há 3 OMs diferentes, cada uma com 150 placas = 450 placas totais
-    // Se há 1 OM com 150 placas = 150 placas totais
-    const totalInspecionadas = Array.from(qtdPlacasPorOM.values()).reduce(
-      (sum, qtd) => sum + qtd,
-      0
-    );
-
-    // Calcular Yield (Taxa de Aceitação)
-    const yieldPercent =
-      totalInspecionadas > 0
-        ? (((totalInspecionadas - totalFalhas) / totalInspecionadas) * 100).toFixed(2)
-        : '0.00';
-
-    // Calcular oportunidades usando configuração do usuário (IPC Standard)
-    // DPMO = (Defeitos / (Unidades × Oportunidades por Unidade)) × 1.000.000
-    // Oportunidades = Componentes + Pads SMD (somar ambos, não usar o maior)
-    let oportunidadesPorPlaca = 0;
-
-    if (dpmoConfig.componentesPorPlaca > 0 || dpmoConfig.padsSMDPorPlaca > 0) {
-      // SOMAR componentes + pads SMD (conforme exemplo: 100 componentes + 1900 pads = 2000 oportunidades)
-      oportunidadesPorPlaca =
-        (dpmoConfig.componentesPorPlaca || 0) + (dpmoConfig.padsSMDPorPlaca || 0);
-    } else {
-      // Fallback: usar designadores únicos como proxy (estimativa)
-      const designadoresUnicos = new Set(
-        uniqueFilteredData.map(item => item.designador).filter(Boolean)
-      ).size;
-      oportunidadesPorPlaca =
-        designadoresUnicos > 0
-          ? Math.max(designadoresUnicos, 50) // Mínimo 50 para evitar subestimativa
-          : 50; // Valor padrão se não houver designadores
-    }
-
-    // Calcular DPMO e nível Sigma
-    const {
-      dpmo: dpmoValue,
-      sigma,
-      nivelSigma,
-    } = calcularDPMOeSigma(totalFalhas, totalInspecionadas, oportunidadesPorPlaca);
-    const dpmo = dpmoValue.toFixed(2);
-
     // Análise de tendência (comparar últimos 7 dias com 7 dias anteriores)
     const agora = new Date();
     const seteDiasAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -403,23 +347,18 @@ export default function QualidadePage() {
       falhasSoldagem,
       falhasPosicionamento,
       contagemDefeitos,
-      totalInspecionadas,
-      yieldPercent,
-      dpmo,
-      sigma,
-      nivelSigma,
       variacao,
       defeitosCriticos,
       taxaCriticos,
       ultimos7Dias,
     };
-  }, [uniqueFilteredData, dpmoConfig]);
+  }, [uniqueFilteredData]);
 
   // Unique OMs
   const uniqueOms = useMemo(() => {
-    const oms = Array.from(new Set(allData.map(r => r.om)));
+    const oms = Array.from(new Set([...allData.map(r => r.om), ...inspectedOMs]));
     return ['all', ...oms];
-  }, [allData]);
+  }, [allData, inspectedOMs]);
 
   const handleLogout = async () => {
     try {
@@ -565,52 +504,16 @@ export default function QualidadePage() {
     };
   }, [uniqueFilteredData]);
 
-  // Gráfico: Nível Sigma
-  const sigmaData = useMemo(() => {
-    // Ordem decrescente para gráfico horizontal: 6σ no topo, 1σ embaixo
-    const niveisSigma = [6, 5, 4, 3, 2, 1];
-    const sigmaAtual = kpis.sigma || 0;
-
-    return {
-      labels: niveisSigma.map(n => `${n}σ`),
-      datasets: [
-        {
-          label: 'Nível Sigma',
-          data: niveisSigma.map(n => (n === sigmaAtual ? 100 : 5)), // Nível atual = 100, outros = 5 (pequeno)
-          backgroundColor: niveisSigma.map(n => {
-            if (n === sigmaAtual) {
-              // Cor baseada no nível (quanto maior, melhor - verde para alto, vermelho para baixo)
-              if (n >= 4) return 'rgba(34, 197, 94, 0.9)'; // Verde para 4σ+
-              if (n >= 3) return 'rgba(59, 130, 246, 0.9)'; // Azul para 3σ
-              return 'rgba(239, 68, 68, 0.9)'; // Vermelho para <3σ
-            }
-            return 'rgba(148, 163, 184, 0.3)'; // Cinza para níveis não atingidos
-          }),
-          borderColor: niveisSigma.map(n => {
-            if (n === sigmaAtual) {
-              if (n >= 4) return '#22c55e';
-              if (n >= 3) return '#3b82f6';
-              return '#ef4444';
-            }
-            return '#64748b';
-          }),
-          borderWidth: niveisSigma.map(n => (n === sigmaAtual ? 2 : 1)),
-          borderRadius: 4,
-        },
-      ],
-    };
-  }, [kpis.sigma]);
-
   // Gráfico Radar: Indicadores de Qualidade do Sistema
-  const radarQualityData = useMemo(() => {
+  const radarQualityData = useMemo((): import('chart.js').ChartData<'radar'> => {
     const total = uniqueFilteredData.length;
     if (total === 0) {
       return {
-        labels: ['Yield', 'Taxa Soldagem', 'Taxa Posicionamento', 'Críticos', 'Urgentes'],
+        labels: ['Soldagem', 'Posicionamento', 'Críticos', 'Urgentes'],
         datasets: [
           {
             label: 'Indicador',
-            data: [0, 0, 0, 0, 0],
+            data: [null, null, null, null],
             backgroundColor: 'rgba(59, 130, 246, 0.2)',
             borderColor: '#3b82f6',
             pointBackgroundColor: '#3b82f6',
@@ -622,9 +525,6 @@ export default function QualidadePage() {
       };
     }
 
-    // Yield (taxa de aceitação) - quanto maior, melhor
-    const yieldScore = parseFloat(kpis.yieldPercent);
-
     // Taxas de falha por processo (%)
     const taxaSoldagem = (kpis.falhasSoldagem / total) * 100;
     const taxaPosicionamento = (kpis.falhasPosicionamento / total) * 100;
@@ -635,12 +535,11 @@ export default function QualidadePage() {
     const taxaUrgentes = (urgentes / total) * 100;
 
     return {
-      labels: ['Yield (%)', 'Taxa Soldagem', 'Taxa Posicionamento', 'Críticos (%)', 'Urgentes (%)'],
+      labels: ['Soldagem (%)', 'Posicionamento (%)', 'Críticos (%)', 'Urgentes (%)'],
       datasets: [
         {
           label: 'Métricas de Qualidade',
           data: [
-            Math.round(yieldScore),
             Math.round(taxaSoldagem),
             Math.round(taxaPosicionamento),
             Math.round(taxaCriticos),
@@ -758,7 +657,7 @@ export default function QualidadePage() {
       </div>
 
       <div className="app-shell-container py-6">
-        {/* Configuração DPMO - IPC Standard */}
+        {/* Configuração DPMO */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -771,7 +670,7 @@ export default function QualidadePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  Configuração DPMO - Norma IPC
+                  Configuração DPMO
                   {dpmoConfigSaved && (
                     <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
                       ✓ Configurado
@@ -779,7 +678,7 @@ export default function QualidadePage() {
                   )}
                 </h3>
                 <p className="text-sm text-slate-400">
-                  Defina os parâmetros de cálculo conforme IPC-A-610 e IPC-7912
+                  Parâmetros para uso quando as medições de inspeção estiverem disponíveis.
                 </p>
               </div>
             </div>
@@ -804,10 +703,9 @@ export default function QualidadePage() {
                 <div className="flex items-start gap-3">
                   <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-slate-300">
-                    <p className="font-semibold text-blue-400 mb-1">Informação IPC:</p>
+                    <p className="font-semibold text-blue-400 mb-1">Parâmetros de referência</p>
                     <p className="mb-2">
-                      O DPMO (Defeitos Por Milhão de Oportunidades) é calculado conforme norma
-                      IPC-A-610.
+                      O DPMO relaciona os defeitos registrados ao total de oportunidades inspecionadas.
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-slate-400">
                       <li>
@@ -824,7 +722,7 @@ export default function QualidadePage() {
                       oportunidades totais por placa.
                     </p>
                     <p className="mt-2 text-slate-300 font-semibold">
-                      📌 Exemplo ilustrativo (conforme norma IPC):
+                      📌 Exemplo ilustrativo de cálculo:
                     </p>
                     <div className="mt-2 ml-4 text-sm text-slate-400 space-y-2 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                       <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2 mb-2">
@@ -916,9 +814,7 @@ export default function QualidadePage() {
                         );
                       })()}
                       <p className="text-xs text-slate-500 italic mt-2">
-                        <strong>Nota:</strong> O DPMO real do seu sistema (mostrado no card laranja)
-                        será calculado usando os dados reais das placas inspecionadas e defeitos
-                        encontrados no período selecionado, aplicando a mesma fórmula.
+                        O exemplo usa valores fictícios. O indicador exige a medição das inspeções e a validação das oportunidades pela Qualidade.
                       </p>
                     </div>
                   </div>
@@ -1097,20 +993,23 @@ export default function QualidadePage() {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Yield
+                Primeira passagem AOI
               </div>
               <div className="text-green-400">✓</div>
             </div>
-            <p className="text-4xl font-black text-green-400 mb-1">{kpis.yieldPercent}%</p>
-            <div className="text-xs text-slate-500 mb-1">Taxa de Aceitação</div>
+            <p className="text-4xl font-black text-green-400 mb-1">
+              {boardApproval ? `${boardApproval.percent.toFixed(1)}%` : '—'}
+            </p>
+            <div className="text-xs text-slate-500 mb-1">Placas registradas sem falha</div>
             <div className="mt-auto space-y-1">
               <div className="text-xs text-green-400 flex items-center gap-1">
                 <Info className="w-3 h-3" />
-                {kpis.totalInspecionadas.toLocaleString()} unidades inspecionadas
+                {boardApproval
+                  ? `${boardApproval.approvedBoards} de ${boardApproval.inspectedBoards} placas registradas`
+                  : 'Sem inspeções válidas no filtro.'}
               </div>
               <div className="text-xs text-slate-400 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                {kpis.totalInspecionadas - kpis.totalFalhas} unidades aprovadas
+                <Info className="w-3 h-3" /> OMs finalizadas com rastreamento desde o início.
               </div>
             </div>
           </motion.div>
@@ -1128,45 +1027,11 @@ export default function QualidadePage() {
               </div>
               <div className="text-orange-400">📊</div>
             </div>
-            <p className="text-4xl font-black text-orange-400 mb-1">
-              {parseFloat(kpis.dpmo).toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </p>
+            <p className="text-4xl font-black text-orange-400 mb-1">—</p>
             <div className="text-xs text-slate-500 mb-1">Defeitos por Milhão de Oportunidades</div>
-            {dpmoConfigSaved &&
-            (dpmoConfig.componentesPorPlaca > 0 || dpmoConfig.padsSMDPorPlaca > 0) ? (
-              <div className="mt-auto space-y-1">
-                <div className="text-xs text-green-400 flex items-center gap-1">
-                  <Info className="w-3 h-3" />
-                  Usando configuração IPC:{' '}
-                  {(
-                    (dpmoConfig.componentesPorPlaca || 0) + (dpmoConfig.padsSMDPorPlaca || 0)
-                  ).toLocaleString()}{' '}
-                  oportunidades/placa
-                </div>
-                <div className="text-xs text-blue-400 flex items-center gap-1">
-                  <Info className="w-3 h-3" />
-                  Cálculo: ({kpis.totalFalhas} × 1.000.000) / (
-                  {kpis.totalInspecionadas.toLocaleString()} placas ×{' '}
-                  {(
-                    (dpmoConfig.componentesPorPlaca || 0) + (dpmoConfig.padsSMDPorPlaca || 0)
-                  ).toLocaleString()}{' '}
-                  oportunidades) ={' '}
-                  {parseFloat(kpis.dpmo).toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{' '}
-                  DPMO
-                </div>
-              </div>
-            ) : (
-              <div className="mt-auto text-xs text-yellow-400 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                Configure os parâmetros acima para cálculo preciso
-              </div>
-            )}
+            <div className="mt-auto text-xs text-yellow-400 flex items-center gap-1">
+              <Info className="w-3 h-3" /> Requer inspeções e oportunidades confirmadas.
+            </div>
           </motion.div>
 
           {/* KPI 4: Nível Sigma */}
@@ -1182,25 +1047,10 @@ export default function QualidadePage() {
               </div>
               <div className="text-cyan-400">⚡</div>
             </div>
-            <p className="text-4xl font-black text-cyan-400 mb-1">{kpis.nivelSigma}</p>
+            <p className="text-4xl font-black text-cyan-400 mb-1">—</p>
             <div className="text-xs text-slate-500 mb-1">Indicador de Qualidade Six Sigma</div>
-            <div className="mt-auto space-y-1">
-              <div className="text-xs text-cyan-400 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                DPMO:{' '}
-                {parseFloat(kpis.dpmo).toLocaleString('pt-BR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-              <div className="text-xs text-slate-400 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                {kpis.sigma >= 4
-                  ? 'Excelente qualidade'
-                  : kpis.sigma >= 3
-                  ? 'Boa qualidade'
-                  : 'Necessita melhoria'}
-              </div>
+            <div className="mt-auto text-xs text-slate-400 flex items-center gap-1">
+              <Info className="w-3 h-3" /> Aguardando dados suficientes de DPMO.
             </div>
           </motion.div>
 
@@ -1402,91 +1252,8 @@ export default function QualidadePage() {
             className="lg:col-span-3 bg-gradient-to-br from-slate-800 to-slate-900 border border-cyan-500/20 rounded-xl p-6"
           >
             <h3 className="text-lg font-bold mb-4">Nível Sigma (Six Sigma)</h3>
-            <div className="mb-4 flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-green-500"></div>
-                <span className="text-sm text-slate-400">Excelente (4σ+)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-blue-500"></div>
-                <span className="text-sm text-slate-400">Bom (3σ)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-red-500"></div>
-                <span className="text-sm text-slate-400">Melhorar (&lt;3σ)</span>
-              </div>
-            </div>
-            <div style={{ height: '300px' }}>
-              <Bar
-                data={sigmaData}
-                options={{
-                  ...chartOptions,
-                  indexAxis: 'y' as const,
-                  plugins: {
-                    ...chartOptions.plugins,
-                    legend: { display: false },
-                    tooltip: {
-                      ...chartOptions.plugins.tooltip,
-                      callbacks: {
-                        title: (items: any) => {
-                          // Mostrar o nível Sigma no título
-                          const item = items[0];
-                          if (item) {
-                            const nivel = sigmaData.labels[item.dataIndex];
-                            return nivel;
-                          }
-                          return '';
-                        },
-                        label: (context: any) => {
-                          // Mostrar informações apenas para a barra do nível atual
-                          const nivelAtual = kpis.sigma || 0;
-                          // Para gráfico horizontal, os níveis estão em ordem decrescente [6,5,4,3,2,1]
-                          // Precisamos encontrar qual nível corresponde ao índice
-                          const niveisSigma = [6, 5, 4, 3, 2, 1];
-                          const nivelHovered = niveisSigma[context.dataIndex];
-
-                          if (nivelHovered === nivelAtual && context.parsed.x > 5) {
-                            return `Nível Atual: ${kpis.nivelSigma} | DPMO: ${parseFloat(
-                              kpis.dpmo
-                            ).toLocaleString('pt-BR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}`;
-                          }
-                          return '';
-                        },
-                      },
-                    },
-                  },
-                  scales: {
-                    x: {
-                      ticks: {
-                        color: '#94a3b8',
-                        display: false, // Ocultar números do eixo X
-                      },
-                      grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        display: true,
-                      },
-                      beginAtZero: true,
-                      max: 100,
-                    },
-                    y: {
-                      grid: {
-                        display: true,
-                        color: 'rgba(148, 163, 184, 0.1)',
-                      },
-                      ticks: {
-                        color: '#94a3b8',
-                        font: {
-                          weight: 'bold' as const,
-                          size: 12,
-                        },
-                      },
-                    },
-                  },
-                }}
-              />
+            <div style={{ height: '300px' }} className="flex items-center justify-center text-sm text-slate-400">
+              Sem dados suficientes para calcular o nível Sigma.
             </div>
           </motion.div>
 

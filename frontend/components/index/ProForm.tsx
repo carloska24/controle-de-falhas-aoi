@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, FormEvent, useTransition, useEffect } from 'react';
+import { useState, FormEvent, useTransition, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Plus, Save, Eraser, Pause, Flag } from 'lucide-react';
+import { Play, Plus, Save, Eraser, Pause, Flag, Check } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
@@ -31,6 +31,7 @@ interface ProFormProps {
     omNumber: string | null;
   };
   onSubmit: (data: any) => Promise<void>;
+  onSaveWithoutFailure: (omNumber: string, serial: string) => Promise<void>;
   onStartOM: (omNumber: string, qtdLote: number) => Promise<void>;
   onPauseOM: () => Promise<void>;
   onResumeOM: () => Promise<void>;
@@ -51,6 +52,7 @@ export default function ProForm({
   activeOMQtdLote,
   omState,
   onSubmit,
+  onSaveWithoutFailure,
   onStartOM,
   onPauseOM,
   onResumeOM,
@@ -77,8 +79,12 @@ export default function ProForm({
     obs: '',
   });
   const [loading, setLoading] = useState(false);
+  const [savingWithoutFailure, setSavingWithoutFailure] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Partial<Record<keyof RegisterData, string>>>({});
+  const serialInput = useRef<HTMLInputElement>(null);
+  const hasFailureDraft = [formData.designador, formData.tipodefeito, formData.pn, formData.descricao, formData.obs]
+    .some(value => value.trim());
 
   // Validação simples
   const validateField = (field: keyof RegisterData, value: any): string | null => {
@@ -88,6 +94,7 @@ export default function ProForm({
         return null;
       case 'serial':
         if (!value || value.trim() === '') return 'Serial é obrigatório';
+        if (value.trim().length > 200) return 'O serial deve ter até 200 caracteres';
         return null;
       case 'designador':
         if (!value || value.trim() === '') return 'Designador é obrigatório';
@@ -109,6 +116,7 @@ export default function ProForm({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading || isPending || savingWithoutFailure) return;
 
     // Bloquear se OM não estiver running
     if (!omState.isRunning || !activeOM || !isSynchronized) {
@@ -172,6 +180,32 @@ export default function ProForm({
         setLoading(false);
       }
     });
+  };
+
+  const handleSaveWithoutFailure = async () => {
+    if (!activeOM || !omState.isRunning || !isSynchronized || hasFailureDraft
+      || loading || isPending || savingWithoutFailure) return;
+
+    const error = validateField('serial', formData.serial);
+    if (error) {
+      setErrors({ serial: error });
+      serialInput.current?.focus();
+      return;
+    }
+
+    setErrors({});
+    setSavingWithoutFailure(true);
+    try {
+      await onSaveWithoutFailure(activeOM, formData.serial.trim());
+      setFormData(current => current.om === activeOM && current.serial === formData.serial
+        ? { ...current, serial: '' }
+        : current);
+      serialInput.current?.focus();
+    } catch {
+      // A página exibe a resposta do servidor. O serial é mantido para tentar novamente.
+    } finally {
+      setSavingWithoutFailure(false);
+    }
   };
 
   const handleClear = () => {
@@ -466,6 +500,7 @@ export default function ProForm({
           </label>
           <Input
             id="serial"
+            ref={serialInput}
             value={formData.serial}
             onChange={e => setFormData({ ...formData, serial: e.target.value })}
             placeholder="SN-..."
@@ -645,15 +680,26 @@ export default function ProForm({
 
         {/* Toolbar */}
         <div className="col-span-12 flex items-center justify-between gap-3 pt-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="submit"
               variant="primary"
               isLoading={loading || isPending}
-              disabled={loading || isPending || !omState.isRunning || !isSynchronized}
+              disabled={loading || isPending || savingWithoutFailure || !omState.isRunning || !isSynchronized}
             >
               <Save className="w-4 h-4" />
               Gravar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              isLoading={savingWithoutFailure}
+              disabled={loading || isPending || savingWithoutFailure || !omState.isRunning || !isSynchronized || hasFailureDraft}
+              title={hasFailureDraft ? 'Limpe os campos de falha para registrar somente o serial.' : 'Registra uma placa inspecionada usando apenas o serial.'}
+              onClick={handleSaveWithoutFailure}
+            >
+              <Check className="w-4 h-4" />
+              Gravar sem falha
             </Button>
             <Button type="button" variant="ghost" onClick={handleClear}>
               <Eraser className="w-4 h-4" />

@@ -38,6 +38,8 @@ async function main() {
     prisma = require('../src/config/prisma');
     assert.equal(await prisma.ordens_manufatura.count(), 3);
     assert.equal(await prisma.oms_ativas.count(), 1);
+    assert.equal(await prisma.ordens_manufatura.count({ where: { rastreamentoInspecao: false } }), 3);
+    assert.equal(await prisma.placas_inspecionadas.count(), 0);
     assert.equal((await prisma.ordens_manufatura.findUnique({ where: { omNumber: 'LEGACY-P' } })).elapsedAtPause, 2900n);
     assert.equal((await prisma.registros.findUnique({ where: { id: 'LEGACY-RECORD' } })).om, 'LEGACY-UNLINKED');
     console.log('PASS: baseline e migrações preservam OMs e registros legados');
@@ -79,7 +81,7 @@ async function main() {
     assert.equal(await prisma.eventos_om.count({ where: { omNumber: 'OM-INTEGRATION' } }), 4);
     console.log('PASS: OM atômica, auditoria, rollback e finalização irreversível');
 
-    const record = extra => ({ id: 'REJECTED', om: 'OM-RECORDS', omVersion: 0, qtdlote: 300, designador: 'R1', tipodefeito: 'Ausente', ...extra });
+    const record = extra => ({ id: 'REJECTED', om: 'OM-RECORDS', omVersion: 0, qtdlote: 300, serial: 'SERIAL-01', designador: 'R1', tipodefeito: 'Ausente', ...extra });
     await api('POST', '/api/registros/batch', [record({ om: 'OM-INTEGRATION', omVersion: 3 })], 409);
     await api('POST', '/api/registros/batch', [record({ om: 'MISSING-OM' })], 404);
     await api('POST', '/api/registros/batch', [record({ omVersion: undefined })], 400);
@@ -93,7 +95,7 @@ async function main() {
     console.log('PASS: criação exige OM ativa e versão atual; lote misto recusado sem escrita');
 
     const rows = Array.from({ length: 251 }, (_, i) => ({ id: `INTEGRATION-${String(i).padStart(4, '0')}`,
-      om: 'OM-RECORDS', omVersion: 2, qtdlote: 300, designador: `R${i}`, tipodefeito: 'Ausente', pn: 'PN-TEST' }));
+      om: 'OM-RECORDS', omVersion: 2, qtdlote: 300, serial: `S-${i}`, designador: `R${i}`, tipodefeito: 'Ausente', pn: 'PN-TEST' }));
     await api('POST', '/api/registros/batch', rows.slice(0, 200), 201);
     await api('POST', '/api/registros/batch', rows.slice(200), 201);
     const first = (await api('GET', '/api/registros?om=OM-RECORDS&limit=200&page=1')).data;
@@ -105,6 +107,7 @@ async function main() {
     await api('GET', '/api/registros?limit=201', undefined, 400);
     await api('POST', '/api/registros/batch', [record({ id: 'ROLLBACK-FIRST', omVersion: 2 }), record({ id: rows[0].id, omVersion: 2 })], 409);
     assert.equal(await prisma.registros.findUnique({ where: { id: 'ROLLBACK-FIRST' } }), null);
+    assert.equal(await prisma.placas_inspecionadas.count({ where: { omNumber: 'OM-RECORDS' } }), 251);
     await api('PUT', '/api/registros/LEGACY-RECORD', { version: 0, obs: 'Histórico preservado' });
     assert.equal((await prisma.registros.findUnique({ where: { id: 'LEGACY-RECORD' } })).om, 'LEGACY-UNLINKED');
     console.log('PASS: 251 registros completos, rollback SQL e histórico legado preservado');
@@ -162,7 +165,7 @@ async function main() {
     await api('POST', '/api/om/start', { omNumber: 'OM-REQUEST-PAGE', qtdLote: 50 });
     const requestPageRows = Array.from({ length: 12 }, (_, i) => ({
       id: `REQUEST-PAGE-${String(i).padStart(2, '0')}`, om: 'OM-REQUEST-PAGE', omVersion: 0, qtdlote: 50,
-      designador: `R${i}`, pn: 'PN-REQUEST-PAGE', tipodefeito: i === 11 ? 'Possível Incorreto' : 'Ausente',
+      serial: `REQUEST-${i}`, designador: `R${i}`, pn: 'PN-REQUEST-PAGE', tipodefeito: i === 11 ? 'Possível Incorreto' : 'Ausente',
     }));
     await api('POST', '/api/registros/batch', requestPageRows, 201);
     const requestPage = (await api('GET', '/api/registros?om=OM-REQUEST-PAGE&limit=12&page=1')).data;
@@ -210,9 +213,47 @@ async function main() {
     assert.equal(await prisma.registros.count({ where: { id: { in: deletionRows.map(row => row.id) } } }), 0);
     console.log('PASS: exclusão exige versões revisadas, reverte lote alterado/ausente/vinculado e só confirma contagem integral');
 
+    const inspectionOM = 'OM-INSPECAO';
+    const inspectionPath = `/api/om/${inspectionOM}/inspecoes`;
+    const summaryPath = `/api/om/inspecoes/resumo?om=${inspectionOM}`;
+    const pass = { serial: '000a', omVersion: 0 };
+    await api('POST', '/api/om/start', { omNumber: inspectionOM, qtdLote: 500 });
+    await api('POST', inspectionPath, { ...pass, serial: ' ' }, 400);
+    assert.deepEqual((await api('POST', inspectionPath, { ...pass, serial: ' 000a ' }, 201)).data,
+      { jaRegistrada: false, temFalha: false });
+    assert.deepEqual((await api('POST', inspectionPath, pass)).data, { jaRegistrada: true, temFalha: false });
+    assert.equal(await prisma.registros.count({ where: { om: inspectionOM } }), 0);
+    await api('POST', inspectionPath, { ...pass, serial: '000b' }, 201);
+    const inspectionRecord = record({ id: 'AOI-F1', om: inspectionOM, serial: '000b' });
+    await api('POST', '/api/registros/batch', [{ ...inspectionRecord, serial: null }], 400);
+    await api('POST', '/api/registros/batch', [
+      inspectionRecord, { ...inspectionRecord, id: 'AOI-F2', designador: 'R2' },
+    ], 201);
+    assert.deepEqual((await api('POST', inspectionPath, { ...pass, serial: '000b' })).data,
+      { jaRegistrada: true, temFalha: true });
+    await api('POST', '/api/registros/batch', [
+      { ...inspectionRecord, id: 'AOI-ROLLBACK', serial: '000a' }, inspectionRecord,
+    ], 409);
+    assert.deepEqual((await api('POST', inspectionPath, pass)).data, { jaRegistrada: true, temFalha: false });
+    assert.deepEqual((await api('GET', summaryPath)).data, { inspectedBoards: 0, approvedBoards: 0 });
+    await api('PUT', '/api/om/pause', { omNumber: inspectionOM });
+    await api('POST', inspectionPath, { ...pass, omVersion: 1 }, 409);
+    await api('PUT', '/api/om/resume', { omNumber: inspectionOM });
+    await api('POST', inspectionPath, pass, 409);
+    await api('PUT', '/api/om/finalizar', { omNumber: inspectionOM });
+    await api('POST', inspectionPath, { ...pass, omVersion: 3 }, 409);
+    assert.deepEqual((await api('GET', summaryPath)).data, { inspectedBoards: 2, approvedBoards: 1 });
+    assert.deepEqual((await api('GET', summaryPath + '&fim=2020-01-01T00:00:00Z')).data,
+      { inspectedBoards: 0, approvedBoards: 0 });
+    await api('POST', '/api/om/LEGACY-A/inspecoes', pass, 201);
+    await api('PUT', '/api/om/finalizar', { omNumber: 'LEGACY-A' });
+    assert.deepEqual((await api('GET', '/api/om/inspecoes/resumo?om=LEGACY-A')).data,
+      { inspectedBoards: 0, approvedBoards: 0 });
+    console.log('PASS: placa sem falha é independente, OM e serial deduplicam, falhas são atômicas e resumo exclui cobertura histórica');
+
     await api('POST', '/api/auth/logout');
     await api('GET', '/api/auth/me', undefined, 401);
-    assert.equal(await prisma.registros.count(), 264);
+    assert.equal(await prisma.registros.count(), 266);
     console.log('PASS: logout revoga cookie reapresentado sem excluir registros');
     console.log('INTEGRATION_ISOLATED_OK');
   } finally {

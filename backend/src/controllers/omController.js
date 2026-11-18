@@ -1,6 +1,14 @@
 const prisma = require('../config/prisma');
 const { OMError, serializeOM, transition } = require('../services/omService');
 const { getPagination } = require('../utils/pagination');
+const { registrarPlacaSemFalha, resumirInspecoes } = require('../services/inspecaoService');
+const { z } = require('zod');
+
+const filtroInspecoes = z.object({
+  om: z.string().trim().min(1).max(100).optional(),
+  inicio: z.string().datetime().optional(),
+  fim: z.string().datetime().optional(),
+}).refine(({ inicio, fim }) => !inicio || !fim || new Date(inicio) < new Date(fim));
 
 function handleError(res, error) {
   if (error instanceof OMError) return res.status(error.status).json({ error: error.message });
@@ -22,6 +30,26 @@ async function getOM(req, res) {
     const row = await prisma.ordens_manufatura.findUnique({ where: { omNumber: req.params.omNumber } });
     if (!row) return res.status(404).json({ error: 'OM não encontrada.' });
     res.json(serializeOM(row));
+  } catch (error) { handleError(res, error); }
+}
+
+async function registrarInspecao(req, res) {
+  try {
+    const placa = await registrarPlacaSemFalha(req.params.omNumber, req.body, req.user);
+    res.status(placa.jaRegistrada ? 200 : 201).json(placa);
+  } catch (error) { handleError(res, error); }
+}
+
+async function getResumoInspecoes(req, res) {
+  const filtro = filtroInspecoes.safeParse(req.query);
+  if (!filtro.success) return res.status(400).json({ error: 'Filtros de inspeção inválidos.' });
+  const { om, inicio, fim } = filtro.data;
+  try {
+    res.json(await resumirInspecoes({
+      omNumber: om,
+      start: inicio ? new Date(inicio) : undefined,
+      end: fim ? new Date(fim) : undefined,
+    }));
   } catch (error) { handleError(res, error); }
 }
 
@@ -89,6 +117,6 @@ async function getRelatorioOMs(_req, res) {
 
 module.exports = {
   startOM: command('start'), pauseOM: command('pause'), resumeOM: command('resume'), finishOM: command('finish'),
-  getOM, getOMTime, getRelatorioFalhas, getRelatorioOMs,
+  getOM, getOMTime, getResumoInspecoes, registrarInspecao, getRelatorioFalhas, getRelatorioOMs,
   listAtivas: listByStatus('em_andamento'), listPausadas: listByStatus('pausada'), listFinalizadas: listByStatus('finalizada'),
 };

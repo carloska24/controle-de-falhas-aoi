@@ -1,6 +1,6 @@
 # Auditoria funcional — andamento
 
-Atualização: 18/11/2026. Branch: `codex/preparacao-intranet`.
+Atualização: 18/11/2026. Branch: `codex/indicadores-qualidade`.
 
 ## Direção aprovada
 
@@ -19,6 +19,7 @@ Referência: [auditoria de UX/UI](AUDITORIA_UX_UI_2026-11-17.md).
 | Revisão técnica | `code-review-and-quality` | Correção, estrutura, concorrência, segurança e evidência de testes. |
 | Validação no servidor | `backend-security-coder` | Estado e versão da OM, consultas parametrizadas e respostas sem detalhes internos. |
 | Arquitetura e contratos | `architect-review` | Disponível para mudanças com impacto arquitetural nas próximas etapas. |
+| Dados de inspeção | `database-migration` | Migração aditiva, verificação do esquema e preservação do histórico. |
 | Testes de API e regras | Node test runner, Jest e integração isolada já existentes | Testes de sincronização sem nova dependência. |
 | Operação no navegador | Ferramentas de navegador já disponíveis | Pausa/retomada externa, conexão e formulário. |
 | Acessibilidade | Skills de auditoria de acessibilidade já disponíveis | Aplicar quando chegar aos achados correspondentes. |
@@ -39,7 +40,7 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Confirmações de ações importantes | UX-03 | Concluído em `fb28665`. |
 | Totais, filtros e CSV do controle de falhas | UX-04 e UX-11 | Concluído em `633da0f`. |
 | Estados e contagens do relatório de reparo | UX-05 | Concluído em `codex/corrigir-relatorio-reparo`. |
-| Definições de indicadores de qualidade | UX-06 | Pendente de definição com o processo de Qualidade. |
+| Registro de inspeções e indicador de primeira passagem | UX-06 | Implementado para validação em piloto. Liberação após reparo é uma decisão de processo pendente. |
 | Administração, datas, entregas e filas SMT | UX-07 a UX-10 | Pendente. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
 
@@ -326,5 +327,39 @@ Verificação no navegador com `OM-TESTE-ETAPA2`: **251 registros, 250 abertos e
 invertido bloqueou a exportação, com recuperação ao corrigir as datas. Foram
 aprovados 55 testes de frontend e o build, incluindo a checagem do TypeScript.
 
-A próxima definição da auditoria é UX-06, critérios dos indicadores de
-aprovação de placas com o processo de Qualidade.
+## UX-06 — placas inspecionadas e primeira passagem AOI
+
+Em uma OM em andamento, o operador lê o serial e aciona **Gravar sem falha**.
+O formulário confirma a gravação e volta o foco ao serial. O lançamento normal
+de falha também registra a placa. A chave é **OM + serial**. Espaços externos
+são removidos e os demais caracteres, incluindo maiúsculas e zeros à esquerda,
+são preservados. O mesmo serial pode existir em OMs diferentes.
+
+Uma placa com vários defeitos entra uma vez no total inspecionado. Uma falha
+lançada durante a OM indica que a placa teve um apontamento na passagem.
+Status de reparo e edições de ocorrências posteriores preservam o resultado
+original registrado para a placa. Correção de serial de inspeção digitado por
+engano e reclassificação de alarmes falsos exigem um fluxo de qualidade próprio.
+
+O selo e o painel usam **placas sem falha registrada ÷ placas registradas**.
+O painel filtra pelo momento do primeiro registro de inspeção e inclui OMs
+finalizadas com rastreamento desde o início. O lote planejado continua como
+informação de produção. OMs anteriores à migração, ordens de demonstração e
+consultas sem placas válidas ficam fora da taxa. DPMO e Sigma aguardam
+oportunidades de defeito por produto, e o relatório de ocorrências aguarda uma
+base de placas compatível com os seus filtros.
+
+O indicador é operacional. Para adotá-lo como FPY oficial, a Qualidade precisa
+garantir a captura de todas as placas da primeira passagem e definir como tratar
+alarmes falsos. Para liberação do produto após reparo, a recomendação é registrar
+reinspeção, resultado e responsável no histórico do mesmo serial.
+[ASQ](https://asq.org/quality-resources/quality-glossary) ·
+[Siemens](https://resources.sw.siemens.com/fi-FI/case-study-siemens-rastatt/) ·
+[Omron](https://www.omron.com/global/en/technology/omrontechnics/vol54/009.html).
+
+Validação na prévia com lote planejado de 10. Um serial sem falha e outro com
+dois defeitos produziram **1 de 2 placas e 50%** no selo e no painel. Repetir uma
+leitura manteve a contagem, e alternar para a OM histórica deixou a taxa
+indisponível. O build do frontend, 57 testes de frontend, 113 testes de backend
+e os testes de integração validaram gravação, reversão de lote, concorrência
+e preservação do histórico.
