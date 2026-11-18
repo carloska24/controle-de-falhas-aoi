@@ -10,6 +10,8 @@ interface ProTimerProps {
   isRunning: boolean;
   isPaused: boolean;
   activeOM: string | null;
+  isSynchronized?: boolean;
+  lastConfirmedAt?: number | null;
 }
 
 export default function ProTimer({
@@ -18,6 +20,8 @@ export default function ProTimer({
   isRunning,
   isPaused,
   activeOM,
+  isSynchronized = true,
+  lastConfirmedAt = null,
 }: ProTimerProps) {
   // Converte milissegundos do backend para segundos
   const elapsedInSeconds = Math.floor(backendElapsed / 1000);
@@ -30,11 +34,11 @@ export default function ProTimer({
     const newSeconds = Math.floor(backendElapsed / 1000);
     setDisplaySeconds(newSeconds);
     lastSyncRef.current = Date.now();
-  }, [backendElapsed, activeOM]); // Re-sincroniza quando OM muda
+  }, [backendElapsed, activeOM, isRunning, isPaused, isSynchronized]);
 
   // Timer local apenas quando está running
   useEffect(() => {
-    if (!isRunning || !activeOM || isPaused) {
+    if (!isRunning || !activeOM || isPaused || !isSynchronized) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -59,7 +63,7 @@ export default function ProTimer({
         intervalRef.current = null;
       }
     };
-  }, [isRunning, activeOM, elapsedInSeconds, isPaused]);
+  }, [isRunning, activeOM, elapsedInSeconds, isPaused, isSynchronized]);
 
   // Quando pausa, mantém o valor do backend (já convertido)
   useEffect(() => {
@@ -96,16 +100,17 @@ export default function ProTimer({
       shadow: '0 0 8px rgba(255,209,102,0.2)'
     };
     return { 
-      text: 'PRONTO', 
+      text: activeOM ? 'FINALIZADA' : 'PRONTO',
       bg: '#101a2b',
       border: '#2b3850',
       textColor: '#c7d2fe',
       shadow: ''
     };
-  }, [isRunning, isPaused]);
+  }, [isRunning, isPaused, activeOM]);
 
   return (
     <motion.div
+      title={activeOM ? `${isSynchronized ? 'Estado confirmado' : 'Sem sincronização; tempo e estado podem estar desatualizados'}. Última confirmação: ${lastConfirmedAt ? new Date(lastConfirmedAt).toLocaleTimeString('pt-BR') : 'aguardando servidor'}.` : undefined}
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className="sticky top-[73px] z-40 bg-gradient-to-r from-[#0b1220] to-[#0f172a] border border-slate-800 rounded-2xl px-4 py-3 mb-3 flex items-center justify-between gap-4 shadow-2xl"
@@ -125,7 +130,7 @@ export default function ProTimer({
             letterSpacing: '0.6px'
           }}
         >
-          {status.text}
+          {activeOM && !isSynchronized ? 'SEM SINCRONIZAÇÃO' : status.text}
         </motion.div>
         <div className="text-sm" style={{ color: '#cdd9f0' }}>
           <span style={{ color: '#8aa0c2', fontWeight: 700 }}>OM:</span>{' '}

@@ -43,6 +43,7 @@ interface ProFormProps {
   onSelectFinishedOM: (omNumber: string | null) => Promise<void>;
   onSelectActiveOM?: (omNumber: string | null) => Promise<void>;
   registros?: Registro[];
+  isSynchronized?: boolean;
 }
 
 export default function ProForm({
@@ -62,6 +63,7 @@ export default function ProForm({
   onSelectFinishedOM,
   onSelectActiveOM,
   registros = [],
+  isSynchronized = true,
 }: ProFormProps) {
   const [formData, setFormData] = useState({
     om: '',
@@ -109,7 +111,7 @@ export default function ProForm({
     e.preventDefault();
 
     // Bloquear se OM não estiver running
-    if (!omState.isRunning || !activeOM) {
+    if (!omState.isRunning || !activeOM || !isSynchronized) {
       setErrors({ om: 'OM deve estar em andamento para lançar registros' });
       return;
     }
@@ -648,7 +650,7 @@ export default function ProForm({
               type="submit"
               variant="primary"
               isLoading={loading || isPending}
-              disabled={loading || isPending}
+              disabled={loading || isPending || !omState.isRunning || !isSynchronized}
             >
               <Save className="w-4 h-4" />
               Gravar

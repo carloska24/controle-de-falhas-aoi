@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useTransition, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useTransition, Suspense, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -32,6 +32,8 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import ProTimer from '@/components/index/ProTimer';
+import { useOMSynchronization } from '@/hooks/useOMSynchronization';
+import { createOMRequestCoordinator, OMSupersededError, parseOMSnapshot, type OMSnapshot } from '@/lib/omSync';
 import ProForm from '@/components/index/ProForm';
 import ProTable from '@/components/index/ProTable';
 import ProMetrics from '@/components/index/ProMetrics';
@@ -58,7 +60,21 @@ export default function IndexPage() {
   // OM State
   const [activeOM, setActiveOM] = useState<string | null>(null);
   const [activeOMQtdLote, setActiveOMQtdLote] = useState<number | null>(null);
-  const [omState, setOmState] = useState<{
+  const omSyncRevision = useRef(0);
+  const omRequests = useRef<ReturnType<typeof createOMRequestCoordinator> | null>(null);
+  if (!omRequests.current) omRequests.current = createOMRequestCoordinator({
+    getRevision: () => omSyncRevision.current,
+    advanceRevision: () => { omSyncRevision.current++; },
+    read: fetchAutenticado,
+  });
+  const requestOM = useCallback((url: string, options?: RequestInit) => omRequests.current!.request(url, options), []);
+  const canClearOM = () => {
+    if (omRequests.current!.clearSelection()) return true;
+    showToast('Aguarde a operação atual da OM antes de trocar a seleção.', 'warning');
+    return false;
+  };
+  useEffect(() => () => omRequests.current?.cancelAll(), []);
+  const [omState, setOMState] = useState<{
     elapsed: number;
     isRunning: boolean;
     isPaused: boolean;
@@ -69,6 +85,12 @@ export default function IndexPage() {
     isPaused: false,
     omNumber: null,
   });
+
+  // Invalida consultas anteriores a comandos locais, seleções e limpeza de OM.
+  const setOmState: typeof setOMState = useCallback(update => {
+    omSyncRevision.current++;
+    setOMState(update);
+  }, []);
 
   // OM Time Summary (para exibição de resumo de tempo)
   const [omTimeSummary, setOmTimeSummary] = useState<{
@@ -148,47 +170,46 @@ export default function IndexPage() {
     }
   }, []);
 
+  const publishOMSnapshot = (snapshot: OMSnapshot, statusChanged: boolean) => {
+    setActiveOMQtdLote(snapshot.qtdlote);
+    setOmState({ elapsed: snapshot.elapsed, isRunning: snapshot.status === 'em_andamento',
+      isPaused: snapshot.status === 'pausada', omNumber: snapshot.status === 'finalizada' ? null : snapshot.omNumber });
+    if (snapshot.status === 'finalizada') {
+      localStorage.removeItem('omEmAndamento');
+      setOmTimeSummary({ startTime: snapshot.startTime, endTime: snapshot.endTime, elapsed: snapshot.elapsed });
+      if (statusChanged) void loadData();
+    } else {
+      localStorage.setItem('omEmAndamento', snapshot.omNumber);
+      setOmTimeSummary(null);
+    }
+    if (statusChanged) void loadOMs();
+  };
+
+  const omSync = useOMSynchronization({
+    omNumber: activeOM,
+    enabled: !!user,
+    revision: omSyncRevision,
+    isOperationPending: () => omRequests.current!.isPending(),
+    onSnapshot: publishOMSnapshot,
+    onConnectionLost: () => showToast('Sem sincronização com a OM. Salvamento e comandos bloqueados até reconectar; os campos preenchidos serão mantidos.', 'error'),
+    onRecovered: () => showToast('Sincronização da OM restabelecida. Confira o estado atual antes de continuar.', 'info'),
+  });
+
   const restoreOM = async () => {
     const omEmAndamento = localStorage.getItem('omEmAndamento');
     if (!omEmAndamento) return;
 
     try {
-      const omData = await fetchAutenticado(`/api/om/${encodeURIComponent(omEmAndamento)}`);
-      if (omData) {
-        setActiveOM(omData.omNumber);
-        setActiveOMQtdLote(omData.qtdlote || null);
-        setOmState({
-          elapsed: omData.elapsed || 0, // Backend retorna em milissegundos
-          isRunning: omData.status === 'em_andamento',
-          isPaused: omData.status === 'pausada',
-          omNumber: omData.omNumber,
-        });
-      }
-    } catch (error) {
-      localStorage.removeItem('omEmAndamento');
+      const data = await requestOM(`/api/om/${encodeURIComponent(omEmAndamento)}`);
+      const snapshot = parseOMSnapshot(data, omEmAndamento);
+      setActiveOM(snapshot.omNumber);
+      publishOMSnapshot(snapshot, true);
+    } catch (error: any) {
+      if (error instanceof OMSupersededError) return;
+      if (error.status === 404) localStorage.removeItem('omEmAndamento');
+      else setActiveOM(omEmAndamento); // Mantém a seleção para retentar a conexão.
     }
   };
-
-  // Sincronizar timer periodicamente com o backend quando running
-  useEffect(() => {
-    if (!omState.isRunning || !activeOM || !user) return;
-
-    const syncInterval = setInterval(async () => {
-      try {
-        const omData = await fetchAutenticado(`/api/om/${encodeURIComponent(activeOM)}`);
-        if (omData && omData.omNumber === activeOM) {
-          setOmState(prev => ({
-            ...prev,
-            elapsed: omData.elapsed || prev.elapsed, // Backend retorna em milissegundos
-          }));
-        }
-      } catch (error) {
-        console.error('Erro ao sincronizar timer:', error);
-      }
-    }, 5000); // Sincroniza a cada 5 segundos
-
-    return () => clearInterval(syncInterval);
-  }, [omState.isRunning, activeOM, user]);
 
   const updateMetrics = useCallback(() => {
     try {
@@ -274,13 +295,19 @@ export default function IndexPage() {
         return;
       }
 
+      if (activeOM && !omSync.isSynchronized && (e.key === ' ' || (e.ctrlKey && e.key === 'Enter'))) {
+        e.preventDefault();
+        showToast('Aguarde a sincronização da OM antes de executar este comando.', 'warning');
+        return;
+      }
+
       // Espaço - Pausar/Retomar OM
       if (e.key === ' ' && !e.ctrlKey && !e.altKey && activeOM) {
         e.preventDefault();
         if (omState.isRunning) {
           // Pausar
           try {
-            const omData = await fetchAutenticado('/api/om/pause', {
+            const omData = await requestOM('/api/om/pause', {
               method: 'PUT',
               body: JSON.stringify({ omNumber: activeOM }),
             });
@@ -293,12 +320,13 @@ export default function IndexPage() {
             showToast(`OM ${activeOM} pausada.`, 'info');
             await loadOMs();
           } catch (error: any) {
+            if (error instanceof OMSupersededError) return;
             showToast(error.message || 'Erro ao pausar OM', 'error');
           }
         } else if (omState.isPaused) {
           // Retomar
           try {
-            const omData = await fetchAutenticado('/api/om/resume', {
+            const omData = await requestOM('/api/om/resume', {
               method: 'PUT',
               body: JSON.stringify({ omNumber: activeOM }),
             });
@@ -311,6 +339,7 @@ export default function IndexPage() {
             showToast(`OM ${activeOM} retomada!`, 'success');
             await loadOMs();
           } catch (error: any) {
+            if (error instanceof OMSupersededError) return;
             showToast(error.message || 'Erro ao retomar OM', 'error');
           }
         }
@@ -320,7 +349,7 @@ export default function IndexPage() {
       if (e.ctrlKey && e.key === 'Enter' && activeOM) {
         e.preventDefault();
         try {
-          const omData = await fetchAutenticado('/api/om/finalizar', {
+          const omData = await requestOM('/api/om/finalizar', {
             method: 'PUT',
             body: JSON.stringify({ omNumber: activeOM }),
           });
@@ -344,6 +373,7 @@ export default function IndexPage() {
           await loadData();
           await loadOMs();
         } catch (error: any) {
+          if (error instanceof OMSupersededError) return;
           showToast(error.message || 'Erro ao finalizar OM', 'error');
         }
       }
@@ -351,7 +381,7 @@ export default function IndexPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [user, loading, activeOM, omState.isRunning, omState.isPaused, loadOMs, loadData]);
+  }, [user, loading, activeOM, omState.isRunning, omState.isPaused, loadOMs, loadData, omSync.isSynchronized, requestOM]);
 
   // Filtrar registros - deve estar antes do return condicional
   const filteredRegistros = useMemo(() => {
@@ -432,6 +462,8 @@ export default function IndexPage() {
           isRunning={omState.isRunning}
           isPaused={omState.isPaused}
           activeOM={activeOM}
+          isSynchronized={omSync.isSynchronized}
+          lastConfirmedAt={omSync.lastConfirmedAt}
         />
 
         {/* Grid Principal */}
@@ -444,8 +476,12 @@ export default function IndexPage() {
               activeOMQtdLote={activeOMQtdLote}
               omState={omState}
               registros={registros}
+              isSynchronized={omSync.isSynchronized}
               onSubmit={async data => {
                 try {
+                  const snapshot = await omSync.refresh();
+                  if (!snapshot || snapshot.omNumber !== activeOM || data.om !== activeOM) throw new Error('Não foi possível confirmar a OM. Aguarde a sincronização e tente novamente.');
+                  if (snapshot.status !== 'em_andamento') throw new Error('A OM está pausada ou finalizada. O registro não foi enviado; confira o estado atual.');
                   // Prepara dados completos conforme o backend espera
                   const registroData = {
                     om: data.om,
@@ -473,7 +509,7 @@ export default function IndexPage() {
               }}
               onStartOM={async (omNumber: string, qtdLote: number) => {
                 try {
-                  const omData = await fetchAutenticado('/api/om/start', {
+                  const omData = await requestOM('/api/om/start', {
                     method: 'POST',
                     body: JSON.stringify({ omNumber, qtdLote }),
                   });
@@ -490,13 +526,14 @@ export default function IndexPage() {
                   showToast(`OM ${omData.omNumber} iniciada!`, 'success');
                   await loadOMs();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao iniciar OM', 'error');
                 }
               }}
               onPauseOM={async () => {
                 if (!activeOM) return;
                 try {
-                  const omData = await fetchAutenticado('/api/om/pause', {
+                  const omData = await requestOM('/api/om/pause', {
                     method: 'PUT',
                     body: JSON.stringify({ omNumber: activeOM }),
                   });
@@ -509,13 +546,14 @@ export default function IndexPage() {
                   showToast(`OM ${activeOM} pausada.`, 'info');
                   await loadOMs();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao pausar OM', 'error');
                 }
               }}
               onResumeOM={async () => {
                 if (!activeOM) return;
                 try {
-                  const omData = await fetchAutenticado('/api/om/resume', {
+                  const omData = await requestOM('/api/om/resume', {
                     method: 'PUT',
                     body: JSON.stringify({ omNumber: activeOM }),
                   });
@@ -528,13 +566,14 @@ export default function IndexPage() {
                   showToast(`OM ${activeOM} retomada!`, 'success');
                   await loadOMs();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao retomar OM', 'error');
                 }
               }}
               onFinishOM={async () => {
                 if (!activeOM) return;
                 try {
-                  const omData = await fetchAutenticado('/api/om/finalizar', {
+                  const omData = await requestOM('/api/om/finalizar', {
                     method: 'PUT',
                     body: JSON.stringify({ omNumber: activeOM }),
                   });
@@ -558,10 +597,12 @@ export default function IndexPage() {
                   await loadData();
                   await loadOMs();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao finalizar OM', 'error');
                 }
               }}
               onNewOM={() => {
+                if (!canClearOM()) return;
                 setActiveOM(null);
                 setActiveOMQtdLote(null);
                 setOmState({ elapsed: 0, isRunning: false, isPaused: false, omNumber: null });
@@ -572,6 +613,7 @@ export default function IndexPage() {
               finishedOMs={finishedOMs}
               onSelectPausedOM={async (omNumber: string | null) => {
                 if (!omNumber) {
+                  if (!canClearOM()) return;
                   setActiveOM(null);
                   setActiveOMQtdLote(null);
                   setOmState({ elapsed: 0, isRunning: false, isPaused: false, omNumber: null });
@@ -581,25 +623,20 @@ export default function IndexPage() {
                   return;
                 }
                 try {
-                  const omData = await fetchAutenticado(`/api/om/${encodeURIComponent(omNumber)}`);
-                  if (omData && omData.status === 'pausada') {
-                    setActiveOM(omData.omNumber);
-                    setActiveOMQtdLote(omData.qtdlote || null);
-                    setOmState({
-                      elapsed: omData.elapsed || 0,
-                      isRunning: false,
-                      isPaused: true,
-                      omNumber: omData.omNumber,
-                    });
-                    localStorage.setItem('omEmAndamento', omData.omNumber);
-                    showToast(`OM ${omData.omNumber} carregada e pronta para retomar.`, 'info');
-                  }
+                  const data = await requestOM(`/api/om/${encodeURIComponent(omNumber)}`);
+                  const snapshot = parseOMSnapshot(data, omNumber);
+                  setActiveOM(snapshot.omNumber);
+                  publishOMSnapshot(snapshot, true);
+                  showToast(`OM ${snapshot.omNumber} carregada com o estado atual do servidor.`, 'info');
+                  await loadData();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao carregar OM pausada', 'error');
                 }
               }}
               onSelectFinishedOM={async (omNumber: string | null) => {
                 if (!omNumber) {
+                  if (!canClearOM()) return;
                   setActiveOM(null);
                   setActiveOMQtdLote(null);
                   setOmState({ elapsed: 0, isRunning: false, isPaused: false, omNumber: null });
@@ -609,32 +646,21 @@ export default function IndexPage() {
                   return;
                 }
                 try {
-                  const omData = await fetchAutenticado(`/api/om/${encodeURIComponent(omNumber)}`);
-                  if (omData && omData.status === 'finalizada') {
-                    setActiveOM(omData.omNumber);
-                    setActiveOMQtdLote(omData.qtdlote || null);
-                    setOmState({
-                      elapsed: omData.elapsed || 0,
-                      isRunning: false,
-                      isPaused: false,
-                      omNumber: null, // null para indicar que está finalizada (não rodando)
-                    });
-                    // Carrega resumo de tempo da OM finalizada
-                    setOmTimeSummary({
-                      startTime: omData.startTime || null,
-                      endTime: omData.endTime || null,
-                      elapsed: omData.elapsed || 0,
-                    });
-                    localStorage.removeItem('omEmAndamento');
-                    showToast(`OM ${omData.omNumber} carregada em modo de consulta.`, 'info');
-                  }
+                  const data = await requestOM(`/api/om/${encodeURIComponent(omNumber)}`);
+                  const snapshot = parseOMSnapshot(data, omNumber);
+                  setActiveOM(snapshot.omNumber);
+                  publishOMSnapshot(snapshot, true);
+                  showToast(`OM ${snapshot.omNumber} carregada com o estado atual do servidor.`, 'info');
+                  await loadData();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao carregar OM finalizada', 'error');
                 }
               }}
               activeOMs={activeOMs}
               onSelectActiveOM={async (omNumber: string | null) => {
                 if (!omNumber) {
+                  if (!canClearOM()) return;
                   setActiveOM(null);
                   setActiveOMQtdLote(null);
                   setOmState({ elapsed: 0, isRunning: false, isPaused: false, omNumber: null });
@@ -644,21 +670,14 @@ export default function IndexPage() {
                   return;
                 }
                 try {
-                  const omData = await fetchAutenticado(`/api/om/${encodeURIComponent(omNumber)}`);
-                  if (omData && omData.status === 'em_andamento') {
-                    setActiveOM(omData.omNumber);
-                    setActiveOMQtdLote(omData.qtdlote || null);
-                    setOmState({
-                      elapsed: omData.elapsed || 0,
-                      isRunning: true,
-                      isPaused: false,
-                      omNumber: omData.omNumber,
-                    });
-                    localStorage.setItem('omEmAndamento', omData.omNumber);
-                    showToast(`OM ${omData.omNumber} retomada! Timer ativo.`, 'success');
-                    await loadData();
-                  }
+                  const data = await requestOM(`/api/om/${encodeURIComponent(omNumber)}`);
+                  const snapshot = parseOMSnapshot(data, omNumber);
+                  setActiveOM(snapshot.omNumber);
+                  publishOMSnapshot(snapshot, true);
+                  showToast(`OM ${snapshot.omNumber} carregada com o estado atual do servidor.`, 'info');
+                  await loadData();
                 } catch (error: any) {
+                  if (error instanceof OMSupersededError) return;
                   showToast(error.message || 'Erro ao retomar OM ativa', 'error');
                 }
               }}
