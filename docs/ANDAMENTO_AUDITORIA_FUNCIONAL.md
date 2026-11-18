@@ -36,8 +36,9 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Atalhos em componentes interativos | UX-01 | Proteção básica incluída em `72f95ce`; manter a regressão. |
 | Estado da OM entre terminais | UX-02 | Concluído em `498fbef`. |
 | Integridade de novos lançamentos | Estado e versão da OM no servidor | Concluído em `b03fcad`. |
-| Confirmações de ações importantes | UX-03 | Concluído nesta etapa, preservando o visual. |
-| Totais, filtros, CSV e estados de reparo | UX-04, UX-05, UX-11 | Pendente. |
+| Confirmações de ações importantes | UX-03 | Concluído em `fb28665`. |
+| Totais, filtros e CSV do controle de falhas | UX-04 e UX-11 | Concluído em `codex/corrigir-relatorio-falhas`. |
+| Estados e contagens do relatório de reparo | UX-05 | Próxima etapa. |
 | Definições de indicadores de qualidade | UX-06 | Pendente de definição com o processo de Qualidade. |
 | Administração, datas, entregas e filas SMT | UX-07 a UX-10 | Pendente. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
@@ -266,4 +267,43 @@ registro oficial, definir com Qualidade retenção e substituição por cancelam
 com motivo e trilha de auditoria antes da adoção definitiva. Não foi introduzida
 uma política de retenção ou reabertura de OM implicitamente.
 
-Próxima etapa: UX-04 e UX-11, totais, filtros e CSV do relatório de controle de falhas.
+## UX-04 e UX-11 — relatório de controle de falhas
+
+O relatório usava a página de 12 registros para parte dos filtros, gráficos,
+indicadores e exportação. O CSV também listava 11 cabeçalhos para 10 valores por
+linha porque faltava a quantidade do lote. A correção está na branch
+`codex/corrigir-relatorio-falhas`, criada a partir de `fb28665`.
+
+- Uma consulta filtrada no servidor fornece o conjunto completo para tabela,
+  indicadores, gráficos e CSV. A tabela pagina localmente e volta ao início
+  quando os filtros mudam. OM, defeito e status têm opções de todo o período,
+  respeitando a visibilidade dos dados de demonstração.
+- Datas seguem `America/Sao_Paulo`. O período personalizado inclui o dia final
+  inteiro. Datas legadas com fuso preservam o instante e as sem fuso são tratadas
+  como horários locais. No período global, datas inválidas ficam identificadas
+  no relatório e o texto original sai no CSV. Filtros de data as excluem.
+- A consulta tem limite de 10.000 registros por resposta. Acima disso, mantém
+  as opções disponíveis e orienta a restringir a OM ou o período. Caso o próprio
+  catálogo de opções ultrapasse o limite, é preciso reduzir o período.
+- Carregamento, erro e resultado confirmado têm estados distintos. A exportação
+  usa a consulta confirmada dos filtros atuais. Respostas antigas são descartadas.
+- O CSV inclui `Qtd Lote` na posição correta e usa UTF-8 com BOM. Trata aspas e
+  quebras de linha e neutraliza texto com prefixo de fórmula. Referências
+  [RFC 4180](https://datatracker.ietf.org/doc/rfc4180/) e
+  [OWASP CSV Injection](https://owasp.org/www-community/attacks/CSV_Injection).
+- O cartão existente passou a indicar estimativa de qualidade. A definição de
+  aprovação de placas depende do processo de Qualidade e segue em UX-06.
+
+Foram aprovados 113 testes backend, 51 frontend, build e integração isolada.
+O teste com PostgreSQL 18.7 verificou datas, filtros e recuperação após o limite.
+No navegador, a OM original manteve o total de 251, com 11 linhas na última
+página. O CSV baixado tinha 251 registros, todos com 11 colunas e quantidade de
+lote na posição prevista. O filtro por defeito retornou 17 e reiniciou a
+paginação. Um intervalo invertido bloqueou o CSV até a correção das datas.
+
+A nova rota de consulta é somente leitura. A rota paginada anterior continua
+disponível para seus consumidores. A validação de datas usa funções disponíveis
+no PostgreSQL 15, versão indicada na documentação do sistema. O ensaio nativo
+executado nesta etapa usou a versão 18.7.
+
+Próxima etapa da auditoria: estados e contagens do relatório de reparo, UX-05.

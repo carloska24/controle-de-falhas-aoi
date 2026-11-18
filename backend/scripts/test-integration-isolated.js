@@ -109,6 +109,31 @@ async function main() {
     assert.equal((await prisma.registros.findUnique({ where: { id: 'LEGACY-RECORD' } })).om, 'LEGACY-UNLINKED');
     console.log('PASS: 251 registros completos, rollback SQL e histórico legado preservado');
 
+    const report = (await api('GET', '/api/relatorio-falhas/snapshot?om=OM-RECORDS')).data;
+    assert.equal(report.meta.complete, true); assert.equal(report.meta.total, 251);
+    assert.equal(report.data.length, 251); assert.ok(report.options.oms.includes('LEGACY-UNLINKED'));
+    await api('GET', '/api/relatorio-falhas/snapshot?periodo=custom&dataIni=2026-02-30', undefined, 400);
+    await api('GET', '/api/relatorio-falhas/snapshot?periodo=custom&dataIni=2026-11-19&dataFim=2026-11-18', undefined, 400);
+    const reportDates = ['2026-11-18T02:59:59.999Z', '2026-11-18T03:00:00Z', '2026-11-19T02:59:59.999Z',
+      '2026-11-18T23:59:59.999-03:00', '2026-11-19T03:00:00Z', '2026-02-30T12:00:00Z', '2026-11-18T12:00:00'];
+    await prisma.registros.createMany({ data: [...reportDates.map((createdat, i) => ({ id: 'REPORT-' + i,
+      om: 'REPORT-BOUNDARY', qtdlote: 50, designador: 'R' + i, tipodefeito: 'Ausente', prioridade: 'Média',
+      operador: 'Ana %', status: 'pendente', createdat })), { id: 'REPORT-DEMO', om: 'DEMO-REPORT-BOUNDARY', createdat: reportDates[1] }] });
+    const dayQuery = '/api/relatorio-falhas/snapshot?periodo=custom&dataIni=2026-11-18&dataFim=2026-11-18';
+    const filteredReport = (await api('GET', dayQuery + '&om=REPORT-BOUNDARY&defeito=Ausente&prioridade=media&operador=Ana%20%25&status=pendente')).data;
+    assert.equal(filteredReport.meta.total, 4);
+    assert.deepEqual(filteredReport.data.map(row => row.id).sort(), ['REPORT-1', 'REPORT-2', 'REPORT-3', 'REPORT-6']);
+    assert.equal(filteredReport.data.find(row => row.id === 'REPORT-6').createdat, '2026-11-18T15:00:00.000Z');
+    assert.ok(!filteredReport.options.oms.some(om => om.startsWith('DEMO-')));
+    const unboundedReport = (await api('GET', '/api/relatorio-falhas/snapshot?om=REPORT-BOUNDARY')).data;
+    assert.equal(unboundedReport.meta.total, 7); assert.equal(unboundedReport.meta.invalidDates, 1);
+    assert.equal(unboundedReport.data.find(row => row.id === 'REPORT-5').createdat, '');
+    assert.equal((await api('GET', dayQuery + '&om=DEMO-REPORT-BOUNDARY')).data.meta.total, 0);
+    assert.equal((await api('GET', dayQuery + '&om=DEMO-REPORT-BOUNDARY&demo=true')).data.meta.total, 1);
+    assert.equal((await api('GET', '/api/relatorio-falhas/snapshot?om=REPORT-BOUNDARY&operador=INEXISTENTE')).data.meta.total, 0);
+    await prisma.registros.deleteMany({ where: { id: { startsWith: 'REPORT-' } } });
+    console.log('PASS: relatório completo de 251, filtros combinados, limites de dia em Brasília, datas inválidas e isolamento DEMO');
+
     await api('PUT', `/api/registros/${rows[0].id}`, { obs: 'nova observação', version: 0 });
     await api('PUT', `/api/registros/${rows[0].id}`, { obs: 'versão antiga', version: 0 }, 409);
     await api('PUT', '/api/registros/status/reparado', { ids: [rows[0].id, rows[1].id],

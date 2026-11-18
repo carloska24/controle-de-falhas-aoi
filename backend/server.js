@@ -97,6 +97,12 @@ app.get(
   omController.getOMTime
 );
 app.get(
+  '/api/relatorio-falhas/snapshot',
+  authenticateToken,
+  hasRole('admin', 'qualidade'),
+  require('./src/controllers/falhasReportController').getSnapshot
+);
+app.get(
   '/api/relatorio-falhas',
   authenticateToken,
   hasRole('admin', 'qualidade'),

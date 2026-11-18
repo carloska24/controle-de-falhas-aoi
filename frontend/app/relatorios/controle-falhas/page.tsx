@@ -35,6 +35,9 @@ import Badge from '@/components/ui/Badge';
 import Pagination from '@/components/ui/Pagination';
 import OMTimeSummary from '@/components/index/OMTimeSummary';
 import DemoBadge from '@/components/ui/DemoBadge';
+import { useFalhasReport } from '@/hooks/useFalhasReport';
+import { reportQuery, reportPage, serializeFalhasCSV, reportDay } from '@/lib/falhasReport';
+import type { Registro } from '@/types';
 
 ChartJS.register(
   CategoryScale,
@@ -69,38 +72,17 @@ const DEFEITOS_POSICIONAMENTO = [
   'Polaridade Incorreta',
   'Levantado',
 ];
-const DEFEITOS_VALIDOS = new Set([...DEFEITOS_SOLDAGEM, ...DEFEITOS_POSICIONAMENTO]);
 
-interface Falha {
-  pn: string;
-  serial: string;
-  designador: string;
-  tipodefeito: string;
-  descricao: string;
-  createdat: string;
-  operador: string;
-  status: string;
-  obs?: string;
-  prioridade?: string;
-}
-
-interface GrupoOM {
-  om: string;
-  qtdlote: number;
-  falhas: Falha[];
-}
+interface GrupoOM { om: string; qtdlote: number; falhas: Registro[]; }
 
 export default function ControleFalhasPage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isDataLoading, setIsDataLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Data
-  const [allData, setAllData] = useState<GrupoOM[]>([]);
-  const [filteredData, setFilteredData] = useState<GrupoOM[]>([]);
 
   // Filters
   const [dateRange, setDateRange] = useState('all');
@@ -115,8 +97,6 @@ export default function ControleFalhasPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12; // Fixado em 12 itens por página
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
   // OM Finalizada Data
   const [omTimeData, setOmTimeData] = useState<{
@@ -161,148 +141,40 @@ export default function ControleFalhasPage() {
     }
   };
 
-  const loadData = useCallback(async () => {
-    setIsDataLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (omFilter !== 'all') params.append('om', omFilter);
-      if (statusFilter !== 'all') params.append('status', statusFilter);
-      if (dateRange === 'custom' && startDate) {
-        params.append('dataIni', startDate + 'T00:00:00');
-      }
-      if (dateRange === 'custom' && endDate) {
-        params.append('dataFim', endDate + 'T23:59:59');
-      }
-      params.append('page', currentPage.toString());
-      params.append('limit', itemsPerPage.toString());
-
-      const data = await fetchAutenticado(`/api/relatorio-falhas?${params.toString()}`);
-      let registrosList = Array.isArray(data?.data) ? data.data : [];
-
-      // Verificar modo demo novamente para garantir que está atualizado
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentDemoMode = urlParams.get('demo') === 'true';
-
-      // Filtrar DEMO baseado no modo demo
-      if (currentDemoMode && user?.role === 'admin') {
-        // Modo demo: mostrar todos os dados incluindo DEMO
-        setAllData(registrosList);
-      } else {
-        // Modo normal: filtrar dados DEMO
-        const filtered = registrosList.filter((g: GrupoOM) => !g.om?.startsWith('DEMO-'));
-        setAllData(filtered);
-      }
-      setTotalItems(data?.meta?.total || 0);
-      setTotalPages(data?.meta?.totalPages || 1);
-      setIsDataLoading(false);
-    } catch (error: any) {
-      console.error('Erro ao carregar relatório:', error);
-      showToast(error.message || 'Erro ao carregar relatório', 'error');
-      setIsDataLoading(false);
+  const query = reportQuery({ dateRange, startDate, endDate, om: omFilter,
+    defeito: defeitoFilter, prioridade: prioridadeFilter, status: statusFilter,
+    operador: operadorFilter, demo: isDemoMode });
+  const report = useFalhasReport(query, !!user);
+  const isDataLoading = report.loading;
+  const loadData = report.refresh;
+  const allFalhas = report.snapshot?.data || [];
+  const pagination = reportPage(allFalhas, currentPage, itemsPerPage);
+  const totalItems = report.snapshot?.meta.total || 0;
+  const totalPages = pagination.totalPages;
+  const filteredData = useMemo(() => {
+    const groups = new Map<string, GrupoOM>();
+    for (const row of allFalhas) {
+      if (!groups.has(row.om)) groups.set(row.om, { om: row.om, qtdlote: row.qtdlote || 0, falhas: [] });
+      groups.get(row.om)!.falhas.push(row);
     }
-  }, [
-    omFilter,
-    statusFilter,
-    dateRange,
-    startDate,
-    endDate,
-    currentPage,
-    itemsPerPage,
-    user?.role,
-    showToast,
-  ]);
+    return [...groups.values()];
+  }, [report.snapshot]);
+  useEffect(() => { setCurrentPage(1); }, [query]);
 
+  // Respostas de uma seleção anterior não podem substituir o resumo da OM atual.
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user, loadData]);
-
-  // Apply client-side filters
-  useEffect(() => {
-    let filtered = [...allData];
-
-    // Filtro por período (já aplicado no backend, mas verificamos novamente)
-    if (dateRange !== 'all' && dateRange !== 'custom') {
-      const dias = parseInt(dateRange, 10);
-      if (!isNaN(dias)) {
-        const dataLimite = new Date();
-        dataLimite.setDate(dataLimite.getDate() - dias);
-        filtered = filtered
-          .map(grupo => ({
-            ...grupo,
-            falhas: grupo.falhas.filter(f => new Date(f.createdat) >= dataLimite),
-          }))
-          .filter(grupo => grupo.falhas.length > 0);
-      }
-    }
-
-    // Filtro por defeito
-    if (defeitoFilter !== 'all') {
-      filtered = filtered
-        .map(grupo => ({
-          ...grupo,
-          falhas: grupo.falhas.filter(f => f.tipodefeito === defeitoFilter),
-        }))
-        .filter(grupo => grupo.falhas.length > 0);
-    }
-
-    // Filtro por prioridade
-    if (prioridadeFilter !== 'all') {
-      filtered = filtered
-        .map(grupo => ({
-          ...grupo,
-          falhas: grupo.falhas.filter(f => f.prioridade === prioridadeFilter),
-        }))
-        .filter(grupo => grupo.falhas.length > 0);
-    }
-
-    // Filtro por operador
-    if (operadorFilter) {
-      filtered = filtered
-        .map(grupo => ({
-          ...grupo,
-          falhas: grupo.falhas.filter(f =>
-            f.operador?.toLowerCase().includes(operadorFilter.toLowerCase())
-          ),
-        }))
-        .filter(grupo => grupo.falhas.length > 0);
-    }
-
-    setFilteredData(filtered);
-  }, [allData, dateRange, defeitoFilter, prioridadeFilter, operadorFilter]);
-
-  // Buscar tempo da OM finalizada quando filtrar por OM
-  useEffect(() => {
-    const fetchOMTime = async () => {
-      if (omFilter && omFilter !== 'all') {
-        try {
-          const data = await fetchAutenticado(`/api/om/${omFilter}`);
-          if (data && data.status === 'finalizada' && data.elapsed !== undefined) {
-            setOmTimeData({
-              elapsed: data.elapsed,
-              startTime: data.startTime || null,
-              endTime: data.endTime || null,
-            });
-          } else {
-            setOmTimeData(null);
-          }
-        } catch (error) {
-          // OM não encontrada ou não finalizada
-          setOmTimeData(null);
+    setOmTimeData(null);
+    if (omFilter === 'all') return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    void fetchAutenticado('/api/om/' + encodeURIComponent(omFilter), { signal: controller.signal })
+      .then(data => {
+        if (!controller.signal.aborted && data?.omNumber === omFilter && data.status === 'finalizada') {
+          setOmTimeData({ elapsed: data.elapsed, startTime: data.startTime, endTime: data.endTime });
         }
-      } else {
-        setOmTimeData(null);
-      }
-    };
-
-    fetchOMTime();
+      }).catch(() => {}).finally(() => clearTimeout(timer));
+    return () => { controller.abort(); clearTimeout(timer); };
   }, [omFilter]);
-
-  // Flat list of all falhas for calculations
-  const allFalhas = useMemo(() => {
-    return filteredData.flatMap(grupo => grupo.falhas);
-  }, [filteredData]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -310,11 +182,10 @@ export default function ControleFalhasPage() {
     const omsAfetadas = new Set(filteredData.map(g => g.om)).size;
 
     const contagemDefeitos = allFalhas.reduce((acc, f) => {
-      const tipo = f.tipodefeito || '';
-      if (!DEFEITOS_VALIDOS.has(tipo)) return acc;
+      const tipo = f.tipodefeito?.trim() || 'Não informado';
       acc[tipo] = (acc[tipo] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, Object.create(null) as Record<string, number>);
 
     const principalDefeito = Object.entries(contagemDefeitos).sort((a, b) => b[1] - a[1])[0];
     const totalInspecionadas = filteredData.reduce((sum, g) => sum + (g.qtdlote || 0), 0);
@@ -333,21 +204,10 @@ export default function ControleFalhasPage() {
     };
   }, [allFalhas, filteredData]);
 
-  // Unique OMs, Defeitos, Status
-  const uniqueOms = useMemo(() => {
-    const oms = Array.from(new Set(allData.map(g => g.om)));
-    return ['all', ...oms];
-  }, [allData]);
-
-  const uniqueDefeitos = useMemo(() => {
-    const defeitos = Array.from(new Set(allFalhas.map(f => f.tipodefeito).filter(Boolean)));
-    return ['all', ...defeitos];
-  }, [allFalhas]);
-
-  const uniqueStatus = useMemo(() => {
-    const statuses = Array.from(new Set(allFalhas.map(f => f.status).filter(Boolean)));
-    return ['all', ...statuses];
-  }, [allFalhas]);
+  // Opções independentes da página e dos filtros da própria opção.
+  const uniqueOms = ['all', ...new Set([...(report.options?.oms || []), ...(omFilter === 'all' ? [] : [omFilter])])];
+  const uniqueDefeitos = ['all', ...new Set([...(report.options?.defeitos || []), ...(defeitoFilter === 'all' ? [] : [defeitoFilter])])];
+  const uniqueStatus = ['all', ...new Set([...(report.options?.statuses || []), ...(statusFilter === 'all' ? [] : [statusFilter])])];
 
   const handleLogout = async () => {
     try {
@@ -358,47 +218,15 @@ export default function ControleFalhasPage() {
   };
 
   const handleExportCSV = () => {
-    const falhasComOM = filteredData.flatMap(grupo =>
-      grupo.falhas.map(f => ({ ...f, om: grupo.om }))
-    );
-    const csvContent = [
-      [
-        'OM',
-        'Qtd Lote',
-        'PN',
-        'Serial',
-        'Designador',
-        'Tipo Defeito',
-        'Descrição',
-        'Operador',
-        'Status',
-        'Prioridade',
-        'Data',
-      ].join(','),
-      ...falhasComOM.map(f =>
-        [
-          f.om || '',
-          f.pn || '',
-          f.serial || '',
-          f.designador || '',
-          f.tipodefeito || '',
-          f.descricao || '',
-          f.operador || '',
-          f.status || '',
-          f.prioridade || '',
-          f.createdat || '',
-        ]
-          .map(v => `"${v}"`)
-          .join(',')
-      ),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    if (!report.ready) return;
+    const blob = new Blob([serializeFalhasCSV(allFalhas)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `relatorio-falhas-${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = url;
+    link.download = 'relatorio-falhas-' + new Date().toISOString().split('T')[0] + '.csv';
     link.click();
-    showToast('CSV exportado com sucesso!', 'success');
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(allFalhas.length + ' registro(s) exportado(s) em CSV.', 'success');
   };
 
   // Gráfico: Defeitos por Tipo
@@ -439,11 +267,7 @@ export default function ControleFalhasPage() {
   // Gráfico: Tendência Temporal
   const tendenciaData = useMemo(() => {
     const falhasPorDia = allFalhas.reduce((acc, f) => {
-      const dataObj = new Date(f.createdat);
-      const ano = dataObj.getFullYear();
-      const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
-      const dia = String(dataObj.getDate()).padStart(2, '0');
-      const data = `${ano}-${mes}-${dia}`;
+      const data = reportDay(f.createdat);
       acc[data] = (acc[data] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -570,7 +394,7 @@ export default function ControleFalhasPage() {
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
               Total de Falhas
             </div>
-            <p className="text-4xl font-black text-red-400">{kpis.totalFalhas}</p>
+            <p className="text-4xl font-black text-red-400">{report.ready ? kpis.totalFalhas : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -582,7 +406,7 @@ export default function ControleFalhasPage() {
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
               OMs Afetadas
             </div>
-            <p className="text-4xl font-black text-blue-400">{kpis.omsAfetadas}</p>
+            <p className="text-4xl font-black text-blue-400">{report.ready ? kpis.omsAfetadas : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -594,7 +418,7 @@ export default function ControleFalhasPage() {
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
               Defeito Mais Comum
             </div>
-            <p className="text-lg font-bold text-purple-400 truncate">{kpis.principalDefeito}</p>
+            <p className="text-lg font-bold text-purple-400 truncate">{report.ready ? kpis.principalDefeito : '—'}</p>
           </motion.div>
 
           <motion.div
@@ -604,9 +428,9 @@ export default function ControleFalhasPage() {
             className="bg-gradient-to-br from-slate-800 via-green-900/20 to-slate-900 border border-green-500/20 rounded-xl p-6"
           >
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              Taxa de Qualidade
+              Estimativa de Qualidade
             </div>
-            <p className="text-4xl font-black text-green-400">{kpis.taxaQualidade}%</p>
+            <p className="text-4xl font-black text-green-400" title="Cálculo legado por ocorrências/lote; não mede aprovação de placas. Definição a validar com Qualidade.">{report.ready && kpis.totalInspecionadas > 0 && kpis.totalFalhas <= kpis.totalInspecionadas ? kpis.taxaQualidade + '%' : '—'}</p>
           </motion.div>
         </div>
 
@@ -651,24 +475,26 @@ export default function ControleFalhasPage() {
             {dateRange === 'custom' && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  <label htmlFor="falhas-data-inicio" className="block text-sm font-semibold text-slate-300 mb-2">
                     Data Início
                   </label>
                   <input
+                    id="falhas-data-inicio"
                     type="date"
                     value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
+                    onInput={e => setStartDate(e.currentTarget.value)}
                     className="w-full bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  <label htmlFor="falhas-data-fim" className="block text-sm font-semibold text-slate-300 mb-2">
                     Data Fim
                   </label>
                   <input
+                    id="falhas-data-fim"
                     type="date"
                     value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
+                    onInput={e => setEndDate(e.currentTarget.value)}
                     className="w-full bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
                   />
                 </div>
@@ -763,7 +589,7 @@ export default function ControleFalhasPage() {
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar
             </Button>
-            <Button onClick={handleExportCSV} variant="success">
+            <Button onClick={handleExportCSV} variant="success" disabled={!report.ready}>
               <Download className="w-4 h-4 mr-2" />
               Exportar CSV
             </Button>
@@ -774,6 +600,8 @@ export default function ControleFalhasPage() {
           </div>
         </motion.div>
 
+        {report.error && <p role="alert" className="mb-4 text-sm text-red-200">{report.error} Use Atualizar para tentar novamente.</p>}
+        {report.snapshot && <p role="status" className="mb-4 text-xs text-slate-400">{totalItems} registro(s) na consulta confirmada · horário de Brasília · {new Date(report.snapshot.meta.generatedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}{report.snapshot.meta.invalidDates > 0 ? ' · ' + report.snapshot.meta.invalidDates + ' registro(s) com data inválida' : ''}</p>}
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <motion.div
@@ -809,7 +637,7 @@ export default function ControleFalhasPage() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold">Registros de Falhas</h3>
             <div className="text-sm text-slate-400">
-              Mostrando {allFalhas.length} de {totalItems} registros
+              {report.ready ? 'Mostrando ' + pagination.records.length + ' de ' + totalItems + ' registros' : isDataLoading ? 'Consultando relatório…' : 'Consulta não confirmada'}
             </div>
           </div>
 
@@ -852,9 +680,7 @@ export default function ControleFalhasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData
-                    .flatMap(grupo => grupo.falhas.map(falha => ({ ...falha, om: grupo.om })))
-                    .map((falha, idx) => {
+                  {pagination.records.map((falha, idx) => {
                       // Lógica de cores para Defeitos (similar ao ReparoPage)
                       const tipoDefeito = falha.tipodefeito || '';
                       const isSoldagem = DEFEITOS_SOLDAGEM.includes(tipoDefeito);
@@ -957,13 +783,14 @@ export default function ControleFalhasPage() {
                             )}
                           </td>
                           <td className="py-3 px-4 text-xs text-slate-500 font-mono">
-                            {new Date(falha.createdat).toLocaleString('pt-BR', {
+                            {falha.createdat ? new Date(falha.createdat).toLocaleString('pt-BR', {
                               day: '2-digit',
                               month: '2-digit',
                               year: '2-digit',
                               hour: '2-digit',
                               minute: '2-digit',
-                            })}
+                              timeZone: 'America/Sao_Paulo',
+                            }) : 'Data inválida'}
                           </td>
                         </tr>
                       );
@@ -1036,7 +863,7 @@ export default function ControleFalhasPage() {
 
           {/* Paginação */}
           <Pagination
-            currentPage={currentPage}
+            currentPage={pagination.currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             totalItems={totalItems}
