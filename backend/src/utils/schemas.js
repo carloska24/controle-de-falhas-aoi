@@ -98,19 +98,24 @@ const requisicoesCreateSchema = z.object({ registroIds: z.array(z.string().min(1
     { message: 'IDs de registros devem ser únicos.' });
 const requisicaoStatusSchema = z.object({
   status: z.enum(['pendente', 'parcialmente_entregue', 'entregue']),
+  version: registroVersion,
 });
+const requisicaoDeleteSchema = z.object({
+  version: registroVersion,
+  motivo: z.string().trim().min(5).max(500),
+}).strict();
 const requisicaoItensSchema = z.object({
+  version: registroVersion,
+  motivo: z.string().trim().max(500).optional(),
   items: z
     .array(
       z.object({
         pn: z.string().min(1),
-        descricao: z.string().optional().nullable(),
-        quantidade_requisitada: z.coerce.number().int().min(0),
-        quantidade_entregue: z.coerce.number().int().min(0),
+        quantidade_entregue: z.number().int().min(0).max(2147483647),
       })
     )
     .min(1).max(200),
-});
+}).strict();
 
 function validate(schema, source = 'body') {
   return (req, res, next) => {
@@ -147,4 +152,5 @@ module.exports = {
   requisicoesCreateSchema,
   requisicaoStatusSchema,
   requisicaoItensSchema,
+  requisicaoDeleteSchema,
 };

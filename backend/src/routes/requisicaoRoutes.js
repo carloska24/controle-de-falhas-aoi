@@ -5,9 +5,14 @@ const {
   requisicoesCreateSchema,
   requisicaoStatusSchema,
   requisicaoItensSchema,
+  requisicaoDeleteSchema,
 } = require('../utils/schemas');
 const { authenticateToken, hasRole } = require('../middleware/auth');
 const requisicaoController = require('../controllers/requisicaoController');
+const { userIdSchema } = require('../utils/schemas');
+
+router.get('/:id/entregas', authenticateToken, hasRole('admin', 'operator', 'almoxarifado'),
+  validate(userIdSchema, 'params'), requisicaoController.deliveryHistory);
 
 router.get(
   '/',
@@ -40,6 +45,8 @@ router.delete(
   '/:id',
   authenticateToken,
   hasRole('admin', 'almoxarifado'),
+  validate(userIdSchema, 'params'),
+  validate(requisicaoDeleteSchema),
   requisicaoController.deleteRequisicao
 );
 

@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const prisma = require('../config/prisma');
 const { JWT_SECRET, getToken } = require('../middleware/auth');
 const { SESSION_DURATION_MS, getAuthCookieOptions } = require('../config/authCookie');
+const { clearDemoData } = require('../services/demoCleanupService');
 
 async function login(req, res) {
   const { username, password } = req.body;
@@ -30,12 +31,19 @@ async function logout(req, res) {
   }
   if (Number.isInteger(payload?.id) && Number.isInteger(payload?.sessionVersion)) {
     try {
-      await prisma.users.updateMany({
-        where: { id: payload.id, session_version: payload.sessionVersion },
-        data: { session_version: { increment: 1 } },
-      });
+      await prisma.$transaction(async tx => {
+        const revoked = await tx.users.updateMany({
+          where: { id: payload.id, session_version: payload.sessionVersion },
+          data: { session_version: { increment: 1 } },
+        });
+        // Replayed/expired sessions cannot remove another session's demonstrations.
+        if (revoked.count !== 1 || process.env.NODE_ENV !== 'development'
+          || process.env.DEBUG_ROUTES_ENABLED !== 'true') return;
+        const user = await tx.users.findUnique({ where: { id: payload.id }, select: { role: true } });
+        if (user?.role === 'admin') await clearDemoData(tx);
+      }, { isolationLevel: 'Serializable', timeout: 15000 });
     } catch {
-      return res.status(503).json({ error: 'Não foi possível encerrar a sessão. Tente novamente.' });
+      return res.status(503).json({ error: 'Não foi possível concluir a saída e a limpeza dos testes. A sessão foi mantida. Tente novamente.' });
     }
   }
   res.clearCookie('aoi_token', getAuthCookieOptions());

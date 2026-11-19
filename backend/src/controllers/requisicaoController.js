@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 const { getPagination } = require('../utils/pagination');
+const { confirmDelivery } = require('../services/deliveryService');
+const { deleteRequest } = require('../services/requestDeletionService');
 
 function reject(status, message, details) {
   throw Object.assign(new Error(message), { status, details });
@@ -113,37 +115,41 @@ async function createRequisicao(req, res) {
 }
 
 async function updateStatus(req, res) {
-  const { id } = req.params;
-  const { status } = req.body;
   try {
-    await prisma.requisicoes.update({ where: { id: Number(id) }, data: { status } });
-    res.json({ message: `Status atualizado para ${status}` });
+    res.json(await confirmDelivery(Number(req.params.id), req.body, req.user, true));
   } catch (error) {
-    res.status(error.code === 'P2025' ? 404 : 500).json({ error: error.code === 'P2025' ? 'Requisição não encontrada.' : 'Falha ao atualizar status.' });
+    res.status(error.status || 503).json({ error: error.status ? error.message : 'Não foi possível confirmar a alteração. Atualize a requisição para conferir o resultado.' });
   }
 }
 
 async function updateItems(req, res) {
-  const { id } = req.params;
-  const { items } = req.body;
   try {
-    let status = 'pendente';
-    if (items.every(item => item.quantidade_entregue >= item.quantidade_requisitada)) status = 'entregue';
-    else if (items.some(item => item.quantidade_entregue > 0)) status = 'parcialmente_entregue';
-    await prisma.requisicoes.update({ where: { id: Number(id) }, data: { items: JSON.stringify(items), status } });
-    res.json({ message: 'Itens atualizados com sucesso.' });
+    res.json(await confirmDelivery(Number(req.params.id), req.body, req.user));
   } catch (error) {
-    res.status(error.code === 'P2025' ? 404 : 500).json({ error: error.code === 'P2025' ? 'Requisição não encontrada.' : 'Falha ao atualizar itens.' });
+    res.status(error.status || 503).json({ error: error.status ? error.message : 'Não foi possível confirmar a entrega. Atualize a requisição para conferir o resultado.' });
   }
 }
 
 async function deleteRequisicao(req, res) {
   try {
-    await prisma.requisicoes.delete({ where: { id: Number(req.params.id) } });
+    await deleteRequest(Number(req.params.id), req.body, req.user);
     res.status(204).send();
   } catch (error) {
-    res.status(error.code === 'P2025' ? 404 : 500).json({ error: error.code === 'P2025' ? 'Requisição não encontrada.' : 'Falha ao excluir requisição.' });
+    res.status(error.status || 503).json({ error: error.status ? error.message : 'Não foi possível confirmar a exclusão. Atualize a lista antes de tentar novamente.' });
   }
 }
 
-module.exports = { listRequisicoes, createRequisicao, updateStatus, updateItems, deleteRequisicao };
+async function deliveryHistory(req, res) {
+  try {
+    const data = await prisma.eventos_entrega.findMany({
+      where: { requisicaoId: Number(req.params.id) },
+      orderBy: { version: 'desc' }, take: 50,
+      select: { version: true, actorName: true, occurredAt: true, motivo: true, antes: true, depois: true },
+    });
+    res.json({ data });
+  } catch {
+    res.status(503).json({ error: 'Não foi possível consultar o histórico de entregas.' });
+  }
+}
+
+module.exports = { listRequisicoes, createRequisicao, updateStatus, updateItems, deleteRequisicao, deliveryHistory };

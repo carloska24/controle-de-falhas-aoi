@@ -116,7 +116,7 @@ async function deleteRegistro(req, res) {
     });
     res.status(204).send();
   } catch (err) {
-    if (err.code === 'P2003') return res.status(409).json({ error: 'Registro vinculado a uma requisição. Preserve o histórico do material solicitado.' });
+    if (err.code === 'P2003') return res.status(409).json({ error: 'Registro vinculado a uma requisição. Exclua primeiro a requisição no Almoxarifado; se houver entregas ou histórico, solicite ao administrador.' });
     if (err.code === 'P2025') {
       return res.status(409).json({ error: 'Registro alterado ou removido. Atualize a lista antes de revisar a exclusão novamente.' });
     }
@@ -140,7 +140,7 @@ async function deleteRegistrosBatch(req, res) {
     });
     res.status(204).send();
   } catch (err) {
-    if (err.code === 'P2003') return res.status(409).json({ error: 'O lote contém registros vinculados a requisições.' });
+    if (err.code === 'P2003') return res.status(409).json({ error: 'O lote contém registros vinculados a requisições. Exclua primeiro as requisições no Almoxarifado; se houver entregas ou histórico, solicite ao administrador.' });
     if (err.status === 409) return res.status(409).json({ error: err.message });
     console.error('Erro ao excluir registros em lote:', err.code || 'unexpected_error');
     res.status(500).json({ error: 'Não foi possível confirmar a exclusão. Atualize a lista antes de tentar novamente.' });

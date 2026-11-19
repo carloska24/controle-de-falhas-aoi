@@ -816,9 +816,10 @@ export default function ProTable({
                       </div>
                     </td>
                     <td className="p-3">
-                      {/* OM - Fonte monoespaçada com destaque maior */}
+                      {/* O número completo continua disponível ao passar o mouse. */}
                       <span
-                        className={`font-mono text-sm font-bold tracking-wide whitespace-nowrap ${
+                        title={registro.om}
+                        className={`block max-w-[110px] truncate font-mono text-sm font-bold tracking-wide whitespace-nowrap ${
                           selectedIds.has(registro.id) ? 'text-cyan-300' : 'text-white'
                         }`}
                       >

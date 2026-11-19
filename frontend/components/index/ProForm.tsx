@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Play, Plus, Save, Eraser, Pause, Flag, Check } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import DownwardSelect from '@/components/ui/DownwardSelect';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { OM, Registro } from '@/types/index';
@@ -522,38 +523,19 @@ export default function ProForm({
         </div>
 
         <div className="col-span-3">
-          <label className="text-xs font-extrabold tracking-wide text-[#9fb0cf] mb-1.5 block">
+          <label htmlFor="tipodefeito" className="text-xs font-extrabold tracking-wide text-[#9fb0cf] mb-1.5 block">
             Tipo de Defeito <span className="text-red-500">*</span>
           </label>
-          <Select
+          <DownwardSelect
             id="tipodefeito"
+            label="Tipo de Defeito"
             value={formData.tipodefeito}
-            onChange={e => setFormData({ ...formData, tipodefeito: e.target.value })}
-            className="!bg-[#0f1a2b] border-[#2a3d5c] text-[#eaf0ff]"
-          >
-            <option value="">— Selecione —</option>
-            <optgroup label="Falhas Relacionadas à Soldagem">
-              <option value="Curto">Curto</option>
-              <option value="Solda Fria">Solda Fria</option>
-              <option value="Excesso de Solda">Excesso de Solda</option>
-              <option value="Insuficiência de Solda">Insuficiência de Solda</option>
-              <option value="Tombstone">Tombstone</option>
-              <option value="Bilboard">Bilboard</option>
-              <option value="Solder Ball">Solder Ball</option>
-              <option value="Terminal Levantado">Terminal Levantado</option>
-            </optgroup>
-            <optgroup label="Falhas de Posicionamento">
-              <option value="Ausente">Ausente</option>
-              <option value="Danificado">Danificado</option>
-              <option value="Deslocado">Deslocado</option>
-              <option value="Incorreto">Incorreto</option>
-              <option value="Possível Incorreto">Possível Incorreto</option>
-              <option value="Valor Incorreto">Valor Incorreto</option>
-              <option value="Invertido">Invertido</option>
-              <option value="Polaridade Incorreta">Polaridade Incorreta</option>
-              <option value="Levantado">Levantado</option>
-            </optgroup>
-          </Select>
+            onValueChange={value => setFormData(current => ({ ...current, tipodefeito: value }))}
+            groups={[
+              { label: 'Falhas Relacionadas à Soldagem', options: ['Curto', 'Solda Fria', 'Excesso de Solda', 'Insuficiência de Solda', 'Tombstone', 'Bilboard', 'Solder Ball', 'Terminal Levantado'] },
+              { label: 'Falhas de Posicionamento', options: ['Ausente', 'Danificado', 'Deslocado', 'Incorreto', 'Possível Incorreto', 'Valor Incorreto', 'Invertido', 'Polaridade Incorreta', 'Levantado'] },
+            ]}
+          />
         </div>
 
         <div className="col-span-2">

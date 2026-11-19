@@ -49,6 +49,7 @@ export interface RequisicaoItem {
 
 export interface Requisicao {
   id: number;
+  version: number;
   om: string;
   items: RequisicaoItem[] | string; // Pode vir como JSON string do backend
   status: 'pendente' | 'parcialmente_entregue' | 'entregue';

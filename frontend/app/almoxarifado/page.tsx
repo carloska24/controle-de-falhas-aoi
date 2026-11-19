@@ -27,10 +27,17 @@ import { Requisicao } from '@/types/index';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Dialog from '@/components/ui/Dialog';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import DemoBadge from '@/components/ui/DemoBadge';
 import { Trash2 } from 'lucide-react';
 import { filterWarehouseRequests, validWarehouseDay } from '@/lib/warehouseFilters';
+
+interface DeliveryReview {
+  id: number;
+  om: string;
+  version: number;
+  status: string;
+  items: { pn: string; requested: number; before: number; quantidade_entregue: number }[];
+}
 
 export default function AlmoxarifadoPage() {
   const router = useRouter();
@@ -49,7 +56,6 @@ export default function AlmoxarifadoPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [draggingReqId, setDraggingReqId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
-  const [updatingReqIds, setUpdatingReqIds] = useState<Set<number>>(new Set());
 
   // Filters
   const [omFilter, setOmFilter] = useState('all');
@@ -62,7 +68,29 @@ export default function AlmoxarifadoPage() {
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [deliveryReview, setDeliveryReview] = useState<DeliveryReview | null>(null);
+  const [deliveryReason, setDeliveryReason] = useState('');
+  const [reasonError, setReasonError] = useState('');
+  const [deliveryError, setDeliveryError] = useState('');
+  const [savingDelivery, setSavingDelivery] = useState(false);
+  const deliveryPending = useRef(false);
   const [selectedRequisicao, setSelectedRequisicao] = useState<Requisicao | null>(null);
+  const [deliveryHistory, setDeliveryHistory] = useState<{
+    version: number; actorName: string; occurredAt: string; motivo: string | null;
+    antes: { items: { pn: string; quantidade_entregue: number }[] };
+    depois: { items: { pn: string; quantidade_entregue: number }[] };
+  }[] | null>(null);
+  const [historyError, setHistoryError] = useState('');
+  useEffect(() => {
+    if (!selectedRequisicao) return;
+    const controller = new AbortController();
+    setDeliveryHistory(null);
+    setHistoryError('');
+    fetchAutenticado(`/api/requisicoes/${selectedRequisicao.id}/entregas`, { signal: controller.signal })
+      .then(result => { if (!controller.signal.aborted) setDeliveryHistory(result.data); })
+      .catch(() => { if (!controller.signal.aborted) setHistoryError('Não foi possível consultar o histórico. Reabra a requisição para tentar novamente.'); });
+    return () => controller.abort();
+  }, [selectedRequisicao?.id]);
   const [editedQuantities, setEditedQuantities] = useState<Record<string, number>>({});
   const [initialEditedQuantities, setInitialEditedQuantities] = useState<Record<string, number>>({});
   const [modalSearch, setModalSearch] = useState('');
@@ -75,6 +103,10 @@ export default function AlmoxarifadoPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [requisicaoToDelete, setRequisicaoToDelete] = useState<Requisicao | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteAttemptFailed, setDeleteAttemptFailed] = useState(false);
+  const deletePending = useRef(false);
 
   // Notifications
   const [hasPending, setHasPending] = useState(false);
@@ -280,10 +312,11 @@ export default function AlmoxarifadoPage() {
   };
 
   const openModal = (req: Requisicao) => {
+    if (deliveryPending.current || deliveryReview) return;
     setSelectedRequisicao(req);
     // Inicializa as quantidades editadas com os valores agrupados por PN
     if (Array.isArray(req.items)) {
-      const initialQuantities: Record<string, number> = {};
+      const initialQuantities: Record<string, number> = Object.create(null);
       const grouped = req.items.reduce((acc: any, item: any) => {
         const pn = item.pn || 'SEM-CODIGO';
         if (!acc[pn]) {
@@ -291,7 +324,7 @@ export default function AlmoxarifadoPage() {
         }
         acc[pn] += item.quantidade_entregue || 0;
         return acc;
-      }, {});
+      }, Object.create(null));
 
       Object.keys(grouped).forEach(pn => {
         initialQuantities[pn] = grouped[pn];
@@ -307,6 +340,7 @@ export default function AlmoxarifadoPage() {
   };
 
   const closeModal = () => {
+    if (deliveryPending.current || deliveryReview) return;
     if (hasUnsavedChanges) {
       const shouldClose = window.confirm(
         'Existem alterações não salvas. Deseja fechar mesmo assim?'
@@ -349,7 +383,7 @@ export default function AlmoxarifadoPage() {
       acc[pn].items_originais.push(item);
 
       return acc;
-    }, {});
+    }, Object.create(null));
 
     return Object.values(grouped);
   }, [selectedRequisicao]);
@@ -399,14 +433,14 @@ export default function AlmoxarifadoPage() {
 
     const progresso = totalItens > 0 ? Math.round(((totalItens - pendentes) / totalItens) * 100) : 0;
     let projectedStatus = 'pendente';
-    if (pendentes === 0) projectedStatus = 'entregue';
+    if (pendentes === 0 && deliveredGroups > 0) projectedStatus = 'entregue';
     else if (deliveredGroups > 0) projectedStatus = 'parcialmente_entregue';
 
     return { totalItens, pendentes, progresso, projectedStatus };
   }, [groupedItems, editedQuantities]);
 
   const handleFillPendingAsDelivered = () => {
-    const next: Record<string, number> = {};
+    const next: Record<string, number> = Object.create(null);
     groupedItems.forEach((item: any) => {
       next[item.pn] = item.quantidade_requisitada;
     });
@@ -435,99 +469,11 @@ export default function AlmoxarifadoPage() {
     return map[status] || status;
   };
 
-  const updateRequisicaoStatus = async (
-    id: number,
-    nextStatus: string,
-    options?: { silentSuccess?: boolean }
-  ) => {
-    const current = allData.find(r => r.id === id);
-    if (!current || current.status === nextStatus) return false;
-    const previousStatus = current.status;
-    const previousItems = Array.isArray(current.items) ? current.items : [];
-    const shouldSyncItems = previousItems.length > 0 && ['pendente', 'entregue'].includes(nextStatus);
-    const syncedItems = shouldSyncItems
-      ? previousItems.map((item: any) => ({
-          ...item,
-          quantidade_entregue:
-            nextStatus === 'pendente' ? 0 : Math.max(0, Number(item.quantidade_requisitada) || 0),
-        }))
-      : null;
-
-    setUpdatingReqIds(prev => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-
-    // Otimista: atualiza local imediatamente para deixar o Kanban fluido e coerente com itens
-    setAllData(prev =>
-      prev.map(r =>
-        r.id === id
-          ? ({
-              ...r,
-              status: nextStatus as any,
-              ...(syncedItems ? { items: syncedItems } : {}),
-            } as any)
-          : r
-      )
-    );
-
-    try {
-      if (syncedItems) {
-        await fetchAutenticado(`/api/requisicoes/${id}/itens`, {
-          method: 'PUT',
-          body: JSON.stringify({ items: syncedItems }),
-        });
-      } else {
-        await fetchAutenticado(`/api/requisicoes/${id}/status`, {
-          method: 'PUT',
-          body: JSON.stringify({ status: nextStatus }),
-        });
-      }
-
-      if (selectedRequisicao?.id === id && syncedItems) {
-        setSelectedRequisicao(prev => (prev ? ({ ...prev, status: nextStatus as any, items: syncedItems } as any) : prev));
-        const nextGroupedQuantities: Record<string, number> = {};
-        syncedItems.forEach((item: any) => {
-          const pn = item.pn || 'SEM-CODIGO';
-          nextGroupedQuantities[pn] = (nextGroupedQuantities[pn] || 0) + (item.quantidade_entregue || 0);
-        });
-        setEditedQuantities(nextGroupedQuantities);
-        setInitialEditedQuantities(nextGroupedQuantities);
-        setHasUnsavedChanges(false);
-      }
-
-      if (!options?.silentSuccess) {
-        showToast(`Status atualizado para '${getStatusLabel(nextStatus)}'`, 'success');
-      }
-      return true;
-    } catch (error: any) {
-      // Rollback
-      setAllData(prev =>
-        prev.map(r =>
-          r.id === id ? ({ ...r, status: previousStatus as any, ...(previousItems ? { items: previousItems } : {}) } as any) : r
-        )
-      );
-
-      if (selectedRequisicao?.id === id) {
-        setSelectedRequisicao(prev =>
-          prev ? ({ ...prev, status: previousStatus as any, ...(previousItems ? { items: previousItems } : {}) } as any) : prev
-        );
-      }
-
-      showToast(error.message || 'Erro ao atualizar status', 'error');
-      return false;
-    } finally {
-      setUpdatingReqIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }
-  };
-
-  const handleStatusUpdate = async (id: number, status: string) => {
-    await updateRequisicaoStatus(id, status);
+  const handleStatusUpdate = (id: number, _status: string) => {
+    const request = allData.find(item => item.id === id);
+    if (!request) return;
+    openModal(request);
+    showToast('Confira as quantidades entregues. O status será calculado ao confirmar.', 'info');
   };
 
   const handleCardDragStart = (e: React.DragEvent<HTMLDivElement>, reqId: number) => {
@@ -559,10 +505,7 @@ export default function AlmoxarifadoPage() {
 
     const req = allData.find(r => r.id === reqId);
     if (req && req.status !== targetStatus) {
-      const moved = await updateRequisicaoStatus(reqId, targetStatus, { silentSuccess: true });
-      if (moved) {
-        showToast(`Requisição #${reqId} movida para '${getStatusLabel(targetStatus)}'`, 'success');
-      }
+      handleStatusUpdate(reqId, targetStatus);
     }
 
     setDraggingReqId(null);
@@ -570,48 +513,55 @@ export default function AlmoxarifadoPage() {
   };
 
   const handleSaveItems = async () => {
-    if (!selectedRequisicao || !Array.isArray(selectedRequisicao.items)) {
+    if (!selectedRequisicao || deliveryReview || deliveryPending.current) return;
+    if (!Number.isInteger(selectedRequisicao.version)) {
+      showToast('Atualize a lista antes de conferir esta requisição.', 'error');
       return;
     }
+    const items = groupedItems.map((item: any) => ({
+      pn: item.pn,
+      requested: item.quantidade_requisitada,
+      before: item.quantidade_entregue,
+      quantidade_entregue: editedQuantities[item.pn] ?? item.quantidade_entregue,
+    }));
+    if (items.some(item => !Number.isSafeInteger(item.quantidade_entregue)
+      || item.quantidade_entregue < 0 || item.quantidade_entregue > item.requested)) {
+      showToast('Confira as quantidades. Use números inteiros entre zero e o total requisitado.', 'error');
+      return;
+    }
+    setDeliveryError('');
+    setDeliveryReason('');
+    setReasonError('');
+    setDeliveryReview({ id: selectedRequisicao.id, om: selectedRequisicao.om,
+      version: selectedRequisicao.version, status: modalSummary.projectedStatus, items });
+  };
 
+  const confirmDelivery = async () => {
+    if (!deliveryReview || deliveryPending.current || deliveryError) return;
+    if (deliveryReview.items.some(item => item.quantidade_entregue < item.before) && !deliveryReason.trim()) {
+      setReasonError('Informe o motivo da correção de quantidades já entregues.');
+      return;
+    }
+    deliveryPending.current = true;
+    setSavingDelivery(true);
     try {
-      // Mapear quantidades editadas para os itens agrupados
-      // Distribuir a quantidade agrupada proporcionalmente entre os itens originais
-      const updatedItems = groupedItems.flatMap((groupedItem: any) => {
-        const itemKey = groupedItem.pn;
-        const qtdEntregueTotal = editedQuantities[itemKey] ?? groupedItem.quantidade_entregue;
-
-        // Se não há designadores diferentes, distribuir igualmente
-        if (groupedItem.items_originais.length === 1) {
-          return [
-            {
-              ...groupedItem.items_originais[0],
-              quantidade_entregue: qtdEntregueTotal,
-            },
-          ];
-        }
-
-        // Distribuir proporcionalmente entre os itens originais
-        const qtdPorItem = Math.floor(qtdEntregueTotal / groupedItem.items_originais.length);
-        const resto = qtdEntregueTotal % groupedItem.items_originais.length;
-
-        return groupedItem.items_originais.map((item: any, idx: number) => ({
-          ...item,
-          quantidade_entregue: qtdPorItem + (idx < resto ? 1 : 0),
-        }));
+      const saved = await fetchAutenticado(`/api/requisicoes/${deliveryReview.id}/itens`, {
+        method: 'PUT', signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ version: deliveryReview.version, motivo: deliveryReason,
+          items: deliveryReview.items.map(item => ({ pn: item.pn, quantidade_entregue: item.quantidade_entregue })) }),
       });
-
-      // Salva itens
-      await fetchAutenticado(`/api/requisicoes/${selectedRequisicao.id}/itens`, {
-        method: 'PUT',
-        body: JSON.stringify({ items: updatedItems }),
-      });
-
-      showToast('Quantidades salvas com sucesso!', 'success');
-      closeModal();
-      loadData();
+      setAllData(current => current.map(item => item.id === saved.id ? saved : item));
+      setDeliveryReview(null);
+      setModalOpen(false);
+      setSelectedRequisicao(null);
+      setHasUnsavedChanges(false);
+      showToast('Entregas confirmadas. Histórico e quantidades atualizados.', 'success');
     } catch (error: any) {
-      showToast(error.message || 'Erro ao salvar itens', 'error');
+      setDeliveryError(error.status === 400 || error.status === 409 ? error.message
+        : 'Não foi possível confirmar a entrega. Atualize a lista para conferir o resultado antes de tentar novamente.');
+    } finally {
+      deliveryPending.current = false;
+      setSavingDelivery(false);
     }
   };
 
@@ -665,39 +615,45 @@ export default function AlmoxarifadoPage() {
     };
   }, [modalOpen, closeModal, handleSaveItems, hasUnsavedChanges]);
 
-  const handleQuickDeliver = (pn: string, qtdRequisitada: number) => {
-    setEditedQuantities(prev => ({
-      ...prev,
-      [pn]: qtdRequisitada,
-    }));
-  };
-
-  // Delete Requisicao
   const handleDeleteClick = (req: Requisicao) => {
+    if (deletePending.current || deliveryPending.current) return;
     setRequisicaoToDelete(req);
+    setDeleteReason('');
+    setDeleteError('');
+    setDeleteAttemptFailed(false);
     setDeleteConfirmOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!requisicaoToDelete) return;
+    if (!requisicaoToDelete || deletePending.current || deleteAttemptFailed) return;
+    if (deleteReason.trim().length < 5) {
+      setDeleteError('Informe o motivo da exclusão com pelo menos 5 caracteres.');
+      return;
+    }
 
+    deletePending.current = true;
     setIsDeleting(true);
+    setDeleteError('');
     try {
-      // fetchAutenticado retorna null para status 204 (No Content), o que indica sucesso
-      const response = await fetchAutenticado(`/api/requisicoes/${requisicaoToDelete.id}`, {
+      await fetchAutenticado(`/api/requisicoes/${requisicaoToDelete.id}`, {
         method: 'DELETE',
+        body: JSON.stringify({ version: requisicaoToDelete.version, motivo: deleteReason.trim() }),
+        signal: AbortSignal.timeout(10000),
       });
 
       // Se chegou aqui sem erro, a requisição foi bem-sucedida
       // (response será null para 204, ou um objeto para 200)
-      showToast('Requisição excluída com sucesso', 'success');
+      showToast('Requisição excluída. Histórico preservado no registro de exclusões.', 'success');
       setDeleteConfirmOpen(false);
       setRequisicaoToDelete(null);
       loadData(); // Recarregar dados
     } catch (error: any) {
       console.error('Erro ao excluir requisição:', error);
-      showToast(error.message || 'Erro ao excluir requisição', 'error');
+      setDeleteAttemptFailed(true);
+      setDeleteError(`${error.message || 'Não foi possível confirmar a exclusão.'} Feche esta confirmação e atualize a lista antes de tentar novamente.`);
+      void loadData();
     } finally {
+      deletePending.current = false;
       setIsDeleting(false);
     }
   };
@@ -791,7 +747,7 @@ export default function AlmoxarifadoPage() {
           >
             <div className="flex items-center gap-3 mb-2">
               <Package className="w-6 h-6 text-yellow-400" />
-              <h3 className="text-sm font-semibold text-slate-400">Separando</h3>
+              <h3 className="text-sm font-semibold text-slate-400">Parcialmente Entregues</h3>
             </div>
             <p className="text-3xl font-bold text-yellow-400">{kpis.separando}</p>
           </motion.div>
@@ -942,7 +898,7 @@ export default function AlmoxarifadoPage() {
               },
               {
                 status: 'parcialmente_entregue',
-                title: 'Separando',
+                title: 'Parcialmente Entregues',
                 baseClass: 'border-yellow-500/20',
                 activeClass: 'border-yellow-400/60 ring-2 ring-yellow-500/25',
               },
@@ -984,7 +940,7 @@ export default function AlmoxarifadoPage() {
                           key={req.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          draggable={!updatingReqIds.has(req.id)}
+                          draggable={!savingDelivery}
                           onDragStart={(e: any) => handleCardDragStart(e, req.id)}
                           onDragEnd={handleCardDragEnd}
                           className={`bg-slate-900 border rounded-lg p-4 cursor-pointer transition-colors ${
@@ -993,7 +949,7 @@ export default function AlmoxarifadoPage() {
                               : 'border-purple-500/20 hover:border-purple-500/50'
                           } ${
                             draggingReqId === req.id ? 'opacity-50 ring-2 ring-cyan-400/60' : 'opacity-100'
-                          } ${updatingReqIds.has(req.id) ? 'pointer-events-none opacity-60' : ''}`}
+                          } ${savingDelivery ? 'pointer-events-none opacity-60' : ''}`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-bold text-white">#{req.id}</h4>
@@ -1052,9 +1008,6 @@ export default function AlmoxarifadoPage() {
                               </button>
                             )}
                           </div>
-                          {updatingReqIds.has(req.id) && (
-                            <p className="mt-2 text-[11px] text-cyan-300">Atualizando status...</p>
-                          )}
                         </motion.div>
                       ))}
                   </div>
@@ -1174,7 +1127,7 @@ export default function AlmoxarifadoPage() {
                               <button
                                 onClick={() => handleStatusUpdate(req.id, 'parcialmente_entregue')}
                                 className="text-yellow-400 hover:text-white hover:bg-yellow-600 transition-all p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shadow-sm hover:shadow-yellow-500/20"
-                                title="Iniciar Separação"
+                                title="Conferir entrega parcial"
                               >
                                 <Package className="w-5 h-5" />
                               </button>
@@ -1184,7 +1137,7 @@ export default function AlmoxarifadoPage() {
                               <button
                                 onClick={() => handleStatusUpdate(req.id, 'entregue')}
                                 className="text-green-400 hover:text-white hover:bg-green-600 transition-all p-2.5 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center shadow-sm hover:shadow-green-500/20"
-                                title="Finalizar Entrega"
+                                title="Conferir entrega total"
                               >
                                 <CheckCircle2 className="w-5 h-5" />
                               </button>
@@ -1447,6 +1400,7 @@ export default function AlmoxarifadoPage() {
                               quantityInputRefs.current[itemKey] = el;
                             }}
                             type="number"
+                            aria-label={`Quantidade entregue de ${itemKey}`}
                             min="0"
                             max={groupedItem.quantidade_requisitada}
                             value={qtdEntregue}
@@ -1461,7 +1415,7 @@ export default function AlmoxarifadoPage() {
                               setEditedQuantities(prev => ({ ...prev, [itemKey]: value }));
                             }}
                             onKeyDown={e => handleQuantityInputKeyDown(itemKey, e)}
-                            disabled={isDelivered}
+                            disabled={savingDelivery}
                             className="w-full md:w-36 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                           />
                         </div>
@@ -1490,6 +1444,22 @@ export default function AlmoxarifadoPage() {
             </div>
 
             {/* Ações */}
+            <details className="border-t border-slate-700/50 pt-4 text-sm">
+              <summary className="cursor-pointer text-slate-300">Histórico de entregas · 50 alterações mais recentes</summary>
+              {historyError ? <p role="alert" className="text-red-400 mt-3">{historyError}</p>
+                : deliveryHistory === null ? <p className="mt-3">Carregando histórico...</p>
+                : deliveryHistory.length === 0 ? <p className="mt-3 text-slate-400">Nenhuma conferência registrada desde a atualização.</p>
+                : deliveryHistory.map(event => <div key={event.version} className="border-b border-slate-700 py-3 space-y-1">
+                  <p>{formatDate(event.occurredAt)} · {event.actorName} · versão {event.version}</p>
+                  {event.motivo && <p>Motivo · {event.motivo}</p>}
+                  {Object.entries(event.depois.items.reduce<Record<string, number>>((totals, item) => {
+                    totals[item.pn] = (totals[item.pn] || 0) + item.quantidade_entregue;
+                    return totals;
+                  }, Object.create(null))).map(([pn, quantity]) => <p key={pn} className="text-slate-400">
+                    {pn} · {event.antes.items.filter(item => item.pn === pn).reduce((sum, item) => sum + item.quantidade_entregue, 0)} → {quantity}
+                  </p>)}
+                </div>)}
+            </details>
             <div className="border-t border-slate-700/50 pt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-xs">
                 {hasUnsavedChanges ? (
@@ -1508,9 +1478,9 @@ export default function AlmoxarifadoPage() {
               <Button variant="outline" onClick={closeModal}>
                 Cancelar
               </Button>
-              <Button variant="success" onClick={handleSaveItems} disabled={!hasUnsavedChanges}>
+              <Button variant="success" onClick={handleSaveItems} disabled={!hasUnsavedChanges || savingDelivery}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                Salvar Entregas
+                Revisar Entregas
               </Button>
               </div>
             </div>
@@ -1518,21 +1488,71 @@ export default function AlmoxarifadoPage() {
         )}
       </Dialog>
 
+      <Dialog open={!!deliveryReview} onClose={() => {
+        if (!deliveryPending.current) setDeliveryReview(null);
+      }} title="Conferir entregas" size="lg" icon={<CheckCircle2 className="w-5 h-5 text-green-400" />}>
+        {deliveryReview && <div className="space-y-4" aria-busy={savingDelivery}>
+          <p>Requisição <strong>#{deliveryReview.id}</strong> · OM <strong>{deliveryReview.om}</strong></p>
+          <p className="text-sm text-slate-300">Confira o total acumulado entregue de cada material antes de confirmar.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead><tr><th className="p-2">PN</th><th className="p-2">Requisitado</th><th className="p-2">Entregue antes</th><th className="p-2">Total ao confirmar</th></tr></thead>
+              <tbody>{deliveryReview.items.map(item => <tr key={item.pn} className="border-t border-slate-700">
+                <td className="p-2 break-all">{item.pn}</td><td className="p-2">{item.requested}</td>
+                <td className="p-2">{item.before}</td><td className="p-2 font-bold">{item.quantidade_entregue}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          <p>Status ao confirmar · <strong>{getStatusLabel(deliveryReview.status)}</strong></p>
+          {deliveryReview.items.some(item => item.quantidade_entregue < item.before) && <div>
+            <label htmlFor="delivery-reason" className="block text-sm mb-2">Motivo da correção de entrega</label>
+            <input id="delivery-reason" value={deliveryReason} maxLength={500} disabled={savingDelivery}
+              onChange={event => { setDeliveryReason(event.target.value); setReasonError(''); }}
+              aria-invalid={!!reasonError} aria-describedby={reasonError ? 'delivery-reason-error' : undefined}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2" />
+            {reasonError && <p id="delivery-reason-error" role="alert" className="text-red-400 mt-2">{reasonError}</p>}
+          </div>}
+          {deliveryError && <p role="alert" className="text-red-400">{deliveryError}</p>}
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" disabled={savingDelivery} onClick={() => setDeliveryReview(null)}>
+              Voltar à conferência
+            </Button>
+            <Button variant="success" isLoading={savingDelivery} disabled={!!deliveryError} onClick={confirmDelivery}>
+              Confirmar entregas
+            </Button>
+          </div>
+        </div>}
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
+      <Dialog
         open={deleteConfirmOpen}
         onClose={() => {
+          if (deletePending.current) return;
           setDeleteConfirmOpen(false);
           setRequisicaoToDelete(null);
         }}
-        onConfirm={handleDeleteConfirm}
-        title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir a requisição #${requisicaoToDelete?.id}? Esta ação não pode ser desfeita.`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        variant="danger"
-        isLoading={isDeleting}
-      />
+        title={`Excluir requisição #${requisicaoToDelete?.id}`}
+        size="sm"
+        icon={<Trash2 className="h-5 w-5 text-red-400" />}
+      >
+        <div className="space-y-4">
+          <p className="text-slate-300">OM: {requisicaoToDelete?.om}. A requisição será removida da lista, com seus itens e vínculos. Uma cópia das entregas e o motivo ficarão no registro de exclusões.</p>
+          <p className="text-slate-300">As falhas de origem serão mantidas e poderão gerar nova requisição. A exclusão não registra devolução física de componentes.</p>
+          <p className="text-sm text-amber-300">Requisições com entregas ou histórico só podem ser excluídas pelo administrador.</p>
+          <div>
+            <label htmlFor="request-delete-reason" className="block text-sm mb-2">Motivo da exclusão</label>
+            <textarea id="request-delete-reason" value={deleteReason} maxLength={500} disabled={isDeleting || deleteAttemptFailed}
+              onChange={event => { setDeleteReason(event.target.value); setDeleteError(''); }}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2" rows={3} />
+          </div>
+          {deleteError && <p role="alert" className="text-red-400">{deleteError}</p>}
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+            <Button variant="outline" disabled={isDeleting} onClick={() => { setDeleteConfirmOpen(false); setRequisicaoToDelete(null); }}>Cancelar</Button>
+            <Button variant="danger" isLoading={isDeleting} disabled={deleteAttemptFailed} onClick={handleDeleteConfirm}>Excluir requisição</Button>
+          </div>
+        </div>
+      </Dialog>
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />

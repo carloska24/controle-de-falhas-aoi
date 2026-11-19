@@ -1,4 +1,14 @@
 const prisma = require('../config/prisma');
+const { randomUUID } = require('node:crypto');
+const { z } = require('zod');
+const { createRegistros } = require('../services/registroCreationService');
+const { transition, OMError } = require('../services/omService');
+const { clearDemoData: cleanupDemoData } = require('../services/demoCleanupService');
+
+const populateSchema = z.object({
+  count: z.number().int().min(1).max(200).default(50),
+  clear: z.boolean().default(false),
+}).strict();
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -67,39 +77,38 @@ function getDefectsFor(type) {
 }
 
 async function populateDemoData(req, res) {
-  const { count = 50, clear = false } = req.body;
+  const parsed = populateSchema.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'Informe uma quantidade inteira de 1 a 200 e a opção de limpeza válida.' });
+  const { count, clear } = parsed.data;
 
   try {
     if (clear) {
-      await prisma.$transaction([
-        prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
-        prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
-      ]);
+      await prisma.$transaction(cleanupDemoData, { isolationLevel: 'Serializable', timeout: 15000 });
     }
-
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const timestamps = new Set();
-    while (timestamps.size < count) {
-      timestamps.add(getRandomDate(thirtyDaysAgo, now).toISOString());
-    }
-    const sortedDates = Array.from(timestamps).sort().reverse();
-
-    const demoOMs = ['DEMO-OM-01', 'DEMO-OM-02', 'DEMO-OM-03'];
 
     const newRegistros = [];
+    const batchId = randomUUID();
+    const qtdlote = Math.max(50, count);
+    const existingOMs = await prisma.ordens_manufatura.findMany({
+      where: { omNumber: { startsWith: 'DEMO-' } }, select: { omNumber: true },
+    });
+    const used = new Set(existingOMs.map(row => row.omNumber));
+    let om;
+    for (let sequence = 1; sequence <= 999; sequence++) {
+      const candidate = `DEMO-${String(sequence).padStart(3, '0')}`;
+      if (used.has(candidate)) continue;
+      try { om = await transition(candidate, 'start', req.user, qtdlote); break; }
+      catch (error) { if (error.status !== 409) throw error; }
+    }
+    if (!om) throw new OMError(409, 'Os 999 números de OM de demonstração já estão em uso. Limpe os testes antigos antes de gerar novos.');
+    const omNumber = om.omNumber;
+    const examples = ['Ausente', 'Danificado', 'Incorreto', 'Possível Incorreto'];
 
     for (let i = 0; i < count; i++) {
-      const omNumber = demoOMs[getRandomInt(0, demoOMs.length - 1)];
       const componente = COMPONENTES[getRandomInt(0, COMPONENTES.length - 1)];
       const possibleDefects = getDefectsFor(componente.type);
-      const defeito = possibleDefects[getRandomInt(0, possibleDefects.length - 1)];
-      const data = sortedDates[i];
-      const id = `DEMO-REG-${Date.now()}-${i}`;
-
-      const statusList = ['pendente', 'em_analise', 'reparado', 'sucata'];
-      const status = statusList[getRandomInt(0, statusList.length - 1)];
+      const defeito = examples[i] || possibleDefects[getRandomInt(0, possibleDefects.length - 1)];
+      const id = `DEMO-REG-${batchId}-${i}`;
 
       const randPrioridade = Math.random();
       let prioridade = 'media';
@@ -111,38 +120,36 @@ async function populateDemoData(req, res) {
       newRegistros.push({
         id,
         om: omNumber,
-        qtdlote: getRandomInt(50, 500),
-        serial: `SN-${getRandomInt(10000, 99999)}`,
+        qtdlote,
+        omVersion: om.version,
+        serial: `SN-DEMO-${batchId.slice(0, 8)}-${String(i + 1).padStart(4, '0')}`,
         designador: `R${getRandomInt(1, 999)}`,
         tipodefeito: defeito,
         pn: componente.pn,
         descricao: componente.desc,
-        obs: 'Gerado automaticamente via Debug Mode',
-        createdat: data,
-        status: status,
-        operador: 'DemoUser',
+        obs: 'Falha fictícia gerada para teste do fluxo operacional.',
         prioridade,
       });
     }
 
-    await prisma.registros.createMany({
-      data: newRegistros,
-    });
+    // O mesmo serviço dos lançamentos do operador valida a OM, grava o usuário,
+    // define data/status e registra as placas na mesma transação das falhas.
+    await createRegistros(newRegistros, req.user);
 
-    res.json({ message: `${count} registros e requisições DEMO gerados com sucesso.` });
+    res.json({ count, om: omNumber, message: `${count} falhas DEMO pendentes criadas. Requisite os materiais elegíveis pela tabela de registros.` });
   } catch (error) {
     console.error('Erro ao gerar dados demo:', error);
-    res.status(500).json({ error: error.message });
+    if (error instanceof OMError) return res.status(error.status).json({ error: error.message });
+    res.status(error.code === 'P2003' ? 409 : 500).json({ error: error.code === 'P2003'
+      ? 'Há histórico vinculado aos testes anteriores. Gere novos dados sem limpar os existentes.'
+      : 'Não foi possível gerar os dados de demonstração.' });
   }
 }
 
 async function clearDemoData(_req, res) {
   try {
-    await prisma.$transaction([
-      prisma.requisicoes.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
-      prisma.registros.deleteMany({ where: { om: { startsWith: 'DEMO-' } } }),
-    ]);
-    res.json({ message: 'Registros e requisições DEMO removidos.' });
+    await prisma.$transaction(cleanupDemoData, { isolationLevel: 'Serializable', timeout: 15000 });
+    res.json({ message: 'OMs e dados DEMO removidos.' });
   } catch (error) {
     console.error('Erro ao limpar dados demo:', error);
     res.status(500).json({ error: 'Não foi possível limpar os dados demo.' });

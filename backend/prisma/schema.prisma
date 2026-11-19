@@ -109,11 +109,28 @@ model requisicoes {
   status     String? @default("pendente")
   created_at String? @default("CURRENT_TIMESTAMP")
   created_by String?
+  version    Int @default(0)
+  entregas   eventos_entrega[]
   registros_vinculados requisicao_registros[]
 
   @@index([om], map: "idx_requisicoes_om")
   @@index([status], map: "idx_requisicoes_status")
   @@index([created_at], map: "idx_requisicoes_created_at")
+}
+
+model eventos_entrega {
+  id String @id @default(uuid())
+  requisicaoId Int
+  version Int
+  actorId Int
+  actorName String
+  occurredAt DateTime @default(now())
+  motivo String?
+  antes Json
+  depois Json
+  requisicao requisicoes @relation(fields: [requisicaoId], references: [id], onDelete: Restrict)
+
+  @@unique([requisicaoId, version])
 }
 
 model requisicao_registros {
@@ -123,6 +140,18 @@ model requisicao_registros {
   requisicao requisicoes @relation(fields: [requisicao_id], references: [id], onDelete: Cascade)
 
   @@index([requisicao_id])
+}
+
+model exclusoes_requisicoes {
+  id String @id @default(uuid())
+  requisicaoId Int
+  actorId Int
+  actorName String
+  occurredAt DateTime @default(now())
+  motivo String
+  snapshot Json
+
+  @@index([requisicaoId, occurredAt])
 }
 
 model users {

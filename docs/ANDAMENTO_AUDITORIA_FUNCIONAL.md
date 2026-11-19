@@ -1,8 +1,67 @@
 # Auditoria funcional — andamento
 
-Atualização: 19/11/2026. Branch: `codex/corrigir-filtro-almoxarifado`.
+Atualização: 19/11/2026. Etapa preparada em `codex/conferencia-entregas` para publicação na `main`.
+
+Continuação em `codex/conferencia-entregas`. A conferência
+de entregas UX-09 está implementada, com testes e build aprovados. A validação
+final da interface e a atualização do fechamento da etapa continuam pendentes.
+
+Em 19/11, o ambiente passou para PostgreSQL nativo 17.12 em 127.0.0.1:5432.
+A base anterior foi copiada para o destino vazio, com snapshot local de segurança
+e preservação da origem. O login de `teste.local` foi validado por API e navegador.
+O DEMO foi habilitado somente no desenvolvimento local e agora usa o serviço
+normal de lançamento, com OM exclusiva, placas e responsável. Validados 15
+registros pendentes e 15 inspeções, requisição sem duplicação, bloqueio de Possível
+Incorreto antes da conferência, entregas parcial/total e histórico. O clique do
+ícone e a confirmação de uma requisição também foram exercitados no navegador.
+As verificações desta correção passaram em 44 testes de autenticação/DEMO e no
+build do frontend com TypeScript. Na preparação da publicação, o `.env` foi
+retirado do versionamento, preservando o arquivo local e os modelos `.env.example`.
+
+### Limpeza, exclusão administrativa e nomes curtos — 19/11
+
+- Removidos somente os testes identificados do assistente, após snapshot local em
+  `.tools/before-demo-cleanup-1795113566955.json`: 289 falhas, 7 requisições, 9 OMs,
+  36 inspeções, 29 eventos de OM, 3 eventos de entrega e 23 vínculos. Preservadas
+  quatro contas e os lançamentos/inspeções manuais existentes. Novos testes que
+  o usuário criar depois da limpeza não pertencem a esse lote de remoção.
+- O administrador agora pode excluir requisições com histórico de entrega usando
+  motivo e versão. A exclusão guarda cópia independente em `exclusoes_requisicoes`,
+  libera vínculos e mantém falhas de origem. Validado rollback real quando o
+  arquivamento falha, rejeição de versão antiga e ausência de dupla exclusão.
+- Suíte backend: 163 testes aprovados antes da alteração dos nomes curtos.
+  A regressão específica dos nomes curtos aprovou 9 testes após essa alteração.
+  Integração isolada e build do frontend/TypeScript aprovados.
+- DEMO passa a reservar `DEMO-001` a `DEMO-999`, com tratamento de colisão entre
+  cliques simultâneos. A OM longa criada pelo usuário após a limpeza foi renomeada
+  para `DEMO-001`, preservando as falhas e vínculos. Coluna OM limitada a 110px,
+  mantendo o texto completo no título para números legados longos.
+- A aplicação e API respondem em `192.168.0.78:3000`/`:3001`. A origem da interface
+  na intranet foi adicionada ao CORS local, com credenciais e preflight validados.
+  A tentativa de aplicar regras específicas de firewall exigiu elevação do
+  Windows, cuja solicitação foi cancelada. Nenhuma regra nova foi aplicada.
+  A restrição à rede `192.168.0.0/24` e o teste em outra máquina ainda precisam
+  ser confirmados. O PostgreSQL continua escutando somente em loopback.
+  O navegador concluiu login, painel administrativo e navegação ao operador pelo
+  IP `192.168.0.78`, com as 15 falhas do novo teste do usuário em `DEMO-001`.
+  A coluna OM mediu 88px nesse viewport. O script local revisável
+  `.tools/Configure-Intranet.ps1` contém a liberação restrita e os bloqueios de
+  outras redes para Node nas portas da aplicação. Não foi executado com sucesso,
+  pois a elevação do Windows foi cancelada; regras antigas continuam vigentes.
 
 ## Direção aprovada
+
+Atualização solicitada em 19/11: a saída da conta administradora no ambiente
+de desenvolvimento com DEMO habilitado agora limpa o namespace compartilhado
+`DEMO-` e revoga a sessão atomicamente. Inclui OMs em qualquer estado, seus
+eventos, placas, falhas, requisições, entregas, vínculos e cópias de exclusão DEMO.
+Falha na limpeza mantém dados e sessão; cookie só é removido após commit. Outros
+perfis, produção e tokens antigos não podem disparar a limpeza. A tela e o
+redirecionamento de logout usam o fluxo já existente, sem alteração visual.
+Validação: 175 testes backend aprovados e integração isolada aprovada com falha
+SQL simulada na exclusão da OM, rollback de dados e revogação da sessão,
+preservação de 266 registros operacionais, limpeza das cópias de exclusão DEMO e
+rejeição de limpeza por reapresentação de um cookie antigo após novo login.
 
 Executar as recomendações funcionais da auditoria por etapas. Preservar layout,
 cores, ícones e animações existentes. Propostas de redesenho do relatório original

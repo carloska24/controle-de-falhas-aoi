@@ -735,13 +735,13 @@ export default function IndexPage() {
                 }
 
                 try {
-                  // Chama o backend para gerar dados reais (Registros + Requisições) com datas distintas
-                  await fetchAutenticado('/api/debug/populate', {
+                  // Acrescenta falhas fictícias sem remover requisições ou histórico de testes.
+                  const result = await fetchAutenticado('/api/debug/populate', {
                     method: 'POST',
-                    body: JSON.stringify({ count: 15, clear: true }),
+                    body: JSON.stringify({ count: 15, clear: false }),
                   });
 
-                  showToast('Dados de demonstração (15 registros) gerados com sucesso!', 'success');
+                  showToast(result.message, 'success');
                   await loadData(); // Recarrega a tabela
                 } catch (error: any) {
                   showToast(error.message || 'Erro ao gerar dados de demonstração', 'error');

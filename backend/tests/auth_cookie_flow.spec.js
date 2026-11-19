@@ -8,6 +8,13 @@ jest.mock('../src/config/prisma', () => ({
   requisicoes: { deleteMany: jest.fn() },
   oms_pausadas: { deleteMany: jest.fn() },
   oms_finalizadas: { deleteMany: jest.fn() },
+  oms_ativas: { deleteMany: jest.fn() },
+  ordens_manufatura: { deleteMany: jest.fn() },
+  placas_inspecionadas: { deleteMany: jest.fn() },
+  eventos_om: { deleteMany: jest.fn() },
+  eventos_entrega: { deleteMany: jest.fn() },
+  requisicao_registros: { findFirst: jest.fn(), deleteMany: jest.fn() },
+  exclusoes_requisicoes: { deleteMany: jest.fn() },
   $transaction: jest.fn(),
 }));
 
@@ -41,6 +48,11 @@ beforeEach(async () => {
   prisma.registros.count.mockResolvedValue(0);
   prisma.registros.findMany.mockResolvedValue([]);
   prisma.$transaction.mockImplementation(callback => typeof callback === 'function' ? callback(prisma) : Promise.all(callback));
+  prisma.requisicao_registros.findFirst.mockResolvedValue(null);
+  for (const model of ['registros', 'requisicoes', 'eventos_entrega', 'requisicao_registros',
+    'exclusoes_requisicoes', 'placas_inspecionadas', 'eventos_om', 'oms_ativas', 'oms_pausadas', 'oms_finalizadas', 'ordens_manufatura']) {
+    prisma[model].deleteMany.mockResolvedValue({ count: 0 });
+  }
 });
 
 afterEach(() => {
@@ -167,6 +179,64 @@ describe('Session revocation', () => {
     users.get(1).session_version = 1;
     await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).expect(200);
     expect(users.get(1).session_version).toBe(1);
+  });
+});
+
+describe('Demo cleanup on logout', () => {
+  const tokenFor = id => jwt.sign({ id, sessionVersion: 0 }, process.env.JWT_SECRET);
+  beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    process.env.DEBUG_ROUTES_ENABLED = 'true';
+  });
+
+  test('valid admin logout cleans the reserved namespace before clearing the cookie', async () => {
+    await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(2)}`).expect(200);
+    for (const model of ['registros', 'requisicoes']) {
+      expect(prisma[model].deleteMany).toHaveBeenCalledWith({ where: { om: { startsWith: 'DEMO-' } } });
+    }
+    for (const model of ['placas_inspecionadas', 'eventos_om', 'oms_ativas', 'oms_pausadas', 'oms_finalizadas', 'ordens_manufatura']) {
+      expect(prisma[model].deleteMany).toHaveBeenCalledWith({ where: { omNumber: { startsWith: 'DEMO-' } } });
+    }
+    expect(prisma.eventos_entrega.deleteMany).toHaveBeenCalledWith({ where: { requisicao: { om: { startsWith: 'DEMO-' } } } });
+    expect(prisma.exclusoes_requisicoes.deleteMany).toHaveBeenCalledWith({ where: {
+      snapshot: { path: ['requisicao', 'om'], string_starts_with: 'DEMO-' },
+    } });
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'Serializable', timeout: 15000 });
+  });
+
+  test.each(['operator','almoxarifado','reparo','qualidade','lider_smt'])('logout of %s cannot clean shared demonstrations', async role => {
+    users.get(1).role = role;
+    await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(1)}`).expect(200);
+    expect(prisma.registros.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test.each([['production','true'], ['development','false']])('cleanup is disabled with NODE_ENV=%s and flag=%s', async (env, flag) => {
+    process.env.NODE_ENV = env;
+    process.env.DEBUG_ROUTES_ENABLED = flag;
+    await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(2)}`).expect(200);
+    expect(prisma.registros.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('a stale session or forged admin role never triggers cleanup', async () => {
+    users.get(2).session_version = 1;
+    await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(2)}`).expect(200);
+    await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${jwt.sign({ id: 1, role: 'admin', sessionVersion: 0 }, process.env.JWT_SECRET)}`).expect(200);
+    expect(prisma.registros.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('mixed demo/real material links stop cleanup before deleting any data', async () => {
+    prisma.requisicao_registros.findFirst.mockResolvedValue({ registro_id: 'REAL-RECORD', requisicao_id: 1 });
+    const response = await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(2)}`).expect(503);
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(prisma.registros.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('cleanup failure cannot return success or clear the browser cookie', async () => {
+    prisma.eventos_entrega.deleteMany.mockRejectedValue(new Error('database unavailable'));
+    const response = await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(2)}`).expect(503);
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(response.body.error).toContain('sessão foi mantida');
+    expect(prisma.ordens_manufatura.deleteMany).not.toHaveBeenCalled();
   });
 });
 

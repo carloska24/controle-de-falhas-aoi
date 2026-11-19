@@ -251,10 +251,131 @@ async function main() {
       { inspectedBoards: 0, approvedBoards: 0 });
     console.log('PASS: placa sem falha é independente, OM e serial deduplicam, falhas são atômicas e resumo exclui cobertura histórica');
 
+    const deliveryRequest = await prisma.requisicoes.create({ data: {
+      om: 'TEST-DELIVERY', created_by: 'Integração',
+      items: JSON.stringify([
+        { pn: 'PN-A', quantidade_requisitada: 1, quantidade_entregue: 0, designador: 'R1' },
+        { pn: 'PN-A', quantidade_requisitada: 9, quantidade_entregue: 0, designador: 'R2' },
+      ]),
+    } });
+    const deliveryPath = '/api/requisicoes/' + deliveryRequest.id;
+    const delivered = (version, quantity, motivo) => ({ version, motivo,
+      items: [{ pn: 'PN-A', quantidade_entregue: quantity }] });
+    await api('PUT', deliveryPath + '/status', { version: 0, status: 'entregue' }, 409);
+    await api('PUT', deliveryPath + '/itens', delivered(0, 11), 400);
+    await api('PUT', deliveryPath + '/itens', delivered(0, 3));
+    await api('PUT', deliveryPath + '/itens', delivered(0, 10), 409);
+    await api('PUT', deliveryPath + '/itens', delivered(1, 0), 400);
+    await prisma.$executeRawUnsafe(`CREATE FUNCTION fail_delivery_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      RAISE EXCEPTION 'simulated delivery audit failure'; END $$;`);
+    await prisma.$executeRawUnsafe('CREATE TRIGGER fail_delivery_event BEFORE INSERT ON eventos_entrega FOR EACH ROW EXECUTE FUNCTION fail_delivery_event()');
+    await api('PUT', deliveryPath + '/itens', delivered(1, 10), 503);
+    assert.equal((await prisma.requisicoes.findUnique({ where: { id: deliveryRequest.id } })).version, 1);
+    assert.equal(await prisma.eventos_entrega.count({ where: { requisicaoId: deliveryRequest.id } }), 1);
+    await prisma.$executeRawUnsafe('DROP TRIGGER fail_delivery_event ON eventos_entrega');
+    await prisma.$executeRawUnsafe('DROP FUNCTION fail_delivery_event()');
+    await api('PUT', deliveryPath + '/itens', delivered(1, 10));
+    await api('PUT', deliveryPath + '/itens', delivered(2, 0, 'Correção após conferência física'));
+    const history = (await api('GET', deliveryPath + '/entregas')).data.data;
+    assert.equal(history.length, 3);
+    assert.equal(history[0].motivo, 'Correção após conferência física');
+    assert.equal(history[0].antes.items[1].quantidade_entregue, 9);
+    assert.equal(history[0].depois.items[1].quantidade_entregue, 0);
+    await api('DELETE', deliveryPath, undefined, 400);
+    const persisted = await prisma.requisicoes.findUnique({ where: { id: deliveryRequest.id } });
+    assert.equal(persisted.status, 'pendente');
+    assert.equal(persisted.version, 3);
+    assert.deepEqual(JSON.parse(persisted.items).map(item => item.quantidade_requisitada), [1, 9]);
+    const races = await Promise.all([1, 2].map(quantity => fetch(base + deliveryPath + '/itens', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify(delivered(3, quantity)),
+    })));
+    assert.deepEqual(races.map(response => response.status).sort(), [200, 409]);
+    assert.equal(await prisma.eventos_entrega.count({ where: { requisicaoId: deliveryRequest.id } }), 4);
+    console.log('PASS: entregas parciais, conclusão, correção auditada, rollback e conflito entre terminais');
+
+    await prisma.requisicao_registros.create({ data: { registro_id: rows[20].id, requisicao_id: deliveryRequest.id } });
+    const deleteBody = { version: 4, motivo: 'Remoção administrativa de uma requisição de teste' };
+    await api('DELETE', deliveryPath, { ...deleteBody, version: 3 }, 409);
+    await api('DELETE', deliveryPath, { version: 4 }, 400);
+    await prisma.$executeRawUnsafe(`CREATE FUNCTION fail_request_archive() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'simulated archive failure'; END $$;`);
+    await prisma.$executeRawUnsafe('CREATE TRIGGER fail_request_archive BEFORE INSERT ON exclusoes_requisicoes FOR EACH ROW EXECUTE FUNCTION fail_request_archive()');
+    await api('DELETE', deliveryPath, deleteBody, 503);
+    assert.equal((await prisma.requisicoes.findUnique({ where: { id: deliveryRequest.id } })).version, 4);
+    assert.equal(await prisma.eventos_entrega.count({ where: { requisicaoId: deliveryRequest.id } }), 4);
+    assert.ok(await prisma.requisicao_registros.findUnique({ where: { registro_id: rows[20].id } }));
+    await prisma.$executeRawUnsafe('DROP TRIGGER fail_request_archive ON exclusoes_requisicoes');
+    await prisma.$executeRawUnsafe('DROP FUNCTION fail_request_archive()');
+    await api('DELETE', deliveryPath, deleteBody, 204);
+    assert.equal(await prisma.requisicoes.findUnique({ where: { id: deliveryRequest.id } }), null);
+    assert.equal(await prisma.eventos_entrega.count({ where: { requisicaoId: deliveryRequest.id } }), 0);
+    assert.equal(await prisma.requisicao_registros.findUnique({ where: { registro_id: rows[20].id } }), null);
+    assert.ok(await prisma.registros.findUnique({ where: { id: rows[20].id } }));
+    const archived = await prisma.exclusoes_requisicoes.findFirst({ where: { requisicaoId: deliveryRequest.id } });
+    assert.equal(archived.motivo, deleteBody.motivo);
+    assert.equal(archived.snapshot.entregas.length, 4);
+    assert.equal(archived.snapshot.vinculos[0].registro_id, rows[20].id);
+    await api('DELETE', deliveryPath, deleteBody, 404);
+    assert.equal(await prisma.exclusoes_requisicoes.count({ where: { requisicaoId: deliveryRequest.id } }), 1);
+    console.log('PASS: exclusão administrativa arquiva histórico, exige versão/motivo e reverte tudo quando arquivo falha');
+
     await api('POST', '/api/auth/logout');
     await api('GET', '/api/auth/me', undefined, 401);
     assert.equal(await prisma.registros.count(), 266);
     console.log('PASS: logout revoga cookie reapresentado sem excluir registros');
+
+    // In production logout preserves all data; the opted-in local test environment
+    // atomically removes the shared DEMO namespace, including material history.
+    process.env.NODE_ENV = 'development';
+    process.env.DEBUG_ROUTES_ENABLED = 'true';
+    cookie = (await api('POST', '/api/auth/login', credentials)).response.headers.get('set-cookie').split(';')[0];
+    const demo = (await api('POST', '/api/debug/populate', { count: 4, clear: false })).data;
+    const demoRows = (await api('GET', '/api/registros?om=' + demo.om)).data.data;
+    assert.equal(demoRows.length, 4);
+    const demoIds = demoRows.filter(row => ['Ausente', 'Danificado', 'Incorreto'].includes(row.tipodefeito)).map(row => row.id);
+    const archiveRequestId = (await api('POST', '/api/requisicoes', { registroIds: demoIds }, 201)).data.requisicaoIds[0];
+    await api('DELETE', '/api/requisicoes/' + archiveRequestId, { version: 0, motivo: 'Arquivo DEMO para validar limpeza no logout' }, 204);
+    const liveRequestId = (await api('POST', '/api/requisicoes', { registroIds: demoIds }, 201)).data.requisicaoIds[0];
+    const demoRequest = await prisma.requisicoes.findUnique({ where: { id: liveRequestId } });
+    await api('PUT', `/api/requisicoes/${liveRequestId}/itens`, { version: 0, items: JSON.parse(demoRequest.items).map(item => ({
+      pn: item.pn, quantidade_entregue: item.quantidade_requisitada,
+    })) });
+    await prisma.oms_ativas.create({ data: { omNumber: 'DEMO-LEGACY-A', startTime: 1n } });
+    await prisma.oms_pausadas.create({ data: { omNumber: 'DEMO-LEGACY-P', startTime: 1n, pauseStartedAt: 2n } });
+    await prisma.oms_finalizadas.create({ data: { omNumber: 'DEMO-LEGACY-F', startTime: 1n, endTime: 2n } });
+    const adminBeforeCleanup = await prisma.users.findUnique({ where: { username: credentials.username } });
+    await prisma.$executeRawUnsafe(`CREATE FUNCTION fail_demo_cleanup() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD."omNumber" LIKE 'DEMO-%' THEN RAISE EXCEPTION 'simulated cleanup failure'; END IF; RETURN OLD; END $$;`);
+    await prisma.$executeRawUnsafe('CREATE TRIGGER fail_demo_cleanup BEFORE DELETE ON ordens_manufatura FOR EACH ROW EXECUTE FUNCTION fail_demo_cleanup()');
+    await api('POST', '/api/auth/logout', undefined, 503);
+    await api('GET', '/api/auth/me');
+    assert.equal((await prisma.users.findUnique({ where: { id: adminBeforeCleanup.id } })).session_version, adminBeforeCleanup.session_version);
+    assert.equal(await prisma.registros.count({ where: { om: demo.om } }), 4);
+    assert.equal(await prisma.placas_inspecionadas.count({ where: { omNumber: demo.om } }), 4);
+    assert.equal(await prisma.eventos_entrega.count({ where: { requisicaoId: liveRequestId } }), 1);
+    assert.equal(await prisma.exclusoes_requisicoes.count({ where: { requisicaoId: archiveRequestId } }), 1);
+    await prisma.$executeRawUnsafe('DROP TRIGGER fail_demo_cleanup ON ordens_manufatura');
+    await prisma.$executeRawUnsafe('DROP FUNCTION fail_demo_cleanup()');
+    const oldCookie = cookie;
+    await api('POST', '/api/auth/logout');
+    await api('GET', '/api/auth/me', undefined, 401);
+    assert.equal(await prisma.registros.count({ where: { om: { startsWith: 'DEMO-' } } }), 0);
+    assert.equal(await prisma.requisicoes.count({ where: { om: { startsWith: 'DEMO-' } } }), 0);
+    assert.equal(await prisma.eventos_entrega.count({ where: { requisicaoId: liveRequestId } }), 0);
+    assert.equal(await prisma.exclusoes_requisicoes.count({ where: { requisicaoId: archiveRequestId } }), 0);
+    for (const model of ['ordens_manufatura','placas_inspecionadas','eventos_om','oms_ativas','oms_pausadas','oms_finalizadas']) {
+      assert.equal(await prisma[model].count({ where: { omNumber: { startsWith: 'DEMO-' } } }), 0);
+    }
+    assert.equal(await prisma.registros.count(), 266);
+    assert.ok(await prisma.exclusoes_requisicoes.findUnique({ where: { id: archived.id } }));
+    assert.equal(await prisma.users.count(), 1);
+    cookie = (await api('POST', '/api/auth/login', credentials)).response.headers.get('set-cookie').split(';')[0];
+    const nextDemo = (await api('POST', '/api/debug/populate', { count: 1, clear: false })).data;
+    const replayed = await fetch(base + '/api/auth/logout', {method:'POST',headers:{Cookie:oldCookie}});
+    assert.equal(replayed.status, 200);
+    assert.equal(await prisma.registros.count({ where: { om: nextDemo.om } }), 1);
+    await api('POST', '/api/auth/logout');
+    assert.equal(await prisma.registros.count(), 266);
+    console.log('PASS: saída do administrador limpa DEMOs por completo, preserva dados reais e reverte limpeza/sessão em falha; cookie antigo não limpa novos testes');
     console.log('INTEGRATION_ISOLATED_OK');
   } finally {
     if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

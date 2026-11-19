@@ -75,7 +75,43 @@ O comando recusa usuário existente e não redefine senha ou perfil. Contas anti
 - `CORS_ORIGIN` em produção é obrigatório: lista de origens HTTP/HTTPS exatas, separadas por vírgula, sem barra final ou caminho. Exemplo: `https://aoi.empresa.local`.
 - Configure HTTPS interno e `COOKIE_SECURE=true` para a implantação definitiva. O frontend deve usar uma URL de API acessível pelos terminais.
 
-Debug só funciona com **ambas** as condições `NODE_ENV=development` e `DEBUG_ROUTES_ENABLED=true`, além de autenticação de administrador. Produção sempre bloqueia `/api/debug/populate` e `/api/debug/clear`. `/api/debug/seed-admin` foi removido em todos os ambientes. A limpeza explícita remove apenas registros e requisições com OM `DEMO-`; não administra timers de OMs.
+Debug só funciona com **ambas** as condições `NODE_ENV=development` e `DEBUG_ROUTES_ENABLED=true`, além de autenticação de administrador. Produção sempre bloqueia `/api/debug/populate` e `/api/debug/clear`. `/api/debug/seed-admin` foi removido em todos os ambientes. A limpeza remove somente o namespace reservado `DEMO-`, incluindo OMs, falhas, requisições, vínculos, entregas, inspeções, eventos, tabelas legadas e arquivos de exclusão dessas requisições.
+
+O ícone DEMO da tabela do operador acrescenta 15 falhas, sem limpar os testes
+anteriores. Cada clique abre uma OM exclusiva curta `DEMO-001` a `DEMO-999` e usa o mesmo serviço
+dos lançamentos normais para gravar as falhas pendentes, o usuário autenticado e
+as inspeções por OM/serial. Inclui exemplos Ausente, Danificado e Incorreto para
+requisição e Possível Incorreto para conferência SMT. As requisições são criadas
+pelo usuário na tabela, com as validações e proteção de duplicidade habituais.
+Nos acessos rápidos ao estoque e reparo, ative DEMO para incluir essas OMs nas
+consultas. O ensaio foi validado com administrador, incluindo entregas parcial e
+total e seu histórico. Ações do DEMO permanecem bloqueadas em produção.
+
+Ao clicar **Sair** com uma sessão administradora válida nesse ambiente de testes,
+`POST /api/auth/logout` limpa todos os dados DEMO compartilhados e revoga a sessão
+na mesma transação. Isso inclui OMs ativas, pausadas e finalizadas. O cookie só é
+limpo depois de confirmar a transação. Uma falha retorna 503, reverte a limpeza e
+mantém a sessão para tentar novamente. Dados fora de `DEMO-` e contas são mantidos.
+Vínculos cruzados entre requisições reais e falhas DEMO (ou o inverso) bloqueiam a
+limpeza para preservar o material operacional. Sessões antigas, ausentes ou
+inválidas não disparam exclusões. Saída de outros perfis e saída em produção
+continuam apenas encerrando a sessão. Fechar a aba não aciona essa limpeza.
+
+### Exclusão de requisições
+
+`DELETE /api/requisicoes/:id` exige `{ version, motivo }`, com motivo de 5 a 500
+caracteres. O administrador pode excluir requisições com entregas, sem o bloqueio
+anterior por chave estrangeira. O almoxarifado continua autorizado a excluir
+pendências sem entrega/histórico. Os demais perfis não podem excluir requisições.
+Uma transação confere a versão, arquiva a requisição, entregas e vínculos em
+`exclusoes_requisicoes` com responsável, data e motivo, e remove a requisição
+operacional. Falha no arquivo reverte toda a operação. A cópia histórica não tem
+vínculo dependente da requisição excluída e permanece no banco para auditoria.
+
+As falhas de origem permanecem e podem ser requisitadas novamente ou excluídas
+depois de retirar a requisição vinculada. A exclusão não registra devolução física
+de peças. A interface pede motivo e descreve essas consequências antes de enviar.
+Clientes antigos sem versão/motivo precisam ser atualizados junto com a API.
 
 ## Verificações
 
