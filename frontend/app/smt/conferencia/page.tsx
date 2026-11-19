@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,60 +23,54 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import { Registro } from '@/types/index';
+import { createSmtQueueLoader, filterSmtQueue, SmtQueueState } from '@/lib/smtQueue';
 
 export default function SmtConferenciaPage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [registros, setRegistros] = useState<Registro[]>([]);
+  const [queue, setQueue] = useState<SmtQueueState>({ status: 'loading', records: [], error: '' });
+  const queueLoader = useRef<ReturnType<typeof createSmtQueueLoader> | null>(null);
+  const processing = useRef(false);
+  const mounted = useRef(false);
+  const loading = queue.status === 'loading';
+  const registros = queue.records;
   const [user, setUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const loadRegistros = useCallback(() => {
+    if (!processing.current) return queueLoader.current?.load();
+  }, []);
 
   // Verificar autenticação
   useEffect(() => {
-    const checkAuth = () => {
+    mounted.current = true;
+    try {
       const storedUser = localStorage.getItem('user');
       if (!storedUser) {
         router.push('/login');
         return;
       }
       const parsedUser = JSON.parse(storedUser);
-      // Idealmente, verificar se tem permissão de líder SMT ou admin
       setUser(parsedUser);
-      setLoading(false);
-      loadRegistros();
+      const loader = createSmtQueueLoader({
+        read: signal => fetchListaCompleta<Registro>('/api/registros', signal),
+        onState: setQueue,
+      });
+      queueLoader.current = loader;
+      void loader.load();
+    } catch {
+      router.push('/login');
+    }
+    return () => {
+      mounted.current = false;
+      queueLoader.current?.dispose();
+      queueLoader.current = null;
     };
-    checkAuth();
   }, [router]);
 
-  const loadRegistros = useCallback(async () => {
-    try {
-      setLoading(true);
-      // Busca todos os registros do dia/recentes
-      // Como não temos um endpoint específico de filtro, vamos buscar todos e filtrar no front por enquanto
-      // Em produção, criar um endpoint /api/registros?tipodefeito=Possível%20Incorreto seria melhor
-      const lista = await fetchListaCompleta<Registro>('/api/registros');
-
-      // Filtra apenas "Possível Incorreto"
-      const pendentes = lista.filter((r: Registro) => r.tipodefeito === 'Possível Incorreto');
-
-      // Ordena por data (mais antigos primeiro para resolver logo)
-      pendentes.sort(
-        (a: Registro, b: Registro) =>
-          new Date(a.createdat).getTime() - new Date(b.createdat).getTime()
-      );
-
-      setRegistros(pendentes);
-    } catch (error: any) {
-      console.error('Erro ao carregar registros:', error);
-      showToast(error.message || 'Erro ao carregar lista de conferência', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
   const handleAction = async (id: string, action: 'confirma_erro' | 'alternativo') => {
+    if (processing.current || queueLoader.current?.getState().status !== 'ready') return;
+    processing.current = true;
     setProcessingId(id);
     try {
       const novoDefeito = action === 'confirma_erro' ? 'Incorreto' : 'Alternativo';
@@ -98,7 +92,9 @@ export default function SmtConferenciaPage() {
       await fetchAutenticado(`/api/registros/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
       });
+      if (!mounted.current) return;
 
       showToast(
         action === 'confirma_erro'
@@ -108,21 +104,17 @@ export default function SmtConferenciaPage() {
       );
 
       // Remove da lista localmente
-      setRegistros(prev => prev.filter(r => r.id !== id));
+      queueLoader.current?.removeConfirmed(id);
     } catch (error: any) {
       console.error('Erro ao processar:', error);
-      showToast(error.message || 'Erro ao processar ação', 'error');
+      if (mounted.current) queueLoader.current?.invalidate(`${error.message || 'Não foi possível confirmar a ação.'} Atualize a fila antes de tentar novamente.`);
     } finally {
-      setProcessingId(null);
+      processing.current = false;
+      if (mounted.current) setProcessingId(null);
     }
   };
 
-  const filteredRegistros = registros.filter(
-    r =>
-      r.om.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.designador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.pn?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRegistros = filterSmtQueue(registros, searchTerm);
 
   const handleLogout = async () => {
     try {
@@ -156,7 +148,7 @@ export default function SmtConferenciaPage() {
             <span className="text-sm font-medium text-slate-300 hidden md:block">
               {user?.name || 'Usuário'}
             </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" onClick={handleLogout} aria-label="Sair">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -176,7 +168,7 @@ export default function SmtConferenciaPage() {
             </div>
             <div>
               <p className="text-slate-400 text-sm font-medium">Pendentes</p>
-              <h3 className="text-2xl font-bold text-white">{registros.length}</h3>
+              <h3 className="text-2xl font-bold text-white">{queue.status === 'ready' ? registros.length : '—'}</h3>
             </div>
           </motion.div>
           {/* Adicionar mais KPIs se necessário */}
@@ -189,24 +181,35 @@ export default function SmtConferenciaPage() {
             <input
               type="text"
               placeholder="Buscar por OM, Designador ou PN..."
+              aria-label="Buscar pendências SMT por OM, designador ou PN"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
             />
           </div>
-          <Button variant="ghost" onClick={loadRegistros} disabled={loading}>
+          <Button variant="ghost" onClick={loadRegistros} disabled={loading || !!processingId}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Atualizar Lista
           </Button>
         </div>
+        {queue.status === 'ready' && <p role="status" className="text-sm text-slate-400 mb-4">
+          Exibindo {filteredRegistros.length} de {registros.length} pendências.
+        </p>}
 
         {/* Lista */}
         <div className="grid grid-cols-1 gap-4">
           <AnimatePresence>
             {loading ? (
-              <div className="text-center py-20 text-slate-500">
+              <div role="status" className="text-center py-20 text-slate-500">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-slate-500 mx-auto mb-4"></div>
                 Carregando pendências...
+              </div>
+            ) : queue.status === 'error' ? (
+              <div role="alert" className="text-center py-20 bg-slate-800/30 rounded-2xl border border-slate-700/50 dashed">
+                <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-300">Não foi possível consultar a fila</h3>
+                <p className="text-slate-400 mt-2">{queue.error}</p>
+                <Button variant="outline" className="mt-4" onClick={loadRegistros}>Tentar novamente</Button>
               </div>
             ) : filteredRegistros.length === 0 ? (
               <motion.div
@@ -215,8 +218,12 @@ export default function SmtConferenciaPage() {
                 className="text-center py-20 bg-slate-800/30 rounded-2xl border border-slate-700/50 dashed"
               >
                 <CheckCircle className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-400">Tudo limpo!</h3>
-                <p className="text-slate-500">Nenhuma pendência de conferência no momento.</p>
+                <h3 className="text-lg font-medium text-slate-400">{registros.length === 0
+                  ? 'Nenhuma conferência pendente' : 'Nenhum resultado para esta busca'}</h3>
+                <p className="text-slate-500">{registros.length === 0
+                  ? 'A consulta foi concluída e não há pendências de conferência no momento.'
+                  : 'Há pendências na fila. Limpe ou ajuste a busca para encontrá-las.'}</p>
+                {searchTerm.trim() && <Button variant="outline" className="mt-4" onClick={() => setSearchTerm('')}>Limpar busca</Button>}
               </motion.div>
             ) : (
               filteredRegistros.map(registro => (
