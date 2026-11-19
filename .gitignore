@@ -8,6 +8,9 @@ Thumbs.db
 # Ignore local database files
 *.db
 
+# PostgreSQL portátil e dados locais de desenvolvimento
+.tools/
+
 # Ignore SQLite temporary files
 *.db-shm
 *.db-wal
