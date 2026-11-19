@@ -1,6 +1,6 @@
 # Auditoria funcional — andamento
 
-Atualização: 19/11/2026. Branch: `codex/corrigir-redefinicao-senha`.
+Atualização: 19/11/2026. Branch: `codex/corrigir-filtro-almoxarifado`.
 
 ## Direção aprovada
 
@@ -42,7 +42,8 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Estados e contagens do relatório de reparo | UX-05 | Concluído em `codex/corrigir-relatorio-reparo`. |
 | Registro de inspeções e indicador de primeira passagem | UX-06 | Implementado para validação em piloto. Liberação após reparo é uma decisão de processo pendente. |
 | Redefinição de senha na administração | UX-07 | Implementada e validada. |
-| Datas, entregas e filas SMT | UX-08 a UX-10 | Pendente. |
+| Filtro de datas do Almoxarifado | UX-08 | Implementado e validado. |
+| Entregas e filas SMT | UX-09 e UX-10 | Pendente. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
 
 ## UX-02 — sincronização da OM
@@ -384,3 +385,22 @@ a senha antiga foi rejeitada e a nova permitiu entrar com o perfil preservado.
 O navegador confirmou identificação do usuário, aviso sobre sessões, validação
 do campo vazio e cancelamento do diálogo. A troca efetiva foi exercitada pela
 API. As contas fictícias criadas nessa verificação foram removidas.
+
+## UX-08 — filtro de datas do Almoxarifado
+
+Reproduzido `RangeError: Invalid time value` ao converter a data do primeiro
+item de um conjunto vazio. A consulta agora aplica busca, OM, status e dia
+a cada requisição. Datas ausentes ou inválidas ficam fora do filtro por dia.
+Limpar os filtros recupera também esses registros para consulta.
+
+O campo continua selecionando um dia. A comparação e a exibição usam
+`America/Sao_Paulo`, como os relatórios. Uma data de filtro inválida apresenta
+uma mensagem de validação. Resultado vazio oferece **Limpar filtros e mostrar
+todas**. Falha na consulta apresenta erro e **Tentar novamente**.
+
+Validação com 62 testes de frontend e build de produção, incluindo TypeScript.
+Os casos de regressão cobrem conjunto vazio, datas ausentes ou inválidas,
+combinações de busca/OM/status, ano bissexto e limites do dia em Brasília.
+No navegador, a combinação de 17/11/2026 com status pendente retornou zero.
+Ao liberar o status, a requisição entregue daquele dia apareceu. Limpar
+restaurou as quatro requisições da prévia, em Tabela e Kanban.

@@ -30,17 +30,18 @@ import Dialog from '@/components/ui/Dialog';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import DemoBadge from '@/components/ui/DemoBadge';
 import { Trash2 } from 'lucide-react';
+import { filterWarehouseRequests, validWarehouseDay } from '@/lib/warehouseFilters';
 
 export default function AlmoxarifadoPage() {
   const router = useRouter();
   const { toasts, showToast, removeToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [user, setUser] = useState<any>(null);
 
   // Data
   const [allData, setAllData] = useState<Requisicao[]>([]);
-  const [filteredData, setFilteredData] = useState<Requisicao[]>([]);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   // UI State
@@ -54,6 +55,10 @@ export default function AlmoxarifadoPage() {
   const [omFilter, setOmFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dataFilter, setDataFilter] = useState('');
+  const invalidDateFilter = !validWarehouseDay(dataFilter);
+  const filteredData = useMemo(() => filterWarehouseRequests(allData, {
+    search: searchTerm, om: omFilter, status: statusFilter, day: dataFilter,
+  }), [allData, searchTerm, omFilter, statusFilter, dataFilter]);
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -125,6 +130,7 @@ export default function AlmoxarifadoPage() {
   // Load data
   const loadData = useCallback(async () => {
     setIsDataLoading(true);
+    setLoadError('');
     try {
       const requisicoes = await fetchListaCompleta<Requisicao>('/api/requisicoes');
 
@@ -143,6 +149,7 @@ export default function AlmoxarifadoPage() {
       setIsDataLoading(false);
     } catch (error: any) {
       console.error('Erro ao carregar requisições:', error);
+      setLoadError(error.message || 'Não foi possível consultar as requisições.');
       showToast(error.message || 'Erro ao carregar requisições', 'error');
       setIsDataLoading(false);
     }
@@ -153,43 +160,6 @@ export default function AlmoxarifadoPage() {
       loadData();
     }
   }, [user, loadData]);
-
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...allData];
-
-    // Search
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        r =>
-          r.id.toString().includes(search) ||
-          r.om.toLowerCase().includes(search) ||
-          (r.created_by && r.created_by.toLowerCase().includes(search))
-      );
-    }
-
-    // OM Filter
-    if (omFilter !== 'all') {
-      filtered = filtered.filter(r => r.om === omFilter);
-    }
-
-    // Status Filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(r => r.status === statusFilter);
-    }
-
-    // Data Filter
-    if (dataFilter) {
-      const dataReq = new Date(filtered[0]?.created_at).toISOString().split('T')[0];
-      filtered = filtered.filter(r => {
-        const data = new Date(r.created_at).toISOString().split('T')[0];
-        return data === dataFilter;
-      });
-    }
-
-    setFilteredData(filtered);
-  }, [allData, searchTerm, omFilter, statusFilter, dataFilter]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -271,17 +241,17 @@ export default function AlmoxarifadoPage() {
 
   const formatDate = (date: string) => {
     const d = new Date(date);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hour = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hour}:${min}`;
+    if (!Number.isFinite(d.getTime())) return 'Data inválida';
+    return d.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
   };
 
   const formatElapsed = (createdAt: string) => {
     const agora = Date.now();
     const criacao = new Date(createdAt).getTime();
+    if (!Number.isFinite(criacao)) return '—';
     const diff = agora - criacao;
     const horas = Math.floor(diff / (1000 * 60 * 60));
     const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -910,11 +880,20 @@ export default function AlmoxarifadoPage() {
 
             <input
               type="date"
+              aria-label="Data da requisição (horário de Brasília)"
+              aria-invalid={invalidDateFilter}
+              aria-describedby={invalidDateFilter ? 'warehouse-date-error' : undefined}
+              title="Data da requisição no horário de Brasília"
               value={dataFilter}
               onChange={e => setDataFilter(e.target.value)}
               className="bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500/50"
             />
           </div>
+          {invalidDateFilter && (
+            <p id="warehouse-date-error" role="alert" className="text-sm text-red-400 mb-4">
+              Informe uma data válida ou limpe o filtro.
+            </p>
+          )}
 
           <div className="flex justify-between items-center">
             <Button variant="outline" onClick={clearFilters}>
@@ -1140,10 +1119,11 @@ export default function AlmoxarifadoPage() {
                         <td className="p-5">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-mono text-sm text-slate-300 font-medium">
-                              {new Date(req.created_at).toLocaleDateString('pt-BR')}
+                              {new Date(req.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                             </span>
                             <span className="text-xs text-slate-500 font-mono">
                               {new Date(req.created_at).toLocaleTimeString('pt-BR', {
+                                timeZone: 'America/Sao_Paulo',
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
@@ -1229,10 +1209,23 @@ export default function AlmoxarifadoPage() {
           </div>
         )}
 
-        {filteredData.length === 0 && !isDataLoading && (
-          <div className="text-center py-12 text-slate-400">
+        {loadError && !isDataLoading && (
+          <div role="alert" className="text-center py-6 text-red-400">
+            <p>{loadError}</p>
+            <Button variant="outline" className="mt-3" onClick={() => void loadData()}>
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+        {filteredData.length === 0 && !isDataLoading && !loadError && !invalidDateFilter && (
+          <div role="status" className="text-center py-12 text-slate-400">
             <Archive className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p>Nenhuma requisição encontrada para os filtros selecionados.</p>
+            {(searchTerm || omFilter !== 'all' || statusFilter !== 'all' || dataFilter) && (
+              <Button variant="outline" className="mt-3" onClick={clearFilters}>
+                Limpar filtros e mostrar todas
+              </Button>
+            )}
           </div>
         )}
       </div>
