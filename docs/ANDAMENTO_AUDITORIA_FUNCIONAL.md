@@ -1,6 +1,6 @@
 # Auditoria funcional — andamento
 
-Atualização: 18/11/2026. Branch: `codex/indicadores-qualidade`.
+Atualização: 19/11/2026. Branch: `codex/corrigir-redefinicao-senha`.
 
 ## Direção aprovada
 
@@ -41,7 +41,8 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Totais, filtros e CSV do controle de falhas | UX-04 e UX-11 | Concluído em `633da0f`. |
 | Estados e contagens do relatório de reparo | UX-05 | Concluído em `codex/corrigir-relatorio-reparo`. |
 | Registro de inspeções e indicador de primeira passagem | UX-06 | Implementado para validação em piloto. Liberação após reparo é uma decisão de processo pendente. |
-| Administração, datas, entregas e filas SMT | UX-07 a UX-10 | Pendente. |
+| Redefinição de senha na administração | UX-07 | Implementada e validada. |
+| Datas, entregas e filas SMT | UX-08 a UX-10 | Pendente. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
 
 ## UX-02 — sincronização da OM
@@ -363,3 +364,23 @@ leitura manteve a contagem, e alternar para a OM histórica deixou a taxa
 indisponível. O build do frontend, 57 testes de frontend, 113 testes de backend
 e os testes de integração validaram gravação, reversão de lote, concorrência
 e preservação do histórico.
+
+## UX-07 — redefinição de senha
+
+A administração envia somente a senha para `PUT /api/users/:id/password`.
+A rota exige administrador autenticado e valida ID, tamanho mínimo de seis
+caracteres e limite de 72 bytes do bcrypt. A senha digitada mantém os seus
+caracteres, inclusive espaços externos. Dados extras são recusados nesse contrato.
+Uma única atualização grava o hash e incrementa a versão das sessões.
+
+O diálogo identifica o usuário e informa que as sessões anteriores serão
+encerradas. Erros aparecem junto ao campo. O envio bloqueia alterações e ações
+repetidas até concluir. Ao redefinir a própria senha, o administrador volta ao
+login. Falta de confirmação orienta a conferir o acesso com a nova senha.
+
+Validação com 129 testes de backend e build do frontend. Na prévia com banco
+persistente e conta fictícia, duas sessões abertas foram recusadas após a troca,
+a senha antiga foi rejeitada e a nova permitiu entrar com o perfil preservado.
+O navegador confirmou identificação do usuário, aviso sobre sessões, validação
+do campo vazio e cancelamento do diálogo. A troca efetiva foi exercitada pela
+API. As contas fictícias criadas nessa verificação foram removidas.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition, useCallback } from 'react';
+import { useState, useEffect, useTransition, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LogOut, ArrowRight, Users, Shield, TrendingUp, Lock, Eye, EyeOff } from 'lucide-react';
@@ -30,6 +30,9 @@ export default function AdminPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState('');
+  const resetPasswordPending = useRef(false);
   const [resetPasswordDialog, setResetPasswordDialog] = useState<{
     open: boolean;
     userId: string | null;
@@ -278,27 +281,57 @@ export default function AdminPage() {
   };
 
   const handleResetPassword = (userId: string) => {
+    if (resetPasswordPending.current) return;
+    setResetPasswordError('');
     setResetPasswordDialog({ open: true, userId, newPassword: '', showPassword: false });
   };
 
-  const confirmResetPassword = async () => {
-    if (!resetPasswordDialog.userId) return;
+  const closeResetPassword = () => {
+    if (resetPasswordPending.current) return;
+    setResetPasswordError('');
+    setResetPasswordDialog({ open: false, userId: null, newPassword: '', showPassword: false });
+  };
 
-    const newPassword = resetPasswordDialog.newPassword.trim();
-    if (!newPassword || newPassword.length < 6) {
-      showToast('Senha deve ter pelo menos 6 caracteres', 'warning');
+  const confirmResetPassword = async () => {
+    if (!resetPasswordDialog.userId || resetPasswordPending.current) return;
+
+    const newPassword = resetPasswordDialog.newPassword;
+    if (!newPassword.trim() || newPassword.length < 6) {
+      setResetPasswordError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (new TextEncoder().encode(newPassword).length > 72) {
+      setResetPasswordError('A senha deve ter até 72 bytes em UTF-8. Acentos podem ocupar mais de um byte.');
       return;
     }
 
+    const targetId = resetPasswordDialog.userId;
+    resetPasswordPending.current = true;
+    setResetPasswordLoading(true);
+    setResetPasswordError('');
     try {
-      await fetchAutenticado(`/api/users/${resetPasswordDialog.userId}`, {
+      await fetchAutenticado(`/api/users/${targetId}/password`, {
         method: 'PUT',
         body: JSON.stringify({ password: newPassword }),
+        signal: AbortSignal.timeout(15000),
       });
-      showToast('Senha redefinida com sucesso!', 'success');
       setResetPasswordDialog({ open: false, userId: null, newPassword: '', showPassword: false });
+      if (String(user.id) === String(targetId)) {
+        localStorage.clear();
+        sessionStorage.clear();
+        router.push('/login');
+        return;
+      }
+      showToast('Senha redefinida. As sessões anteriores desse usuário foram encerradas.', 'success');
     } catch (error: any) {
-      showToast(error.message || 'Erro ao redefinir senha', 'error');
+      const message = error.status === 400
+        ? error.details?.find((detail: { path: string }) => detail.path === 'password')?.message || error.message
+        : error.status === 404 ? error.message
+        : 'Não foi possível confirmar a redefinição. Tente entrar com a nova senha para conferir o resultado.';
+      setResetPasswordError(message);
+    } finally {
+      resetPasswordPending.current = false;
+      setResetPasswordLoading(false);
     }
   };
 
@@ -503,33 +536,44 @@ export default function AdminPage() {
       {/* Dialog de Redefinição de Senha */}
       <Dialog
         open={resetPasswordDialog.open}
-        onClose={() =>
-          setResetPasswordDialog({
-            open: false,
-            userId: null,
-            newPassword: '',
-            showPassword: false,
-          })
-        }
+        onClose={closeResetPassword}
         title="Redefinir Senha"
         size="sm"
         icon={<Lock className="w-5 h-5 text-purple-400" />}
       >
-        <div className="space-y-4">
+        <form className="space-y-4" noValidate onSubmit={event => {
+          event.preventDefault();
+          void confirmResetPassword();
+        }}>
+          <p className="text-sm text-slate-300">
+            Usuário <strong>{users.find(item => String(item.id) === String(resetPasswordDialog.userId))?.username}</strong>.
+            {' '}As sessões anteriores serão encerradas.
+            {String(user?.id) === String(resetPasswordDialog.userId) && ' Você precisará entrar novamente com a nova senha.'}
+          </p>
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">Nova Senha</label>
+            <label htmlFor="reset-password" className="block text-sm font-semibold text-slate-300 mb-2">Nova Senha</label>
             <div className="relative">
               <input
+                id="reset-password"
+                autoComplete="new-password"
+                autoFocus
+                disabled={resetPasswordLoading}
+                aria-invalid={!!resetPasswordError}
+                aria-describedby={resetPasswordError ? 'reset-password-help reset-password-error' : 'reset-password-help'}
                 type={resetPasswordDialog.showPassword ? 'text' : 'password'}
                 value={resetPasswordDialog.newPassword}
-                onChange={e =>
-                  setResetPasswordDialog({ ...resetPasswordDialog, newPassword: e.target.value })
-                }
+                onChange={e => {
+                  setResetPasswordError('');
+                  setResetPasswordDialog({ ...resetPasswordDialog, newPassword: e.target.value });
+                }}
                 placeholder="Digite a nova senha (mínimo 6 caracteres)"
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 pr-10 text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
               />
               <button
                 type="button"
+                disabled={resetPasswordLoading}
+                aria-label={resetPasswordDialog.showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-pressed={resetPasswordDialog.showPassword}
                 onClick={() =>
                   setResetPasswordDialog({
                     ...resetPasswordDialog,
@@ -545,28 +589,24 @@ export default function AdminPage() {
                 )}
               </button>
             </div>
-            <p className="text-xs text-slate-400 mt-1">Mínimo de 6 caracteres</p>
+            <p id="reset-password-help" className="text-xs text-slate-400 mt-1">Mínimo de 6 caracteres, até 72 bytes em UTF-8.</p>
+            {resetPasswordError && <p id="reset-password-error" role="alert" className="text-sm text-red-400 mt-2">{resetPasswordError}</p>}
           </div>
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-700/50">
             <Button
+              type="button"
               variant="outline"
-              onClick={() =>
-                setResetPasswordDialog({
-                  open: false,
-                  userId: null,
-                  newPassword: '',
-                  showPassword: false,
-                })
-              }
+              disabled={resetPasswordLoading}
+              onClick={closeResetPassword}
             >
               Cancelar
             </Button>
-            <Button variant="primary" onClick={confirmResetPassword}>
+            <Button type="submit" variant="primary" isLoading={resetPasswordLoading} disabled={resetPasswordLoading}>
               <Lock className="w-4 h-4 mr-2" />
               Redefinir Senha
             </Button>
           </div>
-        </div>
+        </form>
       </Dialog>
 
       {/* Toast Container */}

@@ -19,6 +19,15 @@ const userUpdateSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
+const userPasswordSchema = z.object({
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.')
+    .refine(value => value.trim().length > 0, 'Informe uma senha válida.')
+    .refine(value => Buffer.byteLength(value, 'utf8') <= 72, 'A senha deve ter até 72 bytes em UTF-8.'),
+}).strict();
+const userIdSchema = z.object({
+  id: z.string().regex(/^[1-9]\d*$/).refine(value => Number.isSafeInteger(Number(value)) && Number(value) <= 2147483647),
+});
+
 const registroBase = {
   id: z.string().min(1),
   om: z.string().min(1),
@@ -124,6 +133,8 @@ module.exports = {
   loginSchema,
   userCreateSchema,
   userUpdateSchema,
+  userPasswordSchema,
+  userIdSchema,
   registroCreateSchema,
   registroUpdateSchema,
   registrosBatchSchema,

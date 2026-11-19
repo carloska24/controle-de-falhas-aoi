@@ -61,6 +61,22 @@ async function updateUser(req, res) {
   }
 }
 
+async function resetPassword(req, res) {
+  try {
+    const password_hash = await bcrypt.hash(req.body.password, 10);
+    await prisma.users.update({
+      where: { id: Number(req.params.id) },
+      data: { password_hash, session_version: { increment: 1 } },
+      select: { id: true },
+    });
+    res.json({ message: 'Senha redefinida. As sessões anteriores foram encerradas.' });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Usuário não encontrado.' });
+    console.error('[Usuários] Falha ao redefinir senha:', error.code || 'database-error');
+    res.status(503).json({ error: 'Não foi possível confirmar a redefinição de senha. Tente entrar com a nova senha para conferir o resultado.' });
+  }
+}
+
 async function deleteUser(req, res) {
   const { id } = req.params;
   const adminId = req.user.id;
@@ -90,4 +106,4 @@ async function debugUsers(req, res) {
   }
 }
 
-module.exports = { listUsers, createUser, updateUser, deleteUser, debugUsers };
+module.exports = { listUsers, createUser, updateUser, resetPassword, deleteUser, debugUsers };

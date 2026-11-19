@@ -170,6 +170,67 @@ describe('Session revocation', () => {
   });
 });
 
+describe('Administrator password reset', () => {
+  const tokenFor = id => jwt.sign({ id, sessionVersion: 0 }, process.env.JWT_SECRET);
+  const reset = (body, id = '1') => request(app).put(`/api/users/${id}/password`)
+    .set('Authorization', `Bearer ${tokenFor(2)}`).send(body);
+
+  test('password-only reset preserves account fields, replaces the hash and revokes old cookies', async () => {
+    const previous = await request(app).post('/api/auth/login')
+      .send({ username: 'test-operator', password: 'test-password-only' }).expect(200);
+    const oldCookie = previous.headers['set-cookie'][0].split(';')[0];
+    const password = '  nova-senha-á  ';
+    const response = await reset({ password }).expect(200);
+    expect(response.body).toEqual({ message: 'Senha redefinida. As sessões anteriores foram encerradas.' });
+    expect(prisma.users.update.mock.calls[0][0].data).toEqual({
+      password_hash: expect.any(String), session_version: { increment: 1 },
+    });
+    expect(users.get(1)).toMatchObject({ name: 'Operador Teste', username: 'test-operator', role: 'operator', session_version: 1 });
+    expect(await bcrypt.compare(password, users.get(1).password_hash)).toBe(true);
+    await request(app).get('/api/auth/me').set('Cookie', oldCookie).expect(401);
+    await request(app).post('/api/auth/login')
+      .send({ username: 'test-operator', password: 'test-password-only' }).expect(401);
+    await request(app).post('/api/auth/login').send({ username: 'test-operator', password }).expect(200);
+    await request(app).get('/api/auth/me').set('Authorization', `Bearer ${tokenFor(2)}`).expect(200);
+  });
+
+  test('missing sessions and operators cannot reset passwords', async () => {
+    await request(app).put('/api/users/1/password').send({ password: 'new-password' }).expect(401);
+    await request(app).put('/api/users/2/password').set('Authorization', `Bearer ${tokenFor(1)}`)
+      .send({ password: 'new-password' }).expect(403);
+    expect(prisma.users.update).not.toHaveBeenCalled();
+  });
+
+  test.each([{}, { password: '' }, { password: '12345' }, { password: '      ' },
+    { password: 'á'.repeat(37) }, { password: 'a'.repeat(73) }, { password: 'valid-pass', role: 'admin' }])(
+    'invalid reset body is rejected before changing the account %#', async body => {
+      await reset(body).expect(400);
+      expect(prisma.users.update).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each(['0', '-1', '1abc', '1.5', '2147483648'])('invalid target %s is rejected', async id => {
+    await reset({ password: 'valid-password' }, id).expect(400);
+    expect(prisma.users.update).not.toHaveBeenCalled();
+  });
+
+  test('a missing user returns 404 and a failed write preserves the previous password and sessions', async () => {
+    prisma.users.update.mockRejectedValueOnce({ code: 'P2025' });
+    await reset({ password: 'valid-password' }, '999').expect(404);
+    const previousHash = users.get(1).password_hash;
+    prisma.users.update.mockRejectedValueOnce(new Error('private SQL details'));
+    const response = await reset({ password: 'valid-password' }).expect(503);
+    expect(response.body.error).not.toContain('private');
+    expect(users.get(1)).toMatchObject({ password_hash: previousHash, session_version: 0 });
+    await request(app).get('/api/auth/me').set('Authorization', `Bearer ${tokenFor(1)}`).expect(200);
+  });
+
+  test('resetting the current administrator revokes that session as well', async () => {
+    await reset({ password: 'new-admin-password' }, '2').expect(200);
+    await request(app).get('/api/auth/me').set('Authorization', `Bearer ${tokenFor(2)}`).expect(401);
+  });
+});
+
 describe('Debug isolation', () => {
   const adminToken = jwt.sign({ id: 2, role: 'admin', sessionVersion: 0 }, process.env.JWT_SECRET);
   afterEach(() => {

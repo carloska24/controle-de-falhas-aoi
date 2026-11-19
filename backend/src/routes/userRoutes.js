@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { validate, userCreateSchema, userUpdateSchema } = require('../utils/schemas');
+const { validate, userCreateSchema, userUpdateSchema, userPasswordSchema, userIdSchema } = require('../utils/schemas');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
 const userController = require('../controllers/userController');
 
 // Todas as rotas abaixo (exceto debug se exposto incorretamente) requerem auth + admin
 router.get('/', authenticateToken, isAdmin, userController.listUsers);
 router.post('/', authenticateToken, isAdmin, validate(userCreateSchema), userController.createUser);
+router.put('/:id/password', authenticateToken, isAdmin,
+  validate(userIdSchema, 'params'), validate(userPasswordSchema), userController.resetPassword);
 router.put(
   '/:id',
   authenticateToken,
