@@ -373,6 +373,24 @@ async function main() {
     const replayed = await fetch(base + '/api/auth/logout', {method:'POST',headers:{Cookie:oldCookie}});
     assert.equal(replayed.status, 200);
     assert.equal(await prisma.registros.count({ where: { om: nextDemo.om } }), 1);
+    const analyticsDemo = (await api('POST', '/api/debug/populate', { count: 15, clear: false })).data;
+    assert.equal(analyticsDemo.oms.length, 3);
+    assert.ok(analyticsDemo.oms.every(om => /^DEMO-\d{3}$/.test(om) && om !== nextDemo.om));
+    const analyticsRows = await prisma.registros.findMany({ where: { om: { in: analyticsDemo.oms } } });
+    assert.equal(analyticsRows.length, 15);
+    assert.ok(new Set(analyticsRows.map(row => row.createdat.slice(0,10))).size > 10);
+    for (const row of analyticsRows) {
+      const board = await prisma.placas_inspecionadas.findUnique({ where: { omNumber_serial: { omNumber: row.om, serial: row.serial } } });
+      assert.equal(board.registradaEm.toISOString(), row.createdat);
+    }
+    const demoReport = (await api('GET', '/api/relatorio-falhas/snapshot?demo=true&om=' + analyticsDemo.om)).data;
+    assert.equal(demoReport.meta.total, 5);
+    const isolatedReport = (await api('GET', '/api/relatorio-falhas/snapshot?om=' + analyticsDemo.om)).data;
+    assert.equal(isolatedReport.meta.total, 0);
+    const analyticDay = new Intl.DateTimeFormat('en-CA', { timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date(analyticsRows[0].createdat));
+    const demoDayReport = (await api('GET', '/api/relatorio-falhas/snapshot?demo=true&periodo=custom&dataIni=' + analyticDay + '&dataFim=' + analyticDay)).data;
+    assert.ok(demoDayReport.meta.total > 0);
+    console.log('PASS: DEMO gera três OMs curtas com histórico de datas e inspeções alinhadas; relatório filtra o dia simulado e mantém isolamento');
     await api('POST', '/api/auth/logout');
     assert.equal(await prisma.registros.count(), 266);
     console.log('PASS: saída do administrador limpa DEMOs por completo, preserva dados reais e reverte limpeza/sessão em falha; cookie antigo não limpa novos testes');

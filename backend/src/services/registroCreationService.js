@@ -3,7 +3,21 @@ const { OMError } = require('./omService');
 const { lockOMs, verifyActiveOM, registrarPlacaComFalha } = require('./inspecaoService');
 const { randomUUID } = require('node:crypto');
 
-async function createRegistros(registros, actor) {
+async function createRegistros(registros, actor, options = {}) {
+  // Internal-only history simulation; the normal HTTP endpoint never passes options.
+  const demoDates = options.demoCreatedAt;
+  if (demoDates !== undefined) {
+    if (actor.role !== 'admin' || process.env.NODE_ENV !== 'development'
+      || process.env.DEBUG_ROUTES_ENABLED !== 'true' || registros.some(row => !row.om.startsWith('DEMO-'))) {
+      throw new OMError(403, 'Datas simuladas são permitidas somente para demonstração no ambiente de testes.');
+    }
+    const now = Date.now();
+    if (!(demoDates instanceof Map) || demoDates.size !== registros.length || registros.some(row => {
+      const date = demoDates.get(row.id);
+      const time = typeof date === 'string' ? Date.parse(date) : NaN;
+      return !Number.isFinite(time) || time > now || time < now - 30 * 86400000;
+    })) throw new OMError(400, 'As datas de demonstração devem ser válidas e estar nos últimos 30 dias.');
+  }
   const oms = [...new Set(registros.map(registro => registro.om))].sort();
   await prisma.$transaction(async tx => {
     const byOM = await lockOMs(tx, oms);
@@ -18,10 +32,11 @@ async function createRegistros(registros, actor) {
     for (const registro of registros) {
       const { omVersion, ...data } = registro;
       await tx.registros.create({ data: {
-        ...data, id: registro.id || 'REG-' + randomUUID(), createdat,
+        ...data, id: registro.id || 'REG-' + randomUUID(), createdat: demoDates?.get(registro.id) || createdat,
         status: 'pendente', operador: actor.name || actor.email,
       } });
-      if (registro.serial) await registrarPlacaComFalha(tx, registro.om, registro.serial, actor.id);
+      if (registro.serial) await registrarPlacaComFalha(tx, registro.om, registro.serial, actor.id,
+        demoDates ? new Date(demoDates.get(registro.id)) : undefined);
     }
   }, { isolationLevel: 'ReadCommitted', timeout: 10000 });
   return registros.length;

@@ -1,8 +1,8 @@
 # Auditoria funcional — andamento
 
-Atualização: 19/11/2026. Etapa preparada em `codex/conferencia-entregas` para publicação na `main`.
+Atualização: 19/11/2026. Branch atual: `codex/corrigir-conferencia-smt`, a partir de `f840b7d`.
 
-Continuação em `codex/conferencia-entregas`. A conferência
+Etapa anterior publicada na `main` em `f840b7d`. A conferência
 de entregas UX-09 está implementada, com testes e build aprovados. A validação
 final da interface e a atualização do fechamento da etapa continuam pendentes.
 
@@ -102,7 +102,8 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Registro de inspeções e indicador de primeira passagem | UX-06 | Implementado para validação em piloto. Liberação após reparo é uma decisão de processo pendente. |
 | Redefinição de senha na administração | UX-07 | Implementada e validada. |
 | Filtro de datas do Almoxarifado | UX-08 | Implementado e validado. |
-| Entregas e filas SMT | UX-09 e UX-10 | Pendente. |
+| Conferência de entregas | UX-09 | Implementada em `f840b7d`; aceite operacional no piloto pendente. |
+| Estados da fila SMT | UX-10 | Implementados e validados na branch `codex/corrigir-conferencia-smt`. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
 
 ## UX-02 — sincronização da OM
@@ -463,3 +464,64 @@ combinações de busca/OM/status, ano bissexto e limites do dia em Brasília.
 No navegador, a combinação de 17/11/2026 com status pendente retornou zero.
 Ao liberar o status, a requisição entregue daquele dia apareceu. Limpar
 restaurou as quatro requisições da prévia, em Tabela e Kanban.
+
+## UX-10 — consulta e recuperação da fila SMT
+
+A mensagem de fila resolvida dependia do resultado filtrado e também podia aparecer
+após erro na primeira consulta. Agora o estado confirmado da consulta precede a
+aplicação da busca. Somente uma consulta concluída pode informar que não existem
+pendências. Busca sem correspondência mostra mensagem própria e **Limpar busca**,
+preservando a contagem total. O termo ignora espaços externos e maiúsculas/minúsculas.
+
+Carregamento e erro exibem travessão no contador. Erros aparecem em mensagem
+persistente com **Tentar novamente**, e não apenas no toast. Consultas têm prazo
+de 15 segundos, são canceladas ao sair e respostas antigas são descartadas. Uma
+consulta incompleta nunca publica a primeira página como fila completa. A origem
+continua sendo a consulta paginada compartilhada, com limite global de 10.000
+registros; não foi criado endpoint exclusivo ou atualização automática nesta etapa.
+
+Atualizar a lista e decidir sobre um item não ocorrem simultaneamente. Decisões
+continuam usando a versão do registro e somente removem o item após confirmação
+da API. Falha ou timeout na decisão exige atualizar a fila, evitando reenvio cego.
+Cancelar a requisição no navegador não comprova ausência de gravação no servidor.
+O botão de saída recebeu nome acessível. Cores, cartões e disposição foram mantidos.
+
+Validação: 72 testes de frontend aprovados, incluindo dez cenários específicos
+da fila SMT; build de produção e TypeScript aprovados. Nos testes automatizados,
+conjunto vazio confirmado é distinto de erro inicial, fila com 17 pendências
+permanece com 17 ao buscar algo inexistente, e falhas/timeouts podem recuperar
+sem reaproveitar respostas antigas. Também foram verificados cancelamento ao
+desmontar a tela e preservação da lista original após decisões confirmadas.
+
+No navegador, a fila existente tinha uma pendência em `DEMO-001`. A busca
+`SEM-RESULTADO-AUDITORIA` exibiu zero de uma, sem a mensagem de fila resolvida.
+**Limpar busca** recuperou a pendência e **Atualizar Lista** confirmou novamente
+uma de uma. Nenhuma decisão foi enviada sobre esse registro durante a validação.
+Falhas de rede e timeout foram exercitados nos testes automatizados, sem desligar
+a API compartilhada com os terminais da fábrica.
+
+## DEMO — datas históricas e várias OMs por clique
+
+A geração normal do operador fixa a data no servidor, por isso as falhas DEMO
+tinham a mesma data/hora. O clique padrão agora acrescenta 15 falhas em três
+novas OMs curtas, cinco por OM, com datas e horários distribuídos nos últimos
+30 dias. Os dias e horários variam entre lotes, preservando os testes anteriores.
+O volume por dia também varia para produzir picos na tendência temporal.
+As falhas continuam pendentes, com exemplos elegíveis para materiais e SMT.
+
+A opção de datas simuladas é interna ao serviço de lançamentos e exige ambiente
+de desenvolvimento, DEMO habilitado, administrador e somente OMs `DEMO-`.
+Não é aceita pela rota de lançamento normal. Datas inválidas, futuras ou fora
+dos últimos 30 dias são recusadas antes da gravação. Falha e inspeção da placa
+recebem a mesma data. O timer da OM segue a operação atual do teste; a simulação
+histórica destina-se às datas de falhas/inspeções e não altera os tempos reais.
+O retorno do gerador mantém `om` como primeira OM e acrescenta a lista `oms`.
+
+Validação: 185 testes de backend aprovados e integração isolada aprovada. Além
+das permissões e da preservação da data do servidor em lançamentos normais,
+foram verificados filtros do relatório por dia simulado, exclusão de DEMOs no
+modo operacional e limpeza dos lotes ao sair. No navegador, dois cliques geraram
+30 registros em `DEMO-001` a `DEMO-006`; o relatório apresentou as seis OMs e
+datas distintas entre outubro e novembro de 2026. Nenhuma migração é necessária.
+Um terceiro lote validou a distribuição ponderada por dia: relatório com 45 falhas,
+nove OMs e picos diários diferentes, preservando os dois lotes anteriores.

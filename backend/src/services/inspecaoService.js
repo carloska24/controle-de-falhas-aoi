@@ -19,10 +19,10 @@ function verifyActiveOM(om, version) {
   if (om.version !== version) throw new OMError(409, 'A OM mudou de versão. Atualize o estado e confira o lançamento antes de tentar novamente.');
 }
 
-function registrarPlacaComFalha(tx, omNumber, serial, actorId) {
+function registrarPlacaComFalha(tx, omNumber, serial, actorId, registradaEm) {
   return tx.placas_inspecionadas.upsert({
     where: { omNumber_serial: { omNumber, serial } },
-    create: { omNumber, serial, temFalha: true, registradaPor: actorId },
+    create: { omNumber, serial, temFalha: true, registradaPor: actorId, ...(registradaEm ? { registradaEm } : {}) },
     update: { temFalha: true },
   });
 }

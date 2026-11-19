@@ -78,7 +78,15 @@ O comando recusa usuário existente e não redefine senha ou perfil. Contas anti
 Debug só funciona com **ambas** as condições `NODE_ENV=development` e `DEBUG_ROUTES_ENABLED=true`, além de autenticação de administrador. Produção sempre bloqueia `/api/debug/populate` e `/api/debug/clear`. `/api/debug/seed-admin` foi removido em todos os ambientes. A limpeza remove somente o namespace reservado `DEMO-`, incluindo OMs, falhas, requisições, vínculos, entregas, inspeções, eventos, tabelas legadas e arquivos de exclusão dessas requisições.
 
 O ícone DEMO da tabela do operador acrescenta 15 falhas, sem limpar os testes
-anteriores. Cada clique abre uma OM exclusiva curta `DEMO-001` a `DEMO-999` e usa o mesmo serviço
+anteriores. Cada clique padrão abre três OMs curtas novas, de `DEMO-001` a
+`DEMO-999`, com cinco falhas por OM. Datas e horários são distribuídos nos últimos
+30 dias e variam entre lotes para exercitar períodos e gráficos dos relatórios.
+A quantidade por dia também varia, incluindo dias com mais ocorrências.
+O serviço usa uma opção interna restrita ao ambiente de desenvolvimento, com
+DEMO habilitado, administrador autenticado e OMs `DEMO-`. Lançamentos normais
+continuam recebendo exclusivamente a data do servidor. A inspeção da placa recebe
+a mesma data simulada da falha. O timer da OM continua medindo a operação atual
+de teste, não o período histórico fictício. A geração usa o mesmo serviço
 dos lançamentos normais para gravar as falhas pendentes, o usuário autenticado e
 as inspeções por OM/serial. Inclui exemplos Ausente, Danificado e Incorreto para
 requisição e Possível Incorreto para conferência SMT. As requisições são criadas
