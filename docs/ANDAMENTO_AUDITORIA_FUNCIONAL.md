@@ -1,10 +1,11 @@
 # Auditoria funcional — andamento
 
-Atualização: 19/11/2026. Branch atual: `codex/corrigir-conferencia-smt`, a partir de `f840b7d`.
+Atualização: 23/11/2026. Branch atual: `codex/corrigir-conferencia-smt`, a partir de `f840b7d`.
 
-Etapa anterior publicada na `main` em `f840b7d`. A conferência
-de entregas UX-09 está implementada, com testes e build aprovados. A validação
-final da interface e a atualização do fechamento da etapa continuam pendentes.
+Etapa anterior publicada na `main` em `f840b7d`. As correções SMT e os lotes DEMO
+com datas variadas foram publicados na branch em `65eb982`. A conferência de
+entregas UX-09 foi validada tecnicamente pela interface em 23/11, com base
+descartável. O aceite pelos operadores no chão de fábrica continua pendente.
 
 Em 19/11, o ambiente passou para PostgreSQL nativo 17.12 em 127.0.0.1:5432.
 A base anterior foi copiada para o destino vazio, com snapshot local de segurança
@@ -102,7 +103,7 @@ adicionado nesta etapa. A seleção de skills será revisada conforme cada etapa
 | Registro de inspeções e indicador de primeira passagem | UX-06 | Implementado para validação em piloto. Liberação após reparo é uma decisão de processo pendente. |
 | Redefinição de senha na administração | UX-07 | Implementada e validada. |
 | Filtro de datas do Almoxarifado | UX-08 | Implementado e validado. |
-| Conferência de entregas | UX-09 | Implementada em `f840b7d`; aceite operacional no piloto pendente. |
+| Conferência de entregas | UX-09 | Interface e integridade validadas em 23/11; recuperação após conflito ajustada localmente. Aceite operacional no piloto pendente. |
 | Estados da fila SMT | UX-10 | Implementados e validados na branch `codex/corrigir-conferencia-smt`. |
 | Acessibilidade, recuperação e ações sem implementação | Demais achados | Pendente, preservando a identidade visual. |
 
@@ -464,6 +465,61 @@ combinações de busca/OM/status, ano bissexto e limites do dia em Brasília.
 No navegador, a combinação de 17/11/2026 com status pendente retornou zero.
 Ao liberar o status, a requisição entregue daquele dia apareceu. Limpar
 restaurou as quatro requisições da prévia, em Tabela e Kanban.
+
+## UX-09 — validação da conferência de entregas em 23/11
+
+Ensaio técnico executado com a compilação de produção do frontend e API local,
+usando PostgreSQL/PGlite descartável em `127.0.0.1:55452`, separado da base da
+fábrica. Uma OM fictícia `98230001` recebeu cinco falhas pelo fluxo normal de
+lançamento e uma requisição com dois PNs: três resistores e dois capacitores.
+A operação pela tela usou uma conta com perfil **almoxarifado**, não administrador.
+
+| Cenário | Resultado observado |
+|---|---|
+| Editar e abrir a revisão | Nenhuma entrega ou evento persistido antes de confirmar. |
+| Voltar e desfazer | Quantidades retornaram a zero; requisição permaneceu pendente. |
+| Entrega parcial | Um resistor entregue; status parcial, versão 1 e um evento com responsável. |
+| Conclusão | Totais acumulados de três resistores e dois capacitores; status entregue e versão 2. |
+| Reduzir quantidade sem motivo | Campo exibiu erro; nenhuma confirmação enviada. |
+| Correção justificada | Capacitores passaram de dois para um; status parcial, versão 3 e motivo no histórico. |
+| Outro terminal altera durante a revisão | API recusou versão antiga; confirmação ficou bloqueada e não criou evento adicional. |
+| Recuperar após conflito | Atualização descartou a edição local e recuperou os totais e o histórico atuais. |
+
+Foi identificada uma lacuna de recuperação: a mensagem exigia atualizar a lista,
+mas a confirmação só oferecia voltar ao formulário antigo. Em caso de falha,
+esse mesmo botão agora oferece **Atualizar lista**, com aviso explícito sobre o
+descarte da edição não confirmada. A atualização recarrega a página e consulta o
+servidor; não reenvia a entrega. O fluxo normal continua oferecendo **Voltar à
+conferência**. Layout, cores e cartões foram preservados.
+
+Após o ajuste, um segundo conflito foi reproduzido. A edição antiga tentava
+reduzir resistores de três para dois, enquanto outro terminal reduziu capacitores
+de dois para um. **Atualizar lista** recuperou três resistores e um capacitor,
+sem alterações pendentes. A base manteve versão 5 e exatamente cinco eventos;
+as duas tentativas recusadas não adicionaram entregas nem histórico.
+
+Validação adicional: 11 testes de integridade de entregas e 72 testes de frontend
+aprovados; integração isolada aprovada, incluindo disputa entre duas requisições,
+recusa de quantidades inválidas e rollback quando falha a gravação do histórico.
+Build de produção e TypeScript aprovados. A simulação do segundo terminal usou a
+API; não representa teste de duas máquinas físicas. O arrasto foi revisado no
+código, onde abre a conferência sem gravar quantidades; não foi executado pelo
+mouse neste ensaio. Falha de rede durante a confirmação não foi provocada no
+navegador; o caminho de recuperação usa o mesmo botão validado para conflito.
+
+Evidências locais em `.tools/delivery-ui-evidence-v*.json` e
+`.tools/delivery-pilot-*.log`, sem inclusão no Git. Capturas da interface em
+`aoi-entrega-recuperacao-conflito-2026-11-23.png` e
+`aoi-entrega-historico-validado-2026-11-23.png`, na pasta de visualizações da sessão.
+O ambiente descartável é encerrado ao concluir o ensaio, sem inserir essas contas,
+OM ou entregas no banco da fábrica.
+
+**Aceite operacional ainda pendente:** um almoxarife deve repetir entrega parcial,
+complemento, correção justificada e consulta de histórico com materiais de teste
+identificados; confirmar que entende **total acumulado**, e não quantidade nova
+da remessa. Em dois terminais da intranet, conferir o bloqueio de versão antiga,
+a recuperação e o arrasto sem gravação imediata. Qualquer diferença física deve
+ser conciliada antes de confirmar. Esta validação técnica não substitui esse aceite.
 
 ## UX-10 — consulta e recuperação da fila SMT
 

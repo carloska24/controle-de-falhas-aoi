@@ -1512,10 +1512,16 @@ export default function AlmoxarifadoPage() {
               className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2" />
             {reasonError && <p id="delivery-reason-error" role="alert" className="text-red-400 mt-2">{reasonError}</p>}
           </div>}
-          {deliveryError && <p role="alert" className="text-red-400">{deliveryError}</p>}
+          {deliveryError && <div className="space-y-2">
+            <p role="alert" className="text-red-400">{deliveryError}</p>
+            <p className="text-sm text-slate-300">Ao atualizar, a edição não confirmada será descartada. Confira as quantidades salvas e o histórico antes de fazer uma nova entrega.</p>
+          </div>}
           <div className="flex justify-end gap-3">
-            <Button variant="outline" disabled={savingDelivery} onClick={() => setDeliveryReview(null)}>
-              Voltar à conferência
+            <Button variant="outline" disabled={savingDelivery} onClick={() => {
+              if (deliveryError) window.location.reload();
+              else setDeliveryReview(null);
+            }}>
+              {deliveryError ? 'Atualizar lista' : 'Voltar à conferência'}
             </Button>
             <Button variant="success" isLoading={savingDelivery} disabled={!!deliveryError} onClick={confirmDelivery}>
               Confirmar entregas
