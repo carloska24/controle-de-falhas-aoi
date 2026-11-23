@@ -1,6 +1,38 @@
 # Auditoria funcional — andamento
 
-Atualização: 23/11/2026. Branch atual: `codex/corrigir-conferencia-smt`, a partir de `f840b7d`.
+Atualização: 23/11/2026. Alterações desenvolvidas em `codex/ux-requisicao-materiais`,
+a partir de `596b296`, para integração à `main` local. Publicação no GitHub pendente.
+
+### Modal de requisição — teste local em 23/11
+
+Revisão visual em 23/11 após feedback do usuário: adotada ficha única de materiais,
+com PN/descrição e quantidade alinhados, grupos de OM ordenados e total apenas no
+rodapé. Removidos o resumo lateral, a faixa multicolorida, os cartões internos e o
+brilho do botão. Tema escuro e identificação roxa das OMs preservados. Referências:
+[Carbon — modal](https://www.carbondesignsystem.com/building-blocks/core/components/modal/guidelines)
+e [SAP Fiori — tabela em diálogo](https://www.sap.com/design-system/fiori-design-web/v1-108/ui-elements/table-select-dialog).
+A escolha da ficha agrupada é uma adaptação a este fluxo, não uma exigência desses sistemas.
+Build/TypeScript e 88 testes aprovados. Navegador: desktop 1280px e mobile 375px,
+rodapé visível e sem rolagem horizontal; Escape preservou a seleção e a confirmação
+enviou somente os 4 aptos, criando 2 requisições e mantendo 8 registros selecionados.
+Testes executados com banco descartável; sem alterações no backend ou no banco normal.
+
+- Modal de entrega aprovado salvo em `596b296`, antes de criar esta branch.
+- Requisição organizada por OM, com PN, descrições e quantidades somente dos
+  registros aptos. Os demais não aparecem no modal e continuam selecionados na
+  tabela após o envio, conforme orientação do usuário.
+- Cabeçalho distingue PNs únicos e OMs; rodapé soma as unidades aptas selecionadas.
+  Ponto pendente da revisão: esse total ainda inclui registros já requisitados.
+  O servidor impede duplicações ao confirmar e informa os vínculos existentes;
+  a previsão do modal ainda precisa consultar esses vínculos antes do envio.
+- Cabeçalho e ações permanecem visíveis; corpo com rolagem, foco inicial no
+  título e retorno à seleção ao fechar. Mantidos o limite de 200 e o tratamento de erro.
+- 88 testes de frontend e build/TypeScript aprovados. Navegador com banco
+  descartável: 12 selecionados, 4 aptos, 3 PNs, 2 OMs; cancelamento preservou os 12,
+  envio manteve 8 selecionados e criou 2 requisições com 4 vínculos.
+  Repetição não duplicou requisições nem vínculos. Seleção sem aptos bloqueou envio.
+- Conferidos desktop 1280px e larguras 768/375px sem rolagem horizontal no modal,
+  com rodapé visível. Dados da fábrica preservados; aceite visual pendente.
 
 Etapa anterior publicada na `main` em `f840b7d`. As correções SMT e os lotes DEMO
 com datas variadas foram publicados na branch em `65eb982`. A conferência de

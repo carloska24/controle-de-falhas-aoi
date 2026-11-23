@@ -52,6 +52,35 @@ test('select all uses page membership and preserves selections on other pages', 
   assert.equal(previous.size, 2);
 });
 
+test('review distinguishes unique PNs from materials across OMs and retains descriptions', () => {
+  const review = reviewMaterialRequest([
+    record('1', { pn: ' PN-A ', descricao: ' Resistor ' }),
+    record('2', { pn: 'PN-A', descricao: 'Resistor' }),
+    record('3', { pn: 'PN-A', om: 'OM-2', descricao: 'Outra descrição' }),
+    record('4', { pn: 'PN-B' }),
+  ], ['1', '2', '3', '4', '1']);
+  assert.equal(review.selectedCount, 4);
+  assert.equal(review.uniquePNs, 2);
+  assert.equal(review.orders.length, 2);
+  assert.equal(review.orders[0].materials.length, 2);
+  assert.equal(review.orders[0].materials[0].quantity, 2);
+  assert.equal(review.orders[0].materials[0].descriptions.join(), 'Resistor');
+  assert.equal(review.orders[1].materials[0].descriptions.join(), 'Outra descrição');
+  assert.equal(review.orders[0].materials[1].descriptions.length, 0);
+});
+
+test('excluded records never enter the material summary and retain their reasons', () => {
+  const review = reviewMaterialRequest([
+    record('1', { tipodefeito: 'Curto' }), record('2', { tipodefeito: 'Solda Fria' }),
+    record('3', { pn: '', tipodefeito: 'Possível Incorreto' }), record('4', { pn: '' }),
+  ], ['1', '2', '3', '4', 'deleted', '1']);
+  assert.equal(review.excluded.length, 5);
+  assert.equal(review.excluded[2].reason, 'Aguarda conferência SMT.');
+  assert.equal(review.selectedCount, 5);
+  assert.equal(review.uniquePNs, 0);
+  assert.equal(review.orders.length, 0);
+});
+
 test('empty and partially selected pages do not discard unrelated selections', () => {
   assert.equal(reviewMaterialRequest([], []).groups.length, 0);
   assert.equal(togglePageSelection(new Set(['outside']), []).size, 1);

@@ -30,7 +30,18 @@ export function reviewMaterialRequest(registros: Registro[], ids: Iterable<strin
     group.quantity += 1;
     groups.set(key, group);
   }
-  return { eligible, excluded, groups: [...groups.values()] };
+  const materials = [...groups.values()];
+  const orders = [...new Set(materials.map(group => group.om))].map(om => ({
+    om,
+    materials: materials.filter(group => group.om === om).map(group => ({
+      ...group,
+      descriptions: [...new Set(eligible.filter(row => row.om === om && row.pn?.trim() === group.pn)
+        .map(row => row.descricao?.trim()).filter((value): value is string => !!value))],
+    })),
+  }));
+  return { eligible, excluded, groups: materials, orders,
+    selectedCount: eligible.length + excluded.length,
+    uniquePNs: new Set(materials.map(group => group.pn)).size };
 }
 
 export function togglePageSelection(selected: Set<string>, pageIds: string[]) {
