@@ -30,14 +30,7 @@ import Dialog from '@/components/ui/Dialog';
 import DemoBadge from '@/components/ui/DemoBadge';
 import { Trash2 } from 'lucide-react';
 import { filterWarehouseRequests, validWarehouseDay } from '@/lib/warehouseFilters';
-
-interface DeliveryReview {
-  id: number;
-  om: string;
-  version: number;
-  status: string;
-  items: { pn: string; requested: number; before: number; quantidade_entregue: number }[];
-}
+import DeliveryDialog from '@/components/warehouse/DeliveryDialog';
 
 export default function AlmoxarifadoPage() {
   const router = useRouter();
@@ -66,38 +59,9 @@ export default function AlmoxarifadoPage() {
     search: searchTerm, om: omFilter, status: statusFilter, day: dataFilter,
   }), [allData, searchTerm, omFilter, statusFilter, dataFilter]);
 
-  // Modal
+  // Delivery workflow is owned by its modal; the page retains the confirmed queue.
   const [modalOpen, setModalOpen] = useState(false);
-  const [deliveryReview, setDeliveryReview] = useState<DeliveryReview | null>(null);
-  const [deliveryReason, setDeliveryReason] = useState('');
-  const [reasonError, setReasonError] = useState('');
-  const [deliveryError, setDeliveryError] = useState('');
-  const [savingDelivery, setSavingDelivery] = useState(false);
-  const deliveryPending = useRef(false);
   const [selectedRequisicao, setSelectedRequisicao] = useState<Requisicao | null>(null);
-  const [deliveryHistory, setDeliveryHistory] = useState<{
-    version: number; actorName: string; occurredAt: string; motivo: string | null;
-    antes: { items: { pn: string; quantidade_entregue: number }[] };
-    depois: { items: { pn: string; quantidade_entregue: number }[] };
-  }[] | null>(null);
-  const [historyError, setHistoryError] = useState('');
-  useEffect(() => {
-    if (!selectedRequisicao) return;
-    const controller = new AbortController();
-    setDeliveryHistory(null);
-    setHistoryError('');
-    fetchAutenticado(`/api/requisicoes/${selectedRequisicao.id}/entregas`, { signal: controller.signal })
-      .then(result => { if (!controller.signal.aborted) setDeliveryHistory(result.data); })
-      .catch(() => { if (!controller.signal.aborted) setHistoryError('Não foi possível consultar o histórico. Reabra a requisição para tentar novamente.'); });
-    return () => controller.abort();
-  }, [selectedRequisicao?.id]);
-  const [editedQuantities, setEditedQuantities] = useState<Record<string, number>>({});
-  const [initialEditedQuantities, setInitialEditedQuantities] = useState<Record<string, number>>({});
-  const [modalSearch, setModalSearch] = useState('');
-  const [showOnlyPendingItems, setShowOnlyPendingItems] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const modalSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const quantityInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Delete Confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -312,143 +276,14 @@ export default function AlmoxarifadoPage() {
   };
 
   const openModal = (req: Requisicao) => {
-    if (deliveryPending.current || deliveryReview) return;
+    if (modalOpen || deleteConfirmOpen) return;
     setSelectedRequisicao(req);
-    // Inicializa as quantidades editadas com os valores agrupados por PN
-    if (Array.isArray(req.items)) {
-      const initialQuantities: Record<string, number> = Object.create(null);
-      const grouped = req.items.reduce((acc: any, item: any) => {
-        const pn = item.pn || 'SEM-CODIGO';
-        if (!acc[pn]) {
-          acc[pn] = 0;
-        }
-        acc[pn] += item.quantidade_entregue || 0;
-        return acc;
-      }, Object.create(null));
-
-      Object.keys(grouped).forEach(pn => {
-        initialQuantities[pn] = grouped[pn];
-      });
-
-      setEditedQuantities(initialQuantities);
-      setInitialEditedQuantities(initialQuantities);
-    }
-    setModalSearch('');
-    setShowOnlyPendingItems(false);
-    setHasUnsavedChanges(false);
     setModalOpen(true);
   };
 
-  const closeModal = () => {
-    if (deliveryPending.current || deliveryReview) return;
-    if (hasUnsavedChanges) {
-      const shouldClose = window.confirm(
-        'Existem alterações não salvas. Deseja fechar mesmo assim?'
-      );
-      if (!shouldClose) return;
-    }
+  const closeDelivery = () => {
     setModalOpen(false);
     setSelectedRequisicao(null);
-    setEditedQuantities({});
-    setInitialEditedQuantities({});
-    setModalSearch('');
-    setShowOnlyPendingItems(false);
-    setHasUnsavedChanges(false);
-  };
-
-  // Agrupar itens por PN quando uma requisição é selecionada
-  const groupedItems = useMemo(() => {
-    if (!selectedRequisicao || !Array.isArray(selectedRequisicao.items)) return [];
-
-    const grouped = selectedRequisicao.items.reduce((acc: any, item: any) => {
-      const pn = item.pn || 'SEM-CODIGO';
-      const designador = item.designador || '';
-
-      if (!acc[pn]) {
-        acc[pn] = {
-          pn: pn,
-          designadores: [],
-          descricao: item.descricao || '',
-          quantidade_requisitada: 0,
-          quantidade_entregue: 0,
-          items_originais: [],
-        };
-      }
-
-      if (designador) {
-        acc[pn].designadores.push(designador);
-      }
-      acc[pn].quantidade_requisitada += item.quantidade_requisitada || 0;
-      acc[pn].quantidade_entregue += item.quantidade_entregue || 0;
-      acc[pn].items_originais.push(item);
-
-      return acc;
-    }, Object.create(null));
-
-    return Object.values(grouped);
-  }, [selectedRequisicao]);
-
-  useEffect(() => {
-    if (!modalOpen) return;
-    const hasChanges =
-      JSON.stringify(editedQuantities) !== JSON.stringify(initialEditedQuantities);
-    setHasUnsavedChanges(hasChanges);
-  }, [editedQuantities, initialEditedQuantities, modalOpen]);
-
-  const filteredGroupedItems = useMemo(() => {
-    if (!Array.isArray(groupedItems) || groupedItems.length === 0) return [];
-
-    const search = modalSearch.trim().toLowerCase();
-
-    return groupedItems.filter((item: any) => {
-      const itemKey = item.pn;
-      const qtdEntregue = editedQuantities[itemKey] ?? item.quantidade_entregue;
-      const isPending = qtdEntregue < item.quantidade_requisitada;
-
-      if (showOnlyPendingItems && !isPending) return false;
-
-      if (!search) return true;
-      const designadores = Array.isArray(item.designadores) ? item.designadores.join(' ') : '';
-      const searchable = `${item.pn || ''} ${item.descricao || ''} ${designadores}`.toLowerCase();
-      return searchable.includes(search);
-    });
-  }, [groupedItems, editedQuantities, modalSearch, showOnlyPendingItems]);
-
-  const modalSummary = useMemo(() => {
-    if (!Array.isArray(groupedItems) || groupedItems.length === 0) {
-      return { totalItens: 0, pendentes: 0, progresso: 0, projectedStatus: 'pendente' };
-    }
-
-    let totalItens = groupedItems.length;
-    let pendentes = 0;
-    let deliveredGroups = 0;
-
-    groupedItems.forEach((item: any) => {
-      const itemKey = item.pn;
-      const qtdEntregue = editedQuantities[itemKey] ?? item.quantidade_entregue;
-      const isDelivered = qtdEntregue >= item.quantidade_requisitada;
-      if (!isDelivered) pendentes += 1;
-      if (qtdEntregue > 0) deliveredGroups += 1;
-    });
-
-    const progresso = totalItens > 0 ? Math.round(((totalItens - pendentes) / totalItens) * 100) : 0;
-    let projectedStatus = 'pendente';
-    if (pendentes === 0 && deliveredGroups > 0) projectedStatus = 'entregue';
-    else if (deliveredGroups > 0) projectedStatus = 'parcialmente_entregue';
-
-    return { totalItens, pendentes, progresso, projectedStatus };
-  }, [groupedItems, editedQuantities]);
-
-  const handleFillPendingAsDelivered = () => {
-    const next: Record<string, number> = Object.create(null);
-    groupedItems.forEach((item: any) => {
-      next[item.pn] = item.quantidade_requisitada;
-    });
-    setEditedQuantities(prev => ({ ...prev, ...next }));
-  };
-
-  const handleResetEdits = () => {
-    setEditedQuantities(initialEditedQuantities);
   };
 
   const getStatusClass = (status: string) => {
@@ -512,111 +347,8 @@ export default function AlmoxarifadoPage() {
     setDragOverStatus(null);
   };
 
-  const handleSaveItems = async () => {
-    if (!selectedRequisicao || deliveryReview || deliveryPending.current) return;
-    if (!Number.isInteger(selectedRequisicao.version)) {
-      showToast('Atualize a lista antes de conferir esta requisição.', 'error');
-      return;
-    }
-    const items = groupedItems.map((item: any) => ({
-      pn: item.pn,
-      requested: item.quantidade_requisitada,
-      before: item.quantidade_entregue,
-      quantidade_entregue: editedQuantities[item.pn] ?? item.quantidade_entregue,
-    }));
-    if (items.some(item => !Number.isSafeInteger(item.quantidade_entregue)
-      || item.quantidade_entregue < 0 || item.quantidade_entregue > item.requested)) {
-      showToast('Confira as quantidades. Use números inteiros entre zero e o total requisitado.', 'error');
-      return;
-    }
-    setDeliveryError('');
-    setDeliveryReason('');
-    setReasonError('');
-    setDeliveryReview({ id: selectedRequisicao.id, om: selectedRequisicao.om,
-      version: selectedRequisicao.version, status: modalSummary.projectedStatus, items });
-  };
-
-  const confirmDelivery = async () => {
-    if (!deliveryReview || deliveryPending.current || deliveryError) return;
-    if (deliveryReview.items.some(item => item.quantidade_entregue < item.before) && !deliveryReason.trim()) {
-      setReasonError('Informe o motivo da correção de quantidades já entregues.');
-      return;
-    }
-    deliveryPending.current = true;
-    setSavingDelivery(true);
-    try {
-      const saved = await fetchAutenticado(`/api/requisicoes/${deliveryReview.id}/itens`, {
-        method: 'PUT', signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({ version: deliveryReview.version, motivo: deliveryReason,
-          items: deliveryReview.items.map(item => ({ pn: item.pn, quantidade_entregue: item.quantidade_entregue })) }),
-      });
-      setAllData(current => current.map(item => item.id === saved.id ? saved : item));
-      setDeliveryReview(null);
-      setModalOpen(false);
-      setSelectedRequisicao(null);
-      setHasUnsavedChanges(false);
-      showToast('Entregas confirmadas. Histórico e quantidades atualizados.', 'success');
-    } catch (error: any) {
-      setDeliveryError(error.status === 400 || error.status === 409 ? error.message
-        : 'Não foi possível confirmar a entrega. Atualize a lista para conferir o resultado antes de tentar novamente.');
-    } finally {
-      deliveryPending.current = false;
-      setSavingDelivery(false);
-    }
-  };
-
-  const handleQuantityInputKeyDown = useCallback(
-    (itemKey: string, e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      const currentIndex = filteredGroupedItems.findIndex((item: any) => item.pn === itemKey);
-      if (currentIndex < 0) return;
-
-      const nextItem = filteredGroupedItems[currentIndex + 1] as any;
-      if (nextItem) {
-        const nextInput = quantityInputRefs.current[nextItem.pn];
-        if (nextInput) {
-          nextInput.focus();
-          nextInput.select();
-        }
-      }
-    },
-    [filteredGroupedItems]
-  );
-
-  useEffect(() => {
-    if (!modalOpen) return;
-
-    const focusTimeout = setTimeout(() => {
-      modalSearchInputRef.current?.focus();
-    }, 80);
-
-    const handleModalHotkeys = (e: KeyboardEvent) => {
-      if (!modalOpen) return;
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeModal();
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        if (hasUnsavedChanges) {
-          void handleSaveItems();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleModalHotkeys);
-    return () => {
-      clearTimeout(focusTimeout);
-      window.removeEventListener('keydown', handleModalHotkeys);
-    };
-  }, [modalOpen, closeModal, handleSaveItems, hasUnsavedChanges]);
-
   const handleDeleteClick = (req: Requisicao) => {
-    if (deletePending.current || deliveryPending.current) return;
+    if (deletePending.current || modalOpen) return;
     setRequisicaoToDelete(req);
     setDeleteReason('');
     setDeleteError('');
@@ -940,7 +672,7 @@ export default function AlmoxarifadoPage() {
                           key={req.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          draggable={!savingDelivery}
+                          draggable={!modalOpen}
                           onDragStart={(e: any) => handleCardDragStart(e, req.id)}
                           onDragEnd={handleCardDragEnd}
                           className={`bg-slate-900 border rounded-lg p-4 cursor-pointer transition-colors ${
@@ -949,7 +681,7 @@ export default function AlmoxarifadoPage() {
                               : 'border-purple-500/20 hover:border-purple-500/50'
                           } ${
                             draggingReqId === req.id ? 'opacity-50 ring-2 ring-cyan-400/60' : 'opacity-100'
-                          } ${savingDelivery ? 'pointer-events-none opacity-60' : ''}`}
+                          } ${modalOpen ? 'pointer-events-none opacity-60' : ''}`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-bold text-white">#{req.id}</h4>
@@ -1183,352 +915,17 @@ export default function AlmoxarifadoPage() {
         )}
       </div>
 
-      {/* Modal */}
-      <Dialog
-        open={modalOpen}
-        onClose={closeModal}
-        title={`Requisição #${selectedRequisicao?.id}`}
-        size="xl"
-        icon={<Package className="w-5 h-5 text-purple-400" />}
-      >
-        {selectedRequisicao && (
-          <div className="space-y-5">
-            {/* Informações da Requisição */}
-            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-4 border border-slate-700/50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    OM
-                  </span>
-                  <p className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 font-black text-3xl tracking-tighter drop-shadow-sm">
-                    {selectedRequisicao.om}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Solicitante
-                  </span>
-                  <p className="text-white font-semibold">
-                    {selectedRequisicao.created_by || 'N/A'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Data
-                  </span>
-                  <p className="text-white font-semibold">
-                    {formatDate(selectedRequisicao.created_at)}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Status
-                  </span>
-                  <Badge className={getStatusClass(selectedRequisicao.status)}>
-                    {getStatusLabel(selectedRequisicao.status)}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {/* Painel operacional do modal */}
-            <div className="bg-slate-900/45 rounded-xl p-4 border border-slate-700/50 space-y-3">
-              <div className="flex flex-wrap gap-2 text-sm">
-                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[120px]">
-                  <span className="text-slate-400">Itens</span>
-                  <p className="text-white font-bold">{modalSummary.totalItens}</p>
-                </div>
-                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[120px]">
-                  <span className="text-slate-400">Pendentes</span>
-                  <p className="text-amber-300 font-bold">{modalSummary.pendentes}</p>
-                </div>
-                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[120px]">
-                  <span className="text-slate-400">Concluído</span>
-                  <p className="text-emerald-300 font-bold">{modalSummary.progresso}%</p>
-                </div>
-                <div className="rounded-lg bg-slate-800/70 border border-slate-700 px-3 py-2 min-w-[150px]">
-                  <span className="text-slate-400">Status ao salvar</span>
-                  <p className="text-cyan-300 font-bold">{getStatusLabel(modalSummary.projectedStatus)}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
-                <div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      ref={modalSearchInputRef}
-                      type="text"
-                      value={modalSearch}
-                      onChange={e => setModalSearch(e.target.value)}
-                      placeholder="Buscar item por PN, designador ou descrição..."
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
-                    />
-                  </div>
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm text-slate-300 whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    checked={showOnlyPendingItems}
-                    onChange={e => setShowOnlyPendingItems(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-900"
-                  />
-                  Mostrar apenas pendentes
-                </label>
-              </div>
-            </div>
-
-            {/* Itens da Requisição */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="w-5 h-5 text-purple-400" />
-                <h4 className="text-lg font-bold text-white">Itens da Requisição</h4>
-                <span className="ml-auto text-sm text-slate-400">
-                  {filteredGroupedItems.length} item(ns) exibido(s)
-                </span>
-              </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {filteredGroupedItems.map((groupedItem: any, idx: number) => {
-                  const itemKey = groupedItem.pn;
-                  const qtdEntregue = editedQuantities[itemKey] ?? groupedItem.quantidade_entregue;
-                  const isDelivered = qtdEntregue >= groupedItem.quantidade_requisitada;
-                  const progressPercent =
-                    groupedItem.quantidade_requisitada > 0
-                      ? (qtdEntregue / groupedItem.quantidade_requisitada) * 100
-                      : 0;
-
-                  // Remove designadores da descrição se houver
-                  const descricaoLimpa = groupedItem.descricao
-                    ? groupedItem.descricao.replace(/\s*\([^)]*\)\s*$/, '').trim()
-                    : '';
-                  const designadoresUnicos = [...new Set(groupedItem.designadores)].sort();
-                  const designadoresStr = designadoresUnicos.join(', ');
-
-                  return (
-                    <motion.div
-                      key={itemKey}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl p-4 border border-slate-700/50 hover:border-cyan-500/30 transition-all"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <p className="text-white font-black text-xl tracking-wide bg-slate-900/80 px-3 py-1 rounded-lg border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)] font-mono">
-                              {groupedItem.pn}
-                            </p>
-                            {designadoresStr && (
-                              <div className="flex flex-wrap gap-0.5">
-                                {designadoresStr
-                                  .split(/[,\s]+/)
-                                  .filter(Boolean)
-                                  .map((des, i) => {
-                                    const prefix =
-                                      des.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() || '';
-                                    const colorMap: Record<string, string> = {
-                                      R: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-                                      C: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
-                                      U: 'bg-purple-500/20 text-purple-400 border-purple-500/40',
-                                      Q: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
-                                      D: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
-                                      L: 'bg-pink-500/20 text-pink-400 border-pink-500/40',
-                                      J: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
-                                      Y: 'bg-red-500/20 text-red-400 border-red-500/40',
-                                      FL: 'bg-teal-500/20 text-teal-400 border-teal-500/40',
-                                      F: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-                                      SW: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40',
-                                      LED: 'bg-lime-500/20 text-lime-400 border-lime-500/40',
-                                    };
-                                    const colorClass =
-                                      colorMap[prefix] ||
-                                      'bg-slate-500/20 text-slate-300 border-slate-500/40';
-                                    return (
-                                      <span
-                                        key={`${des}-${i}`}
-                                        className={`inline-flex items-center px-1 py-px text-[10px] font-medium rounded border ${colorClass}`}
-                                        title={`Componente: ${des}`}
-                                      >
-                                        {des}
-                                      </span>
-                                    );
-                                  })}
-                              </div>
-                            )}
-                          </div>
-                          {descricaoLimpa && (
-                            <p className="text-slate-200 text-base font-medium leading-relaxed border-l-2 border-slate-600 pl-3 py-0.5">
-                              {descricaoLimpa}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant={isDelivered ? 'success' : 'warning'}>
-                          {isDelivered ? 'Entregue' : 'Pendente'}
-                        </Badge>
-                      </div>
-
-                      {/* Barra de progresso */}
-                      <div className="mb-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs text-slate-400">Progresso</span>
-                          <span className="text-sm font-bold text-slate-200">
-                            {qtdEntregue} / {groupedItem.quantidade_requisitada}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progressPercent}%` }}
-                            transition={{ duration: 0.5 }}
-                            className={`h-full rounded-full ${
-                              isDelivered
-                                ? 'bg-gradient-to-r from-green-500 to-green-600'
-                                : 'bg-gradient-to-r from-amber-500 to-orange-500'
-                            }`}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Controles de entrega */}
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">
-                            Quantidade Entregue
-                          </label>
-                          <input
-                            ref={el => {
-                              quantityInputRefs.current[itemKey] = el;
-                            }}
-                            type="number"
-                            aria-label={`Quantidade entregue de ${itemKey}`}
-                            min="0"
-                            max={groupedItem.quantidade_requisitada}
-                            value={qtdEntregue}
-                            onChange={e => {
-                              const value = Math.max(
-                                0,
-                                Math.min(
-                                  groupedItem.quantidade_requisitada,
-                                  parseInt(e.target.value) || 0
-                                )
-                              );
-                              setEditedQuantities(prev => ({ ...prev, [itemKey]: value }));
-                            }}
-                            onKeyDown={e => handleQuantityInputKeyDown(itemKey, e)}
-                            disabled={savingDelivery}
-                            className="w-full md:w-36 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                          />
-                        </div>
-                        <div className="flex items-center md:justify-end gap-2">
-                          {!isDelivered && (
-                            <button
-                              onClick={() => {
-                                setEditedQuantities(prev => ({
-                                  ...prev,
-                                  [itemKey]: groupedItem.quantidade_requisitada,
-                                }));
-                              }}
-                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-3 py-2 rounded-lg transition-all shadow-lg hover:shadow-green-500/20 text-sm whitespace-nowrap"
-                              title="Marcar entrega total deste item"
-                            >
-                              <CheckCircle2 className="w-4 h-4 inline mr-1" />
-                              Entregar total
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Ações */}
-            <details className="border-t border-slate-700/50 pt-4 text-sm">
-              <summary className="cursor-pointer text-slate-300">Histórico de entregas · 50 alterações mais recentes</summary>
-              {historyError ? <p role="alert" className="text-red-400 mt-3">{historyError}</p>
-                : deliveryHistory === null ? <p className="mt-3">Carregando histórico...</p>
-                : deliveryHistory.length === 0 ? <p className="mt-3 text-slate-400">Nenhuma conferência registrada desde a atualização.</p>
-                : deliveryHistory.map(event => <div key={event.version} className="border-b border-slate-700 py-3 space-y-1">
-                  <p>{formatDate(event.occurredAt)} · {event.actorName} · versão {event.version}</p>
-                  {event.motivo && <p>Motivo · {event.motivo}</p>}
-                  {Object.entries(event.depois.items.reduce<Record<string, number>>((totals, item) => {
-                    totals[item.pn] = (totals[item.pn] || 0) + item.quantidade_entregue;
-                    return totals;
-                  }, Object.create(null))).map(([pn, quantity]) => <p key={pn} className="text-slate-400">
-                    {pn} · {event.antes.items.filter(item => item.pn === pn).reduce((sum, item) => sum + item.quantidade_entregue, 0)} → {quantity}
-                  </p>)}
-                </div>)}
-            </details>
-            <div className="border-t border-slate-700/50 pt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs">
-                {hasUnsavedChanges ? (
-                  <span className="text-amber-300">Alterações pendentes de salvamento</span>
-                ) : (
-                  <span className="text-slate-400">Sem alterações pendentes</span>
-                )}
-              </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" onClick={handleFillPendingAsDelivered}>
-                  Marcar tudo como entregue
-                </Button>
-                <Button variant="outline" onClick={handleResetEdits} disabled={!hasUnsavedChanges}>
-                  Desfazer alterações
-                </Button>
-              <Button variant="outline" onClick={closeModal}>
-                Cancelar
-              </Button>
-              <Button variant="success" onClick={handleSaveItems} disabled={!hasUnsavedChanges || savingDelivery}>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Revisar Entregas
-              </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </Dialog>
-
-      <Dialog open={!!deliveryReview} onClose={() => {
-        if (!deliveryPending.current) setDeliveryReview(null);
-      }} title="Conferir entregas" size="lg" icon={<CheckCircle2 className="w-5 h-5 text-green-400" />}>
-        {deliveryReview && <div className="space-y-4" aria-busy={savingDelivery}>
-          <p>Requisição <strong>#{deliveryReview.id}</strong> · OM <strong>{deliveryReview.om}</strong></p>
-          <p className="text-sm text-slate-300">Confira o total acumulado entregue de cada material antes de confirmar.</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead><tr><th className="p-2">PN</th><th className="p-2">Requisitado</th><th className="p-2">Entregue antes</th><th className="p-2">Total ao confirmar</th></tr></thead>
-              <tbody>{deliveryReview.items.map(item => <tr key={item.pn} className="border-t border-slate-700">
-                <td className="p-2 break-all">{item.pn}</td><td className="p-2">{item.requested}</td>
-                <td className="p-2">{item.before}</td><td className="p-2 font-bold">{item.quantidade_entregue}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>
-          <p>Status ao confirmar · <strong>{getStatusLabel(deliveryReview.status)}</strong></p>
-          {deliveryReview.items.some(item => item.quantidade_entregue < item.before) && <div>
-            <label htmlFor="delivery-reason" className="block text-sm mb-2">Motivo da correção de entrega</label>
-            <input id="delivery-reason" value={deliveryReason} maxLength={500} disabled={savingDelivery}
-              onChange={event => { setDeliveryReason(event.target.value); setReasonError(''); }}
-              aria-invalid={!!reasonError} aria-describedby={reasonError ? 'delivery-reason-error' : undefined}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2" />
-            {reasonError && <p id="delivery-reason-error" role="alert" className="text-red-400 mt-2">{reasonError}</p>}
-          </div>}
-          {deliveryError && <div className="space-y-2">
-            <p role="alert" className="text-red-400">{deliveryError}</p>
-            <p className="text-sm text-slate-300">Ao atualizar, a edição não confirmada será descartada. Confira as quantidades salvas e o histórico antes de fazer uma nova entrega.</p>
-          </div>}
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" disabled={savingDelivery} onClick={() => {
-              if (deliveryError) window.location.reload();
-              else setDeliveryReview(null);
-            }}>
-              {deliveryError ? 'Atualizar lista' : 'Voltar à conferência'}
-            </Button>
-            <Button variant="success" isLoading={savingDelivery} disabled={!!deliveryError} onClick={confirmDelivery}>
-              Confirmar entregas
-            </Button>
-          </div>
-        </div>}
-      </Dialog>
+      {modalOpen && selectedRequisicao && <DeliveryDialog
+        request={selectedRequisicao}
+        actorName={user?.name || user?.username || user?.email || 'Usuário autenticado'}
+        canEdit={['admin', 'almoxarifado'].includes(user?.role)}
+        onClose={closeDelivery}
+        onSaved={saved => {
+          setAllData(current => current.map(item => item.id === saved.id ? saved : item));
+          closeDelivery();
+          showToast('Quantidades confirmadas. Histórico e lista atualizados.', 'success');
+        }}
+      />}
 
       {/* Delete Confirmation Dialog */}
       <Dialog

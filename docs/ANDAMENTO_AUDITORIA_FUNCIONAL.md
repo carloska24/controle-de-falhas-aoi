@@ -6,6 +6,10 @@ Etapa anterior publicada na `main` em `f840b7d`. As correções SMT e os lotes D
 com datas variadas foram publicados na branch em `65eb982`. A conferência de
 entregas UX-09 foi validada tecnicamente pela interface em 23/11, com base
 descartável. O aceite pelos operadores no chão de fábrica continua pendente.
+O ponto de retorno antes do redesenho foi salvo no commit local `3179c5d`.
+O novo modal foi implementado e validado localmente, conforme a
+[proposta e evidências](PROPOSTA_UX_MODAL_ENTREGAS.md), com 86 testes de frontend
+e build/TypeScript aprovados. O contrato de entrega e o banco da fábrica foram preservados.
 
 Em 19/11, o ambiente passou para PostgreSQL nativo 17.12 em 127.0.0.1:5432.
 A base anterior foi copiada para o destino vazio, com snapshot local de segurança
