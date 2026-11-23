@@ -852,6 +852,7 @@ export default function ReparoPage() {
                     )}
                   </div>
                   <Pagination
+                    compact
                     currentPage={columnPage}
                     totalPages={columnTotalPages}
                     onPageChange={page =>

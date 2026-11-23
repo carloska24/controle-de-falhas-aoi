@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import Button from './Button';
+import { cn } from '@/lib/utils';
 
 interface PaginationProps {
   currentPage: number;
@@ -10,6 +11,7 @@ interface PaginationProps {
   totalItems?: number;
   itemsPerPage?: number;
   showInfo?: boolean;
+  compact?: boolean;
 }
 
 export default function Pagination({
@@ -19,6 +21,7 @@ export default function Pagination({
   totalItems,
   itemsPerPage = 12,
   showInfo = true,
+  compact = false,
 }: PaginationProps) {
   // Não renderizar se houver apenas uma página ou nenhuma página
   if (totalPages <= 1 || totalPages === 0) return null;
@@ -72,7 +75,7 @@ export default function Pagination({
   const pageItems = buildPageItems();
 
   return (
-    <div className="flex items-center justify-between gap-4 mt-6 pt-4 border-t border-[#314566]">
+    <div className={cn('flex flex-wrap items-center justify-between gap-4 mt-6 pt-4 border-t border-[#314566]', compact && 'pagination-compact min-w-0 [container-type:inline-size]')}>
       {/* Informações */}
       {showInfo && safeTotalItems > 0 && (
         <div className="text-sm text-slate-400">
@@ -83,14 +86,14 @@ export default function Pagination({
       )}
 
       {/* Controles de Navegação */}
-      <div className="flex items-center gap-2 ml-auto">
+      <div className={cn('flex max-w-full flex-wrap items-center justify-end gap-2 ml-auto', compact && 'w-full gap-1')}>
         {/* Primeira Página */}
         <Button
           size="sm"
           variant="ghost"
           onClick={() => handlePageChange(1)}
           disabled={safeCurrentPage === 1}
-          className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+          className={cn('text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed', compact && 'px-2')}
           aria-label="Primeira página"
         >
           <ChevronsLeft className="w-4 h-4" />
@@ -102,15 +105,15 @@ export default function Pagination({
           variant="ghost"
           onClick={() => handlePageChange(safeCurrentPage - 1)}
           disabled={safeCurrentPage === 1}
-          className="text-slate-400 hover:text-white hover:bg-[#1a2535] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          className={cn('text-slate-400 hover:text-white hover:bg-[#1a2535] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200', compact && 'gap-1 px-2')}
           aria-label="Página anterior"
         >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Anterior
+          <ChevronLeft className={cn('w-4 h-4', !compact && 'mr-1')} />
+          <span className="pagination-label">Anterior</span>
         </Button>
 
         {/* Numeração de páginas */}
-        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0f1a2b]/50 border border-[#314566]/50">
+        <div className={cn('flex max-w-full flex-wrap items-center justify-center gap-1 px-2 py-1 rounded-lg bg-[#0f1a2b]/50 border border-[#314566]/50', compact && 'min-w-0 gap-0.5 px-1')}>
           {pageItems.map((item, idx) =>
             item === 'ellipsis' ? (
               <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">
@@ -141,11 +144,11 @@ export default function Pagination({
           variant="ghost"
           onClick={() => handlePageChange(safeCurrentPage + 1)}
           disabled={safeCurrentPage === safeTotalPages}
-          className="text-slate-400 hover:text-white hover:bg-[#1a2535] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          className={cn('text-slate-400 hover:text-white hover:bg-[#1a2535] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200', compact && 'gap-1 px-2')}
           aria-label="Próxima página"
         >
-          Próxima
-          <ChevronRight className="w-4 h-4 ml-1" />
+          <span className="pagination-label">Próxima</span>
+          <ChevronRight className={cn('w-4 h-4', !compact && 'ml-1')} />
         </Button>
 
         {/* Última Página */}
@@ -154,7 +157,7 @@ export default function Pagination({
           variant="ghost"
           onClick={() => handlePageChange(safeTotalPages)}
           disabled={safeCurrentPage === safeTotalPages}
-          className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+          className={cn('text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed', compact && 'px-2')}
           aria-label="Última página"
         >
           <ChevronsRight className="w-4 h-4" />

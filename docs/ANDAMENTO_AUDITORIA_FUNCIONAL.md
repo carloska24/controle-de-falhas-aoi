@@ -3,6 +3,15 @@
 Atualização: 23/11/2026. Alterações desenvolvidas em `codex/ux-requisicao-materiais`,
 a partir de `596b296`, para integração à `main` local. Publicação no GitHub pendente.
 
+### Paginação do Kanban de reparos — 23/11
+
+Corrigido o transbordamento dos controles para fora da coluna. A variante compacta
+adapta espaçamento e, em colunas menores, mantém os ícones de navegação com nomes
+acessíveis. Preservados os cartões, cores, ações e a lógica de paginação.
+Build/TypeScript aprovados. Navegador: primeira e última páginas funcionaram;
+todos os botões ficaram dentro do painel em colunas de 414px e 357px, sem
+transbordamento horizontal. Nenhum registro foi alterado durante essa verificação.
+
 ### Modal de requisição — teste local em 23/11
 
 Revisão visual em 23/11 após feedback do usuário: adotada ficha única de materiais,

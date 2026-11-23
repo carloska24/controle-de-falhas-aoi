@@ -7,6 +7,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@container (max-width: 380px) {
+  .pagination-compact .pagination-label {
+    display: none;
+  }
+}
+
 /* =================================================================
    Scrollbar Customizada (NeonForge Style)
    ================================================================= */
