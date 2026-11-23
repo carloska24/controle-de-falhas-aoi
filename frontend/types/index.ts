@@ -1,6 +1,7 @@
 export interface Registro {
   id: string;
   version?: number;
+  materialRequisitado?: boolean;
   om: string;
   qtdlote?: number;
   serial?: string;

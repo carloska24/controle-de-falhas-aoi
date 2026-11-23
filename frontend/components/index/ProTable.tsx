@@ -570,7 +570,7 @@ export default function ProTable({
             aria-label={`Revisar requisição: ${requestReview.eligible.length} aptos de ${selectedIds.size} selecionados`}
           >
             <FilePlus className="w-4 h-4" aria-hidden="true" />
-            Requisitar{selectedIds.size > 0 ? ` (${requestReview.eligible.length})` : ''}
+            Requisitar{selectedIds.size > 0 ? ` (${requestReview.totalQuantity})` : ''}
           </Button>
         </div>
       </div>
@@ -850,7 +850,7 @@ export default function ProTable({
                       {/* Designadores com destaque colorido por tipo de componente */}
                       <div className="flex flex-wrap gap-0.5">
                         {registro.designador
-                          ?.split(/[,\s]+/)
+                          ?.split(/[,;\s]+/)
                           .filter(Boolean)
                           .map((des, i) => {
                             // Identificar tipo de componente pelo prefixo

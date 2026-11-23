@@ -9,6 +9,7 @@ import DownwardSelect from '@/components/ui/DownwardSelect';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { OM, Registro } from '@/types/index';
+import { parseDesignators } from '../../../shared/designators';
 
 export interface RegisterData {
   om: string;
@@ -99,7 +100,7 @@ export default function ProForm({
         return null;
       case 'designador':
         if (!value || value.trim() === '') return 'Designador é obrigatório';
-        return null;
+        return parseDesignators(value).error;
       case 'tipodefeito':
         if (!value || value.trim() === '') return 'Tipo de defeito é obrigatório';
         return null;

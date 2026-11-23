@@ -1064,7 +1064,7 @@ export default function ReparoPage() {
                           {/* Designadores com cores por tipo de componente - mesmo tamanho do defeito */}
                           <div className="flex flex-wrap gap-1.5">
                             {item.designador
-                              ?.split(/[,\s]+/)
+                              ?.split(/[,;\s]+/)
                               .filter(Boolean)
                               .map((des, i) => {
                                 const prefix = des.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() || '';

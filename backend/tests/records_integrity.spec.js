@@ -1,7 +1,8 @@
 jest.mock('../src/config/prisma', () => ({
   registros: { count: jest.fn(), findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
   requisicoes: { count: jest.fn(), findMany: jest.fn(), create: jest.fn() },
-  requisicao_registros: { findMany: jest.fn(), createMany: jest.fn() },
+  requisicao_registros: { findMany: jest.fn(), findUnique: jest.fn(), createMany: jest.fn() },
+  $queryRaw: jest.fn(),
   $transaction: jest.fn(),
 }));
 const prisma = require('../src/config/prisma');
@@ -129,8 +130,13 @@ test('repeating a material request returns the existing IDs instead of requestin
   expect(prisma.$transaction.mock.calls[0][1]).toEqual({ isolationLevel: 'Serializable' });
 });
 
-test('serialization conflicts are retried without bypassing the record link', async () => {
-  prisma.$transaction.mockRejectedValueOnce({ code: 'P2034' });
+test.each([
+  { code: 'P2034' },
+  { code: 'P2010', meta: { code: '40001' } },
+  { code: 'P2010', meta: { driverAdapterError: { cause: { originalCode: '40001' } } } },
+  { code: 'P2010', meta: { driverAdapterError: { cause: { originalCode: '40P01' } } } },
+])('serialization conflicts are retried without bypassing the record link: %p', async error => {
+  prisma.$transaction.mockRejectedValueOnce(error);
   prisma.registros.findMany.mockResolvedValue([{ id: 'r1', pn: 'PN-1', tipodefeito: 'Ausente' }]);
   prisma.requisicao_registros.findMany.mockResolvedValue([{ registro_id: 'r1', requisicao_id: 5 }]);
   const res = response();
@@ -219,4 +225,64 @@ test('mixed existing and new eligible records return both IDs with an honest sum
   expect(res.body.message).toMatch('Registros já vinculados: 1');
   expect(JSON.parse(prisma.requisicoes.create.mock.calls[0][0].data.items)[0].quantidade_requisitada).toBe(1);
   expect(prisma.requisicao_registros.createMany).toHaveBeenCalledWith({ data: [{ registro_id: 'new', requisicao_id: 8 }] });
+});
+
+test('a grouped occurrence requests three distinct components and repeats do not create another request', async () => {
+  const links = [];
+  prisma.registros.findMany.mockResolvedValue([{ id: 'group', om: '011452', pn: 'A10560',
+    designador: 'r1,R2;R3 R1', tipodefeito: 'Ausente' }]);
+  prisma.requisicao_registros.findMany.mockImplementation(async () => links);
+  prisma.requisicao_registros.createMany.mockImplementation(async ({ data }) => links.push(...data));
+  prisma.requisicoes.create.mockResolvedValue({ id: 21 });
+  const req = { body: { registroIds: ['group'], quantidade: 999 }, user: { id: 9 } };
+  const first = response(), repeated = response();
+  await requisicoes.createRequisicao(req, first);
+  await requisicoes.createRequisicao(req, repeated);
+  expect(first.statusCode).toBe(201);
+  expect(JSON.parse(prisma.requisicoes.create.mock.calls[0][0].data.items)).toEqual([
+    { pn: 'A10560', quantidade_requisitada: 3, quantidade_entregue: 0 },
+  ]);
+  expect(prisma.requisicoes.create).toHaveBeenCalledTimes(1);
+  expect(repeated.body.summary.existingRecords).toBe(1);
+  expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+});
+
+test('invalid designator ranges and cancelled records reject the whole request before writes', async () => {
+  prisma.registros.findMany.mockResolvedValue([
+    { id: 'range', om: 'OM', pn: 'PN', designador: 'R1-R3', tipodefeito: 'Ausente' },
+    { id: 'cancelled', om: 'OM', pn: 'PN', designador: 'C1', tipodefeito: 'Danificado', status: 'cancelado' },
+  ]);
+  const res = response();
+  await requisicoes.createRequisicao({ body: { registroIds: ['range', 'cancelled'] }, user: {} }, res);
+  expect(res.statusCode).toBe(400);
+  expect(res.body.details.invalidRecords).toHaveLength(2);
+  expect(prisma.requisicoes.create).not.toHaveBeenCalled();
+});
+
+test.each(['designador', 'pn', 'om', 'serial', 'tipodefeito'])('linked material identity cannot be edited: %s', async field => {
+  prisma.requisicao_registros.findUnique.mockResolvedValue({ requisicao_id: 21 });
+  prisma.registros.findUnique.mockResolvedValue({ id: 'group', designador: 'R1,R2,R3', pn: 'A10560',
+    om: '011452', serial: '152345', tipodefeito: 'Ausente' });
+  const res = response();
+  await registros.updateRegistro({ params: { id: 'group' }, body: { version: 0, [field]: field === 'designador' ? 'R1' : 'changed' } }, res);
+  expect(res.statusCode).toBe(409);
+  expect(prisma.registros.update).not.toHaveBeenCalled();
+});
+
+test('equivalent designator formatting and notes remain editable on linked records', async () => {
+  prisma.requisicao_registros.findUnique.mockResolvedValue({ requisicao_id: 21 });
+  prisma.registros.findUnique.mockResolvedValue({ id: 'group', designador: 'R1,R2,R3' });
+  prisma.registros.update.mockResolvedValue({ id: 'group', version: 1 });
+  const res = response();
+  await registros.updateRegistro({ params: { id: 'group' }, body: { version: 0, designador: 'R3, R2, R1', obs: 'Conferido' } }, res);
+  expect(res.statusCode).toBe(200);
+  expect(prisma.registros.update).toHaveBeenCalled();
+});
+
+test('record lists expose existing request membership for the review preview', async () => {
+  prisma.registros.count.mockResolvedValue(2);
+  prisma.registros.findMany.mockResolvedValue([{ id: 'a', requisicao_vinculo: { requisicao_id: 21 } }, { id: 'b', requisicao_vinculo: null }]);
+  const res = response();
+  await registros.listRegistros({ query: {}, user: { role: 'admin' } }, res);
+  expect(res.body.data.map(row => row.materialRequisitado)).toEqual([true, false]);
 });

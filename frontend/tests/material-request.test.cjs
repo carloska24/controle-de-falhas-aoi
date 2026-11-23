@@ -7,7 +7,7 @@ const ts = require('typescript');
 const compiled = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../lib/materialRequest.ts'), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
 }).outputText;
-const context = { exports: {} };
+const context = { exports: {}, require: require('node:module').createRequire(path.join(__dirname, '../lib/materialRequest.ts')) };
 vm.runInNewContext(compiled, context);
 const { reviewMaterialRequest, togglePageSelection } = context.exports;
 const record = (id, changes = {}) => ({ id, om: 'OM-TESTE', pn: 'PN-TESTE', tipodefeito: 'Ausente', ...changes });
@@ -87,4 +87,33 @@ test('empty and partially selected pages do not discard unrelated selections', (
   const result = togglePageSelection(new Set(['outside', 'one']), ['one', 'two']);
   assert.equal(result.size, 3);
   assert.ok(result.has('outside'));
+});
+
+test('one grouped occurrence requests one component for each distinct designator', () => {
+  const review = reviewMaterialRequest([record('group', { designador: 'R1,R2,R3' })], ['group', 'group']);
+  assert.equal(review.eligible.length, 1);
+  assert.equal(review.totalQuantity, 3);
+  assert.equal(review.groups[0].quantity, 3);
+});
+
+test('commas, spaces, semicolons and repeated case variants preserve the physical quantity', () => {
+  const review = reviewMaterialRequest([
+    record('a', { designador: 'r1, R1; r2 R3' }),
+    record('b', { designador: 'R4', om: 'OM-2' }),
+    record('c', { designador: 'C1;C2', pn: 'PN-2' }),
+  ], ['a', 'b', 'c']);
+  assert.equal(review.totalQuantity, 6);
+  assert.equal(review.groups.map(g => g.quantity).join(), '3,1,2');
+});
+
+test('existing links, invalid ranges and cancelled material stay outside the quantity preview', () => {
+  const review = reviewMaterialRequest([
+    record('linked', { designador: 'R1,R2,R3', materialRequisitado: true }),
+    record('invalid', { designador: 'R1-R3' }),
+    record('cancelled', { designador: 'R5,R6', status: 'cancelado' }),
+    record('new', { designador: 'C1,C2' }),
+  ], ['linked', 'invalid', 'cancelled', 'new']);
+  assert.equal(review.totalQuantity, 2);
+  assert.equal(review.eligible.map(r => r.id).join(), 'new');
+  assert.equal(review.excluded.length, 3);
 });

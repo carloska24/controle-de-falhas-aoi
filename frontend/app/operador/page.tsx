@@ -722,6 +722,9 @@ export default function IndexPage() {
                     body: JSON.stringify({ registroIds: ids }),
                   });
                   showToast(response.message, 'success');
+                  const requested = new Set(ids);
+                  setRegistros(previous => previous.map(row => requested.has(row.id) ? { ...row, materialRequisitado: true } : row));
+                  void loadData();
                   return response;
                 } catch (error: any) {
                   // O diálogo mantém o erro junto à ação e preserva a seleção para tentar novamente.

@@ -1,4 +1,8 @@
 const { z } = require('zod');
+const { parseDesignators } = require('../../../shared/designators');
+const designadores = z.string().trim().min(1).refine(value => !parseDesignators(value).error, {
+  message: 'Informe designadores separados por vírgula, ponto e vírgula ou espaço, sem intervalos.',
+}).transform(value => parseDesignators(value).designators.join(', '));
 
 // Schemas
 const loginSchema = z.object({ username: z.string().min(1), password: z.string().min(1) });
@@ -33,7 +37,7 @@ const registroBase = {
   om: z.string().min(1),
   qtdlote: z.coerce.number().int().min(1).max(2147483647),
   serial: z.string().optional().nullable(),
-  designador: z.string().min(1),
+  designador: designadores,
   tipodefeito: z.string().min(1),
   pn: z.string().optional().nullable(),
   descricao: z.string().optional().nullable(),
@@ -61,7 +65,7 @@ const registroUpdateSchema = z.object({
 
   // Strings opcionais: permitimos string vazia/null/undefined
   serial: z.string().optional().nullable(),
-  designador: z.string().min(1).optional(),
+  designador: designadores.optional(),
   tipodefeito: z.string().min(1).optional(),
   pn: z.string().optional().nullable(),
   descricao: z.string().optional().nullable(),
@@ -75,7 +79,7 @@ const registroBatchItemSchema = z.object({
   omVersion: z.number().int().nonnegative(),
   qtdlote: z.coerce.number().int().min(1).max(2147483647),
   serial: serialPlaca.optional().nullable(),
-  designador: z.string().min(1),
+  designador: designadores,
   tipodefeito: z.string().min(1),
   pn: z.string().optional().nullable(),
   descricao: z.string().optional().nullable(),

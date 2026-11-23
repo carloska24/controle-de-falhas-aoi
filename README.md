@@ -233,6 +233,8 @@ npm run dev          # Inicia na porta 3000
 
 ## ☁️ Deploy em Produção
 
+O backend e o frontend usam o parser de designadores em `shared/`, na raiz do repositório. Preserve esse diretório como irmão das duas aplicações no pacote de execução/build. Em projetos Vercel com Root Directory `frontend`, habilite a inclusão de arquivos externos à raiz no build. Veja a [validação das quantidades por designador](docs/CORRECAO_QUANTIDADE_DESIGNADORES_2026-11-23.md).
+
 ### Backend (Render)
 
 | Campo | Valor |

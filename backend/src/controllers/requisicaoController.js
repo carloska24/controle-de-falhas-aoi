@@ -2,9 +2,18 @@ const prisma = require('../config/prisma');
 const { getPagination } = require('../utils/pagination');
 const { confirmDelivery } = require('../services/deliveryService');
 const { deleteRequest } = require('../services/requestDeletionService');
+const { parseDesignators } = require('../../../shared/designators');
+const { lockRecords } = require('../utils/recordLock');
 
 function reject(status, message, details) {
   throw Object.assign(new Error(message), { status, details });
+}
+
+function isRequestConflict(error) {
+  const postgresCode = error.meta?.code
+    ?? error.meta?.driverAdapterError?.cause?.originalCode;
+  return ['P2034', 'P2002'].includes(error.code)
+    || (error.code === 'P2010' && ['40001', '40P01'].includes(postgresCode));
 }
 
 async function listRequisicoes(req, res) {
@@ -37,6 +46,7 @@ async function createRequisicao(req, res) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         result = await prisma.$transaction(async tx => {
+          await lockRecords(tx, registroIds);
           const registros = await tx.registros.findMany({ where: { id: { in: registroIds } } });
           if (registros.length !== registroIds.length) reject(404, 'Um ou mais registros não foram encontrados.');
           const invalidRecords = registros.flatMap(registro => {
@@ -48,6 +58,9 @@ async function createRequisicao(req, res) {
                 : 'Defeito não elegível: use Ausente, Danificado ou Incorreto.');
             }
             if (!registro.pn?.trim()) reasons.push('PN não informado.');
+            const designators = parseDesignators(registro.designador);
+            if (designators.error) reasons.push(designators.error);
+            if (['cancelado', 'sucata'].includes(registro.status)) reasons.push('Registro cancelado ou descartado não pode gerar requisição.');
             return reasons.length ? [{ id: registro.id, reason: reasons.join(' ') }] : [];
           });
           if (invalidRecords.length) {
@@ -70,7 +83,7 @@ async function createRequisicao(req, res) {
                 pn, descricao: record.descricao,
                 quantidade_requisitada: 0, quantidade_entregue: 0,
               });
-              items.get(pn).quantidade_requisitada++;
+              items.get(pn).quantidade_requisitada += parseDesignators(record.designador).quantity;
             }
             const requisicao = await tx.requisicoes.create({ data: {
               om, items: JSON.stringify([...items.values()]),
@@ -94,7 +107,7 @@ async function createRequisicao(req, res) {
         }, { isolationLevel: 'Serializable' });
         break;
       } catch (error) {
-        if (!['P2034', 'P2002'].includes(error.code) || attempt === 2) throw error;
+        if (!isRequestConflict(error) || attempt === 2) throw error;
       }
     }
     const { summary } = result;
@@ -106,7 +119,7 @@ async function createRequisicao(req, res) {
       summary,
     });
   } catch (error) {
-    const conflict = ['P2034', 'P2002'].includes(error.code);
+    const conflict = isRequestConflict(error);
     res.status(error.status || (conflict ? 409 : 500)).json({
       error: error.status ? error.message : conflict ? 'Solicitação concorrente. Atualize a lista e tente novamente.' : 'Falha ao criar requisição.',
       ...(error.status === 400 && error.details ? { details: error.details } : {}),

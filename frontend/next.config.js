@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
+const path = require('node:path');
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: { root: path.join(__dirname, '..') },
   // Configuração para permitir comunicação com backend Express
   // Em desenvolvimento, usa rewrite. Em produção/intranet, usa variável de ambiente
   async rewrites() {

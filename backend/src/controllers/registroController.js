@@ -2,6 +2,8 @@ const prisma = require('../config/prisma');
 const { createRegistros } = require('../services/registroCreationService');
 const { OMError } = require('../services/omService');
 const { getPagination } = require('../utils/pagination');
+const { lockRecords } = require('../utils/recordLock');
+const { parseDesignators } = require('../../../shared/designators');
 
 async function listRegistros(req, res) {
   try {
@@ -30,11 +32,14 @@ async function listRegistros(req, res) {
         orderBy: [{ createdat: 'desc' }, { id: 'desc' }],
         skip,
         take: limit,
+        include: { requisicao_vinculo: { select: { requisicao_id: true } } },
       }),
     ], { isolationLevel: 'RepeatableRead' });
 
     const registros = registrosRaw.map(r => ({
       ...r,
+      requisicao_vinculo: undefined,
+      materialRequisitado: !!r.requisicao_vinculo,
       tipodefeito: r.tipodefeito,
       createdat: r.createdat,
     }));
@@ -92,9 +97,23 @@ async function updateRegistro(req, res) {
   const { id } = req.params;
   const { version, ...data } = req.body;
   try {
-    const updated = await prisma.registros.update({
-      where: { id, version },
-      data: { ...data, version: { increment: 1 } },
+    const updated = await prisma.$transaction(async tx => {
+      await lockRecords(tx, [id]);
+      const linked = await tx.requisicao_registros.findUnique({ where: { registro_id: id } });
+      if (linked) {
+        const current = await tx.registros.findUnique({ where: { id } });
+        const materialFields = ['om', 'serial', 'pn', 'designador', 'tipodefeito'];
+        const changed = current && materialFields.some(field => {
+          if (!Object.hasOwn(data, field)) return false;
+          if (field === 'designador') return parseDesignators(data[field]).designators.sort().join(',')
+            !== parseDesignators(current[field]).designators.sort().join(',');
+          return (data[field] || '').trim() !== (current[field] || '').trim();
+        });
+        if (changed) {
+          throw Object.assign(new Error('Este registro já gerou uma requisição. Exclua ou revise a requisição no Almoxarifado antes de alterar OM, serial, PN, designadores ou defeito.'), { status: 409 });
+        }
+      }
+      return tx.registros.update({ where: { id, version }, data: { ...data, version: { increment: 1 } } });
     });
     res.json(updated);
   } catch (err) {
@@ -103,7 +122,7 @@ async function updateRegistro(req, res) {
       return res.status(exists ? 409 : 404).json({ error: exists
         ? 'Registro alterado por outro usuário. Atualize a lista antes de salvar.' : 'Registro não encontrado.' });
     }
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message });
   }
 }
 

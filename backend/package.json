@@ -13,6 +13,7 @@
     "test": "jest",
     "test:integration:isolated": "node scripts/test-integration-isolated.js",
     "test:integration:postgres": "node scripts/test-om-record-concurrency.js",
+    "test:materials:postgres": "node scripts/test-material-quantity-postgres.js",
     "test:report:postgres": "node scripts/test-falhas-report-postgres.js",
     "build": "prisma generate",
     "db:migrate": "prisma migrate deploy",

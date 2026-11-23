@@ -110,7 +110,7 @@ export default function MaterialRequestReview({ registros, ids, onSubmit, onComp
                 </tbody>)}
               </table>
             </div>
-            <p className="mt-3 text-pretty text-xs leading-relaxed text-slate-400">Uma unidade por registro apto. Registros já requisitados não serão duplicados.</p>
+            <p className="mt-3 text-pretty text-xs leading-relaxed text-slate-400">Uma unidade por designador distinto do registro. Registros já requisitados não serão duplicados.</p>
           </> : <div className="py-8 text-center">
             <Package aria-hidden="true" className="mx-auto mb-3 size-7 text-slate-500" />
             <h3 className="font-medium text-slate-200">Nenhum material apto nesta seleção</h3>
@@ -122,7 +122,7 @@ export default function MaterialRequestReview({ registros, ids, onSubmit, onComp
           {tooMany && <p role="alert" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Envie no máximo 200 registros por vez. Volte e reduza a seleção.</p>}
           {error && <p role="alert" className="mb-4 max-h-28 overflow-y-auto break-words rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error} Sua seleção foi mantida.</p>}
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <p aria-live="polite" className="flex items-baseline gap-3 text-sm"><span className="text-slate-400">{busy ? 'Enviando…' : 'Total a requisitar'}</span><span className="font-semibold tabular-nums text-white">{review.eligible.length}<span className="ml-1 font-normal text-slate-400">un.</span></span></p>
+            <p aria-live="polite" className="flex items-baseline gap-3 text-sm"><span className="text-slate-400">{busy ? 'Enviando…' : 'Total a requisitar'}</span><span className="font-semibold tabular-nums text-white">{review.totalQuantity}<span className="ml-1 font-normal text-slate-400">un.</span></span></p>
             <div className="flex w-full gap-2 sm:w-auto">
               <Button variant="outline" onClick={onClose} disabled={busy} className="min-h-11 flex-1 border-slate-600 bg-transparent sm:flex-none">Voltar à seleção</Button>
               <Button variant="success" onClick={confirm} disabled={!review.eligible.length || tooMany} isLoading={busy} className="min-h-11 flex-1 bg-emerald-600 hover:bg-emerald-500 focus:ring-emerald-400 sm:flex-none">Confirmar requisição</Button>
