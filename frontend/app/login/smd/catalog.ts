@@ -1,3 +1,5 @@
+export const COMPONENT_SCALE = 0.85;
+
 export const COMPONENT_CATALOG = [
   { id: 'resistor', name: 'Resistor de filme', package: '1206 · 10 kΩ', size: 36 },
   { id: 'mlcc', name: 'Capacitor cerâmico', package: 'MLCC · 0805', size: 31 },

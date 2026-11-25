@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { COMPONENT_CATALOG, type ComponentKind } from './catalog';
+import { COMPONENT_CATALOG, COMPONENT_SCALE, type ComponentKind } from './catalog';
 
 const positions = [[11, 12], [84, 19], [26, 34], [94, 43], [6, 58], [76, 65],
   [23, 81], [88, 87], [10, 93], [82, 6], [5, 35], [94, 60]];
@@ -31,7 +31,7 @@ export default function ComponentFallback({ hidden }: { hidden: boolean }) {
   return <div data-smd-fallback="true" style={{ position: 'absolute', inset: 0, display: hidden ? 'none' : undefined }}>
     {COMPONENT_CATALOG.map((component, i) => <svg key={component.id} viewBox="0 0 100 80" data-smd-component={component.id}
       style={{ position: 'absolute', left: `${positions[i][0]}%`, top: `${positions[i][1]}%`,
-        width: component.size, height: component.size * 0.8, opacity: 0.6,
+        width: component.size * COMPONENT_SCALE, height: component.size * 0.8 * COMPONENT_SCALE, opacity: 0.6,
         transform: `translate(-50%, -50%) rotate(${(i * 47) % 90 - 45}deg)` }}>
       <defs><linearGradient id={`${prefix}-${i}-metal`} x2="0.9" y2="1"><stop stopColor="#d8dfe0" /><stop offset="0.45" stopColor="#9aa6ad" /><stop offset="0.6" stopColor="#d1d6d8" /><stop offset="1" stopColor="#67737c" /></linearGradient></defs>
       <Shape kind={component.id} prefix={`${prefix}-${i}`} />

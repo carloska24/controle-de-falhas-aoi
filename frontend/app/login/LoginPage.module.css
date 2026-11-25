@@ -1,0 +1,15 @@
+.surface {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.surface input,
+.surface textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.surface img,
+.surface svg {
+  -webkit-user-drag: none;
+}

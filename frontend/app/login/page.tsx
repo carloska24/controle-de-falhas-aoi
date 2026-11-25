@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import LoginForm from './LoginForm';
 import SMDAnimation from './SMDAnimation';
+import styles from './LoginPage.module.css';
 
 export const metadata: Metadata = {
   title: 'Login - Controle de Falhas AOI',
@@ -10,13 +11,13 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div data-login-surface className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${styles.surface}`}>
       {/* Background gradient - precisa estar atrás dos componentes */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 -z-20" />
       {/* Componentes SMD - entre background e formulário */}
       <SMDAnimation />
       {/* Formulário - acima de tudo */}
-      <div className="relative z-10">
+      <div data-login-card className="relative z-10">
         <LoginForm />
       </div>
     </div>
