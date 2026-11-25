@@ -701,6 +701,7 @@ export default function IndexPage() {
 
             {/* Tabela de Registros */}
             <ProTable
+              canAddDemo={user?.role === 'admin'}
               registros={filteredRegistros}
               isLoading={isDataLoading || isPending}
               omTimeSummary={omTimeSummary || undefined}

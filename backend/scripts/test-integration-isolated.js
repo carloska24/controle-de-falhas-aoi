@@ -17,7 +17,7 @@ async function main() {
     Object.assign(process.env, { DATABASE_URL: db.database.connectionString, DATABASE_POOL_MAX: '1',
       NODE_ENV: 'production', JWT_SECRET: randomBytes(32).toString('hex'),
       CORS_ORIGIN: 'http://localhost:3000', COOKIE_SECURE: 'false', COOKIE_SAMESITE: 'Lax', COOKIE_DOMAIN: '',
-      DEBUG_ROUTES_ENABLED: 'false', SILENCE_LOGS: 'true' });
+      DEBUG_ROUTES_ENABLED: 'false', DEMO_ENABLED: 'false', SILENCE_LOGS: 'true' });
 
     // Testa migração de um banco legado sem perder registros nem estados existentes.
     const { Pool } = require('pg');
@@ -324,10 +324,10 @@ async function main() {
     assert.equal(await prisma.registros.count(), 266);
     console.log('PASS: logout revoga cookie reapresentado sem excluir registros');
 
-    // In production logout preserves all data; the opted-in local test environment
-    // atomically removes the shared DEMO namespace, including material history.
-    process.env.NODE_ENV = 'development';
-    process.env.DEBUG_ROUTES_ENABLED = 'true';
+    // Explicit production DEMO opt-in preserves admin-only generation/cleanup.
+    process.env.NODE_ENV = 'production';
+    process.env.DEBUG_ROUTES_ENABLED = 'false';
+    process.env.DEMO_ENABLED = 'true';
     cookie = (await api('POST', '/api/auth/login', credentials)).response.headers.get('set-cookie').split(';')[0];
     const demo = (await api('POST', '/api/debug/populate', { count: 4, clear: false })).data;
     const demoRows = (await api('GET', '/api/registros?om=' + demo.om)).data.data;

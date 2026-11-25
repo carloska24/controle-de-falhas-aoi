@@ -4,6 +4,7 @@ const prisma = require('../config/prisma');
 const { JWT_SECRET, getToken } = require('../middleware/auth');
 const { SESSION_DURATION_MS, getAuthCookieOptions } = require('../config/authCookie');
 const { clearDemoData } = require('../services/demoCleanupService');
+const { isDemoEnabled } = require('../config/demo');
 
 async function login(req, res) {
   const { username, password } = req.body;
@@ -37,8 +38,7 @@ async function logout(req, res) {
           data: { session_version: { increment: 1 } },
         });
         // Replayed/expired sessions cannot remove another session's demonstrations.
-        if (revoked.count !== 1 || process.env.NODE_ENV !== 'development'
-          || process.env.DEBUG_ROUTES_ENABLED !== 'true') return;
+        if (revoked.count !== 1 || !isDemoEnabled()) return;
         const user = await tx.users.findUnique({ where: { id: payload.id }, select: { role: true } });
         if (user?.role === 'admin') await clearDemoData(tx);
       }, { isolationLevel: 'Serializable', timeout: 15000 });

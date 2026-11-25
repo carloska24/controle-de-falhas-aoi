@@ -233,6 +233,8 @@ npm run dev          # Inicia na porta 3000
 
 ## ☁️ Deploy em Produção
 
+No Windows local, dê duplo clique em **`Iniciar-Producao.bat`**, na raiz do projeto, para iniciar PostgreSQL, backend e frontend e abrir o sistema. O atalho usa a build existente, mantém DEMO exclusivo para administradores e verifica os serviços antes de informar sucesso. Consulte o [guia do inicializador](docs/INICIAR_PRODUCAO_WINDOWS.md).
+
 O backend e o frontend usam o parser de designadores em `shared/`, na raiz do repositório. Preserve esse diretório como irmão das duas aplicações no pacote de execução/build. Em projetos Vercel com Root Directory `frontend`, habilite a inclusão de arquivos externos à raiz no build. Veja a [validação das quantidades por designador](docs/CORRECAO_QUANTIDADE_DESIGNADORES_2026-11-23.md).
 
 ### Backend (Render)

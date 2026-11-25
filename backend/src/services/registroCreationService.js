@@ -2,14 +2,14 @@ const prisma = require('../config/prisma');
 const { OMError } = require('./omService');
 const { lockOMs, verifyActiveOM, registrarPlacaComFalha } = require('./inspecaoService');
 const { randomUUID } = require('node:crypto');
+const { isDemoEnabled } = require('../config/demo');
 
 async function createRegistros(registros, actor, options = {}) {
   // Internal-only history simulation; the normal HTTP endpoint never passes options.
   const demoDates = options.demoCreatedAt;
   if (demoDates !== undefined) {
-    if (actor.role !== 'admin' || process.env.NODE_ENV !== 'development'
-      || process.env.DEBUG_ROUTES_ENABLED !== 'true' || registros.some(row => !row.om.startsWith('DEMO-'))) {
-      throw new OMError(403, 'Datas simuladas são permitidas somente para demonstração no ambiente de testes.');
+    if (actor.role !== 'admin' || !isDemoEnabled() || registros.some(row => !row.om.startsWith('DEMO-'))) {
+      throw new OMError(403, 'Datas simuladas são permitidas somente para demonstração habilitada e administrador autenticado.');
     }
     const now = Date.now();
     if (!(demoDates instanceof Map) || demoDates.size !== registros.length || registros.some(row => {

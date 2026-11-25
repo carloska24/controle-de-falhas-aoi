@@ -23,6 +23,7 @@ const { app } = require('../server');
 const users = new Map();
 
 beforeEach(async () => {
+  delete process.env.DEMO_ENABLED;
   jest.clearAllMocks();
   users.clear();
   users.set(1, {
@@ -56,6 +57,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  delete process.env.DEMO_ENABLED;
   process.env.NODE_ENV = 'test';
   process.env.DEBUG_ROUTES_ENABLED = 'false';
   process.env.COOKIE_SECURE = 'false';
@@ -204,6 +206,15 @@ describe('Demo cleanup on logout', () => {
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'Serializable', timeout: 15000 });
   });
 
+  test('opted-in production cleans only DEMO on administrator logout', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEBUG_ROUTES_ENABLED = 'false';
+    process.env.DEMO_ENABLED = 'true';
+    await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(2)}`).expect(200);
+    expect(prisma.registros.deleteMany).toHaveBeenCalledWith({ where: { om: { startsWith: 'DEMO-' } } });
+    expect(prisma.requisicoes.deleteMany).toHaveBeenCalledWith({ where: { om: { startsWith: 'DEMO-' } } });
+  });
+
   test.each(['operator','almoxarifado','reparo','qualidade','lider_smt'])('logout of %s cannot clean shared demonstrations', async role => {
     users.get(1).role = role;
     await request(app).post('/api/auth/logout').set('Cookie', `aoi_token=${tokenFor(1)}`).expect(200);
@@ -328,6 +339,32 @@ describe('Debug isolation', () => {
     await request(app).post('/api/debug/clear').expect(401);
     const operatorToken = jwt.sign({ id: 1, role: 'operator', sessionVersion: 0 }, process.env.JWT_SECRET);
     await request(app).post('/api/debug/clear').set('Cookie', `aoi_token=${operatorToken}`).expect(403);
+  });
+
+  test.each(['operator', 'reparo', 'almoxarifado', 'qualidade', 'smt'])('production DEMO refuses %s even with a forged admin claim', async role => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_ENABLED = 'true';
+    users.get(1).role = role;
+    const token = jwt.sign({ id: 1, role: 'admin', sessionVersion: 0 }, process.env.JWT_SECRET);
+    for (const route of ['/populate', '/clear']) {
+      await request(app).post('/api/debug' + route).set('Cookie', `aoi_token=${token}`).send({}).expect(403);
+    }
+    expect(prisma.registros.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('production DEMO requires a valid administrator session and keeps bootstrap absent', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEBUG_ROUTES_ENABLED = 'false';
+    process.env.DEMO_ENABLED = 'true';
+    await request(app).post('/api/debug/populate').send({}).expect(401);
+    await request(app).post('/api/debug/clear').expect(401);
+    // Invalid input proves authorization succeeds without generating any test records.
+    await request(app).post('/api/debug/populate').set('Cookie', `aoi_token=${adminToken}`).send({ count: 0 }).expect(400);
+    await request(app).post('/api/debug/clear').set('Cookie', `aoi_token=${adminToken}`).expect(200);
+    expect(prisma.registros.deleteMany).toHaveBeenCalledWith({ where: { om: { startsWith: 'DEMO-' } } });
+    await request(app).get('/api/debug/seed-admin').expect(404);
+    users.get(2).session_version++;
+    await request(app).post('/api/debug/clear').set('Cookie', `aoi_token=${adminToken}`).expect(401);
   });
 
   test('enabled development cleanup targets only demo records and requests', async () => {

@@ -23,6 +23,7 @@ interface ProTableProps {
   onDelete: (ids: string[], versions: Record<string, number>, signal: AbortSignal) => Promise<void>;
   onGenerateRequest: (ids: string[]) => Promise<MaterialRequestResult>;
   onAddDemo: () => Promise<void>;
+  canAddDemo?: boolean;
   onEdit?: (id: string, data: Partial<Registro>) => Promise<void>;
   isLoading?: boolean;
   omTimeSummary?: {
@@ -37,6 +38,7 @@ export default function ProTable({
   onDelete,
   onGenerateRequest,
   onAddDemo,
+  canAddDemo = false,
   onEdit,
   isLoading = false,
   omTimeSummary,
@@ -417,7 +419,7 @@ export default function ProTable({
           </svg>
           <span>Registros</span>
         </h2>
-        <svg
+        {canAddDemo && <svg
           onClick={onAddDemo}
           className="w-12 h-12 cursor-pointer hover:scale-110 transition-transform duration-300"
           viewBox="0 0 512 512"
@@ -496,7 +498,7 @@ export default function ProTable({
               d="m265.274 402.105c-4.954-11.901-23.395-4.262-18.463 7.65 4.936 11.923 23.358 4.282 18.463-7.65z"
             />
           </g>
-        </svg>
+        </svg>}
       </div>
 
       {/* Toolbar Simplificado */}
